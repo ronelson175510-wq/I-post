@@ -67,3 +67,4 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+bookme-backend/firebase-key.json
