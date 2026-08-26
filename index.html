@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="script.js" defer></script>
+
+    <style>
+        body{
+            background-color: white;
+        margin: 0;
+            padding: 0;
+        }
+
+        body::-webkit-scrollbar{
+            display: none;
+        }
+
+        .header{
+            background-color: black;
+            left: 0;
+            top: 0;
+            position: relative;
+            padding:15px 2px;
+            font-size: 12px;
+            font-family:'Times New Roman', Times, serif;
+            border-bottom-left-radius: 8px;
+            
+            overflow: hidden;
+        }
+
+        
+        .header::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 4px;
+            background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+        }
+
+
+        .title-wrap{
+            display: flex;
+            align-items: center;
+            
+            
+            float: left;
+            margin-top: -10px;
+            
+           text-shadow: 1px 1px 2px blueviolet, 1px 2px 3px yellow, 1px 3px 4px blue;
+        }
+
+        .title-wrap i {
+            font-size: 1.8rem;
+            line-height: 1;
+        }
+
+        .title{
+            color: white;
+            letter-spacing: 2px;
+            font-weight: 700;
+            font-size: 27px;
+            font-style: italic;
+            font-family:'Times New Roman', Times, serif;
+            background: linear-gradient(90deg, #ffffff 0%, #d9c8ff 35%, #9b8cff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 18px rgba(155, 140, 255, 0.35);
+        }
+
+        .header-icons{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: transparent;
+            border:1.5px solid blueviolet;
+            float: right;
+            border-radius: 12px;
+            padding:8px 14px;
+            gap: 12px;
+            margin-top: -15px;
+            box-shadow: 0px 0px 10px 0px blueviolet;
+            height: 28px;
+            cursor: pointer;
+            transition: 0.3s ease;
+            
+        }
+
+        .header-icons i,
+        .header-icons .openbtn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            margin: 0;
+        }
+
+        .header-icons .openbtn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+        }
+
+       
+
+/*notification css*/
+
+        .notification-bell {
+  position: relative;
+  display: inline-block;
+}
+
+.notify-bubble {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: red;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 50%;
+  display: none;
+  z-index: 9999;
+  font-family: 'Roboto', sans-serif;
+}
+
+
+#notifyBell {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+#notifyBell:hover {
+  transform: scale(1.15);
+}
+
+/* search css */
+
+.sheet {
+  position: fixed;
+  left: 0;
+  bottom: -100%;
+  width: 100%;
+  height: 98%;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+  transition: bottom 0.35s ease;
+  z-index: 9999;
+}
+
+.sheet.show {
+  bottom: 0;
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.sheet-content {
+  padding: 20px;
+  margin-top: -60px;
+}
+
+#searchInput {
+  width: 100%;
+  padding: 14px 1px;
+  font-size: 17px;
+  border-radius: 14px;
+  border: 2px solid rgb(125, 125, 126);
+  outline: none;
+  background: #faf7ff;
+  color: #414141;
+}
+
+
+#searchInput::placeholder {
+  font-size: 16px;
+  color: rgb(45, 45, 46);
+  opacity: 1;
+  font-style: italic;
+}
+
+.search-video-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 14px 16px;
+}
+
+.search-video-grid video {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+  background: #000;
+}
+
+
+.sheet-drag {
+  width: 45px;
+  height: 6px;
+  background: #d0c2ff;
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
+  animation: dragPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes dragPulse {
+  0% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-4px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.7; }
+}
+
+
+/* sidemenu css */
+
+.menu-user{
+  margin-top: -60px;
+  padding: 10px 20px;
+  background-color: #dfdfdf;
+  display: flex;
+
+  object-fit: cover;
+  border-bottom: 1.5px solid rgb(15, 15, 15);
+ 
+}
+
+
+
+        .sidemenu {
+    height: 100%;
+    width: 0;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background: linear-gradient(180deg, rgba(17, 17, 17, 0.98), rgba(31, 25, 45, 0.97));
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.28);
+    overflow-x: hidden;
+    transition: 0.45s ease;
+    padding-top: 70px;
+    z-index: 9999;
+    border-right: 1px solid rgba(177, 151, 252, 0.5);
+}
+
+.sidemenu a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px 14px 24px;
+    margin: 10px 16px;
+    text-decoration: none;
+    font-size: 21px;
+    color: #f3f0ff;
+    border-radius: 14px;
+    transition: all 0.25s ease;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sidemenu a:hover {
+    background: linear-gradient(90deg, rgba(177, 151, 252, 0.24), rgba(255, 255, 255, 0.06));
+    transform: translateX(4px);
+    box-shadow: 0 8px 18px rgba(177, 151, 252, 0.15);
+}
+
+.sidemenu a i {
+    width: 22px;
+    text-align: center;
+    color: rgb(177, 151, 252);
+}
+
+.closebtn {
+    position: absolute;
+    top: -10px;
+    right: -18px;
+    font-size: 36px;
+    color: #090909;
+    text-decoration: none;
+    opacity: 0.85;
+    transition: opacity 0.2s ease;
+    
+}
+
+.closebtn:hover {
+    opacity: 1;
+}
+
+.openbtn {
+    font-size: 10px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    
+}
+
+.openbtn:hover {
+    transform: scale(1.15);
+}
+
+
+        .ipostcard{
+            width: 80%;
+           
+            margin-left: 5px;
+            top: 20px;
+            background-color: #fbf9f8; 
+            border-radius: 12px;
+            text-align: left;
+            font-family:'Times New Roman', Times, serif;
+            color: black;
+            font-size: 16px;
+            margin-top: 20px;
+            border: 1px solid rgb(30, 30, 30);
+            box-shadow: 0px 0px 10px 0px rgb(148, 144, 148);
+            padding-left: 10px;
+            display:inline-block;
+            position: relative;
+            line-height: 1.5;
+            overflow: visible;
+
+        }
+
+        
+.ipost-text {
+  max-height: 130px;
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+}
+
+
+.ipost-text.expanded {
+  max-height: 600px;
+}
+
+/* Read More button css */
+.readmore-btn {
+    
+  background: rgb(177, 151, 252);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.readmore-btn:hover {
+  background: rgb(150, 120, 240);
+  transform: scale(1.03);
+}
+
+.ad-countdown {
+  margin: 12px 10px 0;
+  font-size: 13px;
+  color: #5a5a5a;
+  font-weight: 600;
+}
+
+.ad-popup {
+  display: none;
+  margin: 12px 10px 10px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+}
+
+.ad-popup.show {
+  display: block;
+}
+
+.ad-video-container {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+#ad-video {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  background: #000;
+}
+
+.ad-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 12px 16px;
+  background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.82));
+}
+
+.visit-btn,
+.shopnow-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  color: white;
+}
+
+.visit-btn {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.shopnow-btn {
+  background: linear-gradient(135deg, #8c5dff, #5b39d8);
+}
+
+
+        #jhonimage{
+          margin-top: 10px;
+width: 40px;               
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;         
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  border: 1px solid #d1d1d1;;
+
+        }
+
+        .actions{
+          border-top: 1.5px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: space-evenly;
+            width: 92%;
+            margin: 18px auto 0;
+            padding: 8px 4px;
+            gap: 14px;
+            padding-left: 5px;
+            padding-right: 3px;
+        }
+
+        .actions i{
+         position: relative;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lang-wrapper {
+  position: relative;
+  display: inline-block;
+  z-index: 10;
+}
+
+#langBtn {
+  font-size: 22px;
+  color: black;
+  cursor: pointer;
+}
+
+.lang-dropdown {
+  display: none; 
+  position: absolute;
+  top: 35px;
+  left: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 5px 5px 15px rgba(44, 38, 44, 0.3);
+  padding: 8px 0;
+  width: 150px;
+  
+}
+
+.lang-dropdown div {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.lang-dropdown div:hover {
+  background: #f0f0f0;
+}
+
+
+        .like-btn{
+            background-color: rgb(240, 238, 226);
+            border:1.5px solid black;
+            border-radius: 12px;
+            padding: 1px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 11px;
+            margin: 0;
+        }
+
+         
+
+        .like-btn i{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #aiBtn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 50%;
+            outline: none;
+        }
+
+        #aiBtn img {
+            display: block;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            border: none;
+            background: transparent;
+        }
+
+        #aiBtn {
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 50%;
+            outline: none;
+        }
+
+        #aiBtn img {
+            display: block;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            border: none;
+            background: transparent;
+        }
+
+    /*add css*/
+/* Write Post Sheet CSS */
+.write-post-sheet {
+  position: fixed;
+  left: 0;
+  bottom: -100%;
+  width: 100%;
+  height: 45%;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+  transition: bottom 0.35s ease;
+  z-index: 9999;
+}
+
+
+.write-post-sheet.show {
+  bottom: 0;
+}
+
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+
+.sheet-drag {
+  width: 45px;
+  height: 6px;
+  background: #d0c2ff;
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
+  animation: dragPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes dragPulse {
+  0% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-4px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.7; }
+}
+
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+
+.sheet-content {
+  padding: 20px;
+}
+
+
+#postTextArea {
+  width: 90%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1.5px solid black;
+  font-size: 16px;
+  outline: none;
+  background: #faf7ff;
+  font-family: 'Times New Roman', Times, serif;
+  resize: none;
+}
+
+
+.post-submit-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 12px;
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.post-submit-btn:hover {
+  background: rgb(150, 120, 240);
+}
+
+/* AI Sheet CSS */
+
+.ai-sheet {
+  position: fixed;
+  left: 0;
+  bottom: -100%;
+  width: 100%;
+  height: 82%;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f3ff 100%);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+  transition: bottom 0.35s ease;
+  z-index: 9999;
+}
+
+.ai-sheet.show {
+  bottom: 0;
+}
+
+.ai-sheet-content {
+  padding: 12px 18px 18px;
+}
+
+.ai-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.ai-summary-header h3 {
+  margin: 0;
+  color: #1d1d1d;
+  font-size: 20px;
+}
+
+.ai-summary-badge {
+  background: linear-gradient(135deg, #7c3aed, #b794f4);
+  color: white;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-input-text {
+  width: 100%;
+  min-height: 120px;
+  max-height: 160px;
+  resize: vertical;
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  background: rgba(255,255,255,0.8);
+  color: #222;
+  box-sizing: border-box;
+}
+
+.ai-summary-result {
+  margin-top: 14px;
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.08), rgba(255,255,255,0.9));
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  border-radius: 18px;
+  padding: 16px 16px 18px;
+  color: #2a2a2a;
+  font-size: 14px;
+  line-height: 1.7;
+  min-height: 110px;
+  box-shadow: 0 10px 22px rgba(124, 58, 237, 0.08);
+}
+
+.ai-summary-result::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -50%;
+    width: 50%;
+    height: 100%;
+
+    
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.6),
+        transparent
+    );
+
+    animation: glow-move 2s linear infinite;
+}
+
+
+@keyframes glow-move {
+    0% {
+        left: -50%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+.ai-summary-result strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #4c1d95;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+.ai-summary-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #3a2a4a;
+  font-weight: 600;
+  min-height: 32px;
+  padding-top: 2px;
+}
+
+.summary-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(124, 58, 237, 0.25);
+  border-top-color: #7c3aed;
+  border-radius: 50%;
+  animation: summarySpin 0.8s linear infinite;
+  display: inline-block;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.05);
+}
+
+@keyframes summarySpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.sheet-drag {
+  width: 45px;
+  height: 6px;
+  background: #d0c2ff;
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
+  animation: dragPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes dragPulse {
+  0% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-4px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.7; }
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.sheet-content {
+  padding: 20px;
+}
+
+/* Upload Media Sheet CSS */
+
+.upload-sheet {
+  position: fixed;
+  left: 0;
+  bottom: -100%;
+  width: 100%;
+  height: 90%;
+  max-height: 80vh;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+  transition: bottom 0.35s ease;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.upload-sheet.show {
+  bottom: 0;
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.sheet-drag {
+  width: 45px;
+  height: 6px;
+  background: #d0c2ff;
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
+  animation: dragPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes dragPulse {
+  0% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-4px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.7; }
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.sheet-content {
+  padding: 20px;
+}
+
+.upload-btn {
+  
+  flex: 1;
+  padding: 12px;
+  background: rgb(177, 151, 252);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.submit-btn {
+  
+  flex: 1;
+  padding: 12px;
+  background: rgb(8, 8, 8);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.upload-actions {
+  display: flex;
+  gap: 12px;
+  bottom: 20px;
+  position: absolute;
+  width: 90%;
+}
+
+#previewContainer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  max-height: 32%;
+  overflow-y: auto;
+  margin-top: 10px;
+  padding-right: 4px;
+}
+
+#previewContainer > div {
+  flex: 0 0 calc(50% - 10px);
+  max-width: calc(50% - 10px);
+  min-width: 120px;
+  margin: 0;
+}
+
+#previewContainer img,
+#previewContainer video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #f3f0ff;
+}
+
+/* User Sheet CSS */
+
+.user-sheet {
+  position: fixed;
+  left: 0;
+  bottom: -100%;
+  width: 100%;
+  height: 98%;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+  transition: bottom 0.35s ease;
+  z-index: 9999;
+}
+
+.user-sheet.show {
+  bottom: 0;
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.sheet-drag {
+  width: 45px;
+  height: 6px;
+  background: #d0c2ff;
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
+  animation: dragPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes dragPulse {
+  0% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-4px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.7; }
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.sheet-content {
+  padding: 20px;
+}
+
+.profile-pic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  margin-top: 70px;
+}
+
+
+        .footer{
+            background-color: white;
+            position: fixed;
+            width: 100%;
+            height: 30px;
+            left: 0;
+            bottom: 0;
+            overflow: visible;
+            border-top: 1.5px solid black;
+            border-top-right-radius: 12px;
+            border-top-left-radius: 12px;
+            z-index: 999;
+        }
+
+        .plus-btn{
+            width: 48px;
+            height: 48px;
+            border: 2px solid transparent;
+            border-radius: 50%;
+            background:
+                linear-gradient(#000000, #0b0b0b) padding-box,
+                linear-gradient(135deg, #7c3aed, #00ff00, #fd0303, #38bdf8, #0000ff) border-box;
+            
+            background-clip: padding-box, border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: absolute;
+            left: 50%;
+            bottom: 5px;
+            transform: translateX(-50%);
+            z-index: 99909;
+            box-shadow: 0 8px 18px rgba(13, 13, 13, 0.5);
+            box-sizing: border-box;
+        }
+
+        .footer-plus-menu {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+
+.footer-icon-menu {
+  position: absolute;
+  bottom: 30px; 
+  width: 80%;
+  display: flex;
+  justify-content: space-between;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+  transition: all 0.35s ease;
+  z-index: 9999;
+}
+
+.footer-icon-menu.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+
+.left-icons,
+.right-icons {
+  display: flex;
+  gap: 20px;
+}
+
+
+.footer-icon-menu i {
+  background: none;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+}
+
+.footer-action-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.footer-action-btn i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.footer-icon-menu i:active,
+.footer-action-btn:active {
+
+  transform: scale(0.9);
+}
+
+</style>
+</head>
+<body>
+    <div class="header">
+        <div class="title-wrap">
+            
+            <div class="title">I-Post</div>
+           
+        </div>
+       
+        <div class="header-icons">
+          
+           <div class="notification-bell"> 
+            <i id="notifyBell" class="fa-solid fa-bell fa-xl"style="color: rgb(177, 151, 252); display: flex;"></i>
+            <span id="notifyCount" class="notify-bubble">1</span>
+           </div>
+            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(177, 151, 252);"></i>
+            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(255, 255, 255);"></i></button>
+        </div>
+    </div>
+
+    <div id="mysidemenu" class="sidemenu">
+          
+    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()" style="background-color: #090909;">&times;</a>
+    <div class="menu-user">
+    <img src="./bookmeassets/b3213a26-b2cd-4b52-a4aa-376ecf9cd365.jpeg" alt="Jhon Michel" style="border-radius: 50%; width: 60px; height: 60px; object-fit: cover;">
+    </div>
+    <a href="#"> <i class="fa-solid fa-bookmark fa-sm" style="color: rgb(177, 151, 252);"></i>Saved</a>
+    <a href="#"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(177, 151, 252);"></i>Friends</a>
+    <a href="#"><i class="fa-solid fa-comment fa-sm" style="color: rgb(177, 151, 252);"></i>Chat</a>
+    <a href="#"><i class="fa-solid fa-cog fa-sm" style="color: rgb(0, 0, 0);"></i>Settings</a>
+</div>
+
+ <div id="searchSheet" class="sheet">
+  <div class="sheet-header">
+    <span class="sheet-drag"></span>
+    <button id="closeSearchSheet" class="close-btn">×</button>
+   
+
+  </div>
+
+  <div class="sheet-content">
+    <h3>Search</h3>
+    <input id="searchInput" type="text" placeholder="" />
+  </div>
+<h3 style="color: rgba(17, 16, 16, 0.85); font-size: 16px; margin: 16px 0 8px 14px;font-style: italic;">We think you might like:</h3>
+  <div class="search-video-grid">
+    <video src="./bookmeassets/WhatsApp Video 2026-08-07 at 11.07.30 AM.mp4" autoplay></video>
+    <video src="bookmeassets/WhatsApp Video 2026-08-07 at 11.07.30 AM.mp4" autoplay></video>
+  </div>
+</div>
+
+
+
+
+<div class="ipostcard">
+  <img id="jhonimage" src="./bookmeassets/b3213a26-b2cd-4b52-a4aa-376ecf9cd365.jpeg" alt="Jhon Michel">
+  <p id="adStatusLabel" style="float: right; margin-right: 8px; color: gray;">Contains ads <i class="fa-solid fa-bullhorn fa-sm" style="color: rgb(0, 0, 0);"></i></p>
+    
+  <div class="ipost-text" id="ipostText">
+    <h3><i class="fa-solid fa-brain fa-lg" style="color: rgb(252, 151, 161);"></i> The conscious mind vs the subconscious mind</h3>
+    <p>Hi, guys. Today I want to talk about a very interesting topic that I'm pretty sure concerns everybody. I wanna talk about 
+      the differences between the conscious and the subconscious mind. </p>
+      <p>The conscious represents our awareness of thoughts, feelings, and surroundings, which is about 10% of our brain, and it is located in the prefrontal cortex.</p>
+      <p>While the subconscious operates below the level of conscious awareness, influencing our behavior and decisions.</p>
+    </p>
+
+    <p style="font-weight: bold;">What do you need to know about the conscious and the subconscious mind?</p>
+
+  </div>
+
+  <button class="readmore-btn" id="readMoreIpost">Read more</button>
+
+  
+
+  <div id="adPopup" class="ad-popup">
+    <div class="ad-video-container">
+      <video id="ad-video" src="./bookmeassets/VID-20260729-WA0067.mp4" autoplay muted playsinline></video>
+
+      <div class="ad-actions">
+        <button class="visit-btn">
+          Visit <i class="fa-solid fa-arrow-up-right-from-square fa-lg" style="color: rgb(255, 255, 255);"></i>
+        </button>
+        <button class="shopnow-btn">
+          Shop
+        </button>
+        <button id="skipAdBtn" style="position:absolute; top: -150px; right:10px; background:rgba(0,0,0,0.6); color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:14px;">
+          Skip in 5
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+      <div class="lang-wrapper">
+        <i id="langBtn" class="fa-solid fa-language"></i>
+
+      <div id="langDropdown" class="lang-dropdown">
+         <div data-lang="en">English</div>
+         <div data-lang="fr">French</div>
+         <div data-lang="de">German</div>
+         <div data-lang="es">Spanish</div>
+        <div data-lang="pt">Portuguese</div>
+        <div data-lang="zh">Mandarin</div>
+     </div>
+ </div>
+
+<button id="aiBtn" aria-label="Open AI assistant">
+  <img src="./bookmeassets/AI logo (1).png" width="38px" height="28px"
+       style="border-radius: 50%; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: none; background: transparent;">
+</button>
+       <i class="fa-solid fa-comment fa-lg" style="color: rgb(177, 151, 252);"></i>
+      <button class="like-btn">
+        <i class="fa-solid fa-thumbs-up fa-lg" style="color: rgb(177, 151, 252);"></i>
+        <i class="fa-solid fa-thumbs-down fa-lg" style="color: rgb(177, 151, 252);"></i>
+      </button>
+  </div>
+</div>
+
+    
+
+
+<!-- Create a Post Slide-Up Sheet -->
+<div id="writePostSheet" class="write-post-sheet">
+  <div class="sheet-header">
+    <span class="sheet-drag"></span>
+    <button id="closeWritePostSheet" class="close-btn">×</button>
+  </div>
+
+  <div class="sheet-content">
+    <h3>Create a Post</h3>
+
+    <textarea id="postTextArea" placeholder="Write something..." rows="5"></textarea>
+
+    <button id="postSubmitBtn" class="post-submit-btn">Post</button>
+  </div>
+</div>
+
+<!-- Upload Media Slide-Up Sheet -->
+
+<div id="uploadSheet" class="upload-sheet">
+  <div class="sheet-header">
+    <span class="sheet-drag"></span>
+    <button id="closeUploadSheet" class="close-btn">×</button>
+  </div>
+
+  <div class="sheet-content">
+      <!-- Hidden file input -->
+      <input id="mediaInput" type="file" accept="image/*,video/*" multiple style="display:none;">
+      
+      <!-- Preview container (blank for now) -->
+      <div id="previewContainer"></div>
+
+      <!-- Upload button -->
+      <div class="upload-actions">
+        <button id="uploadFilesBtn" class="upload-btn">Upload</button>
+        <button id="submitFilesBtn" class="submit-btn">Submit</button>
+      </div>
+  </div>
+</div>
+
+<!-- User Page Slide-Up Sheet -->
+<div id="userSheet" class="user-sheet">
+  <div class="sheet-header">
+    <span class="sheet-drag"></span>
+    <button id="closeUserSheet" class="close-btn">×</button>
+  </div>
+
+  <div class="sheet-content">
+    <div class="profile-pic">
+    <i class="fa-solid fa-circle-user fa-2xl" style="color: rgb(177, 151, 252);"></i>
+    </div>
+
+  </div>
+</div>
+
+<!-- AI Summarizer Slide-Up Sheet -->
+<div id="aiSheet" class="ai-sheet">
+  <div class="sheet-header">
+    <span class="sheet-drag"></span>
+    <button id="closeAiSheet" class="close-btn">×</button>
+  </div>
+
+  <div class="ai-sheet-content">
+    <div class="ai-summary-header">
+      <h3>AI Summary <i class="fa-solid fa-wand-magic-sparkles fa-lg" style="color: rgb(177, 151, 252);"></i></h3>
+      
+    </div>
+
+    <div id="aiSummaryResult" class="ai-summary-result">
+      <strong>Summary</strong>
+      <div class="ai-summary-loading">
+        <span class="summary-spinner"></span>
+        <span>Generating summary...</span>
+      </div>
+    </div>
+  </div>
+</div>
+    
+<div class="footer">
+            <button class="plus-btn" type="button" aria-label="Open quick menu">
+            <i class="fa-solid fa-plus fa-xl" style="color: rgb(255, 255, 255);"></i>
+            </button>
+
+        <div class="footer-plus-menu">
+               <div id="footerIconMenu" class="footer-icon-menu">
+                  <div class="left-icons">
+                   <i id="userSheetBtn" class="fa-solid fa-user fa-xl"></i>
+                    <a href="message.html"><i class="fa-solid fa-envelope fa-xl" style="color: rgb(0, 0, 0);"></i></a>
+                </div>
+
+            <div class="right-icons">
+              <button id="uploadMediaBtn" class="footer-action-btn" type="button" aria-label="Upload media">
+                <i class="fa-solid fa-image fa-lg" style="color: rgb(0, 0, 0);"></i>
+              </button>
+              <button id="writePostBtn" class="footer-action-btn" type="button" aria-label="Write post">
+                <i class="fa-solid fa-pen fa-lg" style="color: rgb(0, 0, 0);"></i>
+              </button>
+            </div>
+         </div>
+     </div>
+
+</div>
+</body>
+</html>
+

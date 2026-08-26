@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Page</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+
+   body{
+ margin: 0;
+  overflow-x: hidden;
+overflow: auto;
+min-height: 100vh;
+            
+           
+        }
+
+    
+
+
+        body::-webkit-scrollbar{
+            display: none;
+        }
+
+        
+
+        .header{
+            
+          background-color: black;
+            left: 0;
+            right: 0;
+            padding: 32px 2px;
+            border-bottom: 1.5px solid white;
+            border-bottom-left-radius: 12px;
+           border-bottom-color: blueviolet;
+        }  
+
+        .header-title{
+            color: white;
+            font-family: 'Roboto', sans-serif;
+            font-size: 22px;
+            float: left;
+            display: flex;
+            text-align: center;
+            margin-top: -8px;
+            margin-left: 12px;
+            position: relative;
+        }
+
+        .header-icons{
+            float: right;
+            margin-right: 3px;
+            margin-top: 2px;
+            position: relative;
+            gap: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .header-back-icon{
+            float: left;
+            margin-left: 12px;
+            margin-top: -3px;
+            position: relative;
+            gap: 15px;
+        }
+
+        .footer{
+            border-top: 1.5px solid black;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+           
+            left: 0;
+            bottom: 0;
+            right: 0;
+            display: flex;
+            position: fixed;
+            height: 37px;
+            justify-content: center;
+            align-items: center;
+            overflow: visible;
+        }
+
+        .searchplus-btn{
+             width: 48px;
+            height: 48px;
+            border: 2px solid transparent;
+            border-radius: 50%;
+            background:
+                linear-gradient(#000000, #0b0b0b) padding-box,
+                linear-gradient(135deg, #7c3aed, #00ff00, #fd0303, #38bdf8, #0000ff) border-box;
+            
+            background-clip: padding-box, border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: absolute;
+            left: 50%;
+            bottom: 5px;
+            transform: translateX(-50%);
+            z-index: 99909;
+            box-shadow: 0 8px 18px rgba(13, 13, 13, 0.5);
+            box-sizing: border-box;
+        }
+
+       
+
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-back-icon">
+           <a href="index.html"><i class="fa-solid fa-arrow-left fa-xl" style="color: rgb(177, 151, 252);"></i></a>
+        </div>
+        <div class="header-title">
+            Messages
+        </div>
+          <div class="header-icons">
+           <i class="fa-solid fa-magnifying-glass-plus fa-xl" style="color: rgb(177, 151, 252);"></i>
+           <i class="fa-solid fa-bars-staggered fa-xl" style="color: rgb(255, 255, 255);"></i>
+          </div>
+
+    </div>
+
+
+
+    <div class="footer">
+        <button class="searchplus-btn">
+             <i class="fa-solid fa-camera-retro fa-xl" style="color: rgb(245, 245, 245);"></i>
+           
+        </button>
+
+    </div>
+
+    
+</body>
+</html>
