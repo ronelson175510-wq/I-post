@@ -43,7 +43,9 @@ if (searchBtn && searchSheet) {
 }
 
 if (closeSearchSheet && searchSheet) {
-  closeSearchSheet.addEventListener("click", () => {
+  closeSearchSheet.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     searchSheet.classList.remove("show");
   });
 }
@@ -60,6 +62,7 @@ let searchStartY = 0, searchCurrentY = 0, searchIsDragging = false;
 
 if (searchSheet) {
   searchSheet.addEventListener("touchstart", (e) => {
+    if (e.target.closest(".close-btn")) return;
     searchStartY = e.touches[0].clientY;
     searchIsDragging = true;
   });
@@ -187,7 +190,9 @@ if (writePostBtn && writePostSheet) {
 }
 
 if (closeWritePostSheet && writePostSheet) {
-  closeWritePostSheet.addEventListener("click", () => {
+  closeWritePostSheet.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     writePostSheet.classList.remove("show");
   });
 }
@@ -197,6 +202,7 @@ let postStartY = 0, postCurrentY = 0, postIsDragging = false;
 
 if (writePostSheet) {
   writePostSheet.addEventListener("touchstart", (e) => {
+    if (e.target.closest(".close-btn")) return;
     postStartY = e.touches[0].clientY;
     postIsDragging = true;
   });
@@ -419,7 +425,9 @@ if (aiBtn && aiSheet) {
 }
 
 if (closeAiSheet && aiSheet) {
-  closeAiSheet.addEventListener("click", () => {
+  closeAiSheet.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     aiSheet.classList.remove("show");
   });
 }
@@ -429,6 +437,7 @@ let aiStartY = 0, aiCurrentY = 0, aiIsDragging = false;
 
 if (aiSheet) {
   aiSheet.addEventListener("touchstart", (e) => {
+    if (e.target.closest(".close-btn")) return;
     aiStartY = e.touches[0].clientY;
     aiIsDragging = true;
   });
@@ -466,7 +475,9 @@ if (uploadMediaBtn && uploadSheet) {
 }
 
 if (closeUploadSheet && uploadSheet) {
-  closeUploadSheet.addEventListener("click", () => {
+  closeUploadSheet.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     uploadSheet.classList.remove("show");
   });
 }
@@ -476,6 +487,7 @@ let uploadStartY = 0, uploadCurrentY = 0, uploadIsDragging = false;
 
 if (uploadSheet) {
   uploadSheet.addEventListener("touchstart", (e) => {
+    if (e.target.closest(".close-btn")) return;
     uploadStartY = e.touches[0].clientY;
     uploadIsDragging = true;
   });
@@ -576,7 +588,9 @@ userSheetBtn.addEventListener("click", () => {
 });
 
 // Close sheet
-closeUserSheet.addEventListener("click", () => {
+closeUserSheet.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
   userSheet.classList.remove("show");
 });
 
@@ -584,6 +598,7 @@ closeUserSheet.addEventListener("click", () => {
 let startY = 0, currentY = 0, isDragging = false;
 
 userSheet.addEventListener("touchstart", (e) => {
+  if (e.target.closest(".close-btn")) return;
   startY = e.touches[0].clientY;
   isDragging = true;
 });
@@ -615,7 +630,7 @@ const skipAdBtn = document.getElementById("skipAdBtn");
 const adStatusLabel = document.getElementById("adStatusLabel");
 
 if (adPopup) {
-  let adInterval = 10;//seconds
+  let adInterval = 100;//seconds
   let adDuration = 36;
   let countdown = adInterval;
 
