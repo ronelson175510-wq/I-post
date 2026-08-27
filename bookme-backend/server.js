@@ -7,7 +7,8 @@ const db = require("./db");
 
 const app = express();
 const uploadsDir = path.join(__dirname, "uploads");
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
+const frontendUrl = process.env.FRONTEND_URL || "https://i-post.onrender.com";
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${PORT}`;
 
 fs.mkdirSync(uploadsDir, { recursive: true });
@@ -22,7 +23,9 @@ app.use(cors({
       "http://localhost:8000",
       "http://127.0.0.1:8000",
       "null",
-      process.env.FRONTEND_URL
+      frontendUrl,
+      process.env.FRONTEND_URL,
+      process.env.PUBLIC_BASE_URL
     ].filter(Boolean);
 
     if (!origin || allowedOrigins.includes(origin)) {
