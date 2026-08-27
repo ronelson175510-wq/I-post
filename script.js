@@ -615,7 +615,7 @@ const skipAdBtn = document.getElementById("skipAdBtn");
 const adStatusLabel = document.getElementById("adStatusLabel");
 
 if (adPopup) {
-  let adInterval = 180;//seconds
+  let adInterval = 10;//seconds
   let adDuration = 36;
   let countdown = adInterval;
 
