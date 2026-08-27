@@ -7,9 +7,10 @@ const db = require("./db");
 
 const app = express();
 const uploadsDir = path.join(__dirname, "uploads");
+const projectRoot = path.join(__dirname, "..");
 const PORT = process.env.PORT || 10000;
 const frontendUrl = process.env.FRONTEND_URL || "https://i-post.onrender.com";
-const publicBaseUrl = process.env.PUBLIC_BASE_URL || `http://localhost:${PORT}`;
+const publicBaseUrl = process.env.PUBLIC_BASE_URL || "https://i-post.onrender.com";
 
 fs.mkdirSync(uploadsDir, { recursive: true });
 
@@ -61,9 +62,18 @@ const upload = multer({
 });
 
 app.use("/uploads", express.static(uploadsDir));
+app.use(express.static(projectRoot));
 
 app.get("/", (req, res) => {
-  res.send("Backend running!");
+  res.sendFile(path.join(projectRoot, "index.html"));
+});
+
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(projectRoot, "login.html"));
+});
+
+app.get("/message", (req, res) => {
+  res.sendFile(path.join(projectRoot, "message.html"));
 });
 
 app.get("/health", (req, res) => {
