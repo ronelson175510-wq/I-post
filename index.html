@@ -98,16 +98,28 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 22px;
-            height: 22px;
+            width: 28px;
+            height: 28px;
             margin: 0;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 10px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 8px rgba(0,0,0,0.18);
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
         }
 
         .header-icons .openbtn {
-            background: transparent;
-            border: none;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             padding: 0;
             cursor: pointer;
+        }
+
+        .header-icons i:hover,
+        .header-icons .openbtn:hover {
+            transform: translateY(-1px) scale(1.04);
+            background: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.28);
         }
 
        
@@ -1149,7 +1161,7 @@ width: 40px;
             <span id="notifyCount" class="notify-bubble">1</span>
            </div>
           
-            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(216, 11, 193);"></i>
+            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(253, 251, 253);"></i>
             <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(248, 10, 248);"></i></button>
         </div>
     </div>
