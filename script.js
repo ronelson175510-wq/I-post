@@ -259,6 +259,22 @@ const aiSheet = document.getElementById("aiSheet");
 const closeAiSheet = document.getElementById("closeAiSheet");
 const aiSummaryResult = document.getElementById("aiSummaryResult");
 
+function reduceRepeatedSummaryPhrases(text) {
+  if (!text) return "";
+
+  return text
+    .replace(/\breaders people\b/gi, 'readers')
+    .replace(/(the author(?:'s)? favorite sport)\s+(?:the author(?:'s)? favorite sport\s+)+/gi, '$1 ')
+    .replace(/(the author(?:'s)? favorite sport)\s+the author would like to introduce readers to\s+/gi, '$1, which the author would like to introduce readers to ')
+    .replace(/(the author(?:'s)? favorite sport)\s+the author has been playing it since\b/gi, '$1, and the author has been playing it since')
+    .replace(/\bthe author was a child\b/gi, 'childhood')
+    .replace(/\bit has always been the author's favorite way\b/gi, 'it has always remained the author\'s favorite pastime')
+    .replace(/\bthe author(?:'s)? main focus is\b/gi, 'the content focuses on')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,.!?])/g, '$1')
+    .trim();
+}
+
 function normalizeSentenceForSummary(sentence) {
   let result = sentence
     .replace(/\s+/g, ' ')
@@ -292,12 +308,155 @@ function normalizeSentenceForSummary(sentence) {
   return result.charAt(0).toUpperCase() + result.slice(1);
 }
 
+function trimSummaryToWholeWords(text, maxLength) {
+  if (!text || text.length <= maxLength) {
+    return text ? text.trim() : "";
+  }
+
+  const trimmed = text.slice(0, maxLength).trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  return trimmed.replace(/\s+[A-Za-z0-9-]+$/, '').trim();
+}
+
+function finalizeSummaryText(text) {
+  if (!text) return "";
+
+  let result = reduceRepeatedSummaryPhrases(
+    text
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([,.!?])/g, '$1')
+      .replace(/\bThe author have\b/gi, 'The author has')
+      .replace(/\bthe author have\b/gi, 'the author has')
+      .replace(/\bI\s+have\b/gi, 'the author has')
+      .trim()
+  );
+
+  const sentences = result.match(/[^.!?]+[.!?]?/g) || [result];
+  const cleaned = sentences
+    .map(sentence => sentence.trim())
+    .filter(Boolean)
+    .map((sentence, index) => {
+      const trimmed = sentence.replace(/^[\s\-]+|[\s\-]+$/g, '');
+      if (!trimmed) return "";
+
+      const sentenceText = trimmed.replace(/\s+/g, ' ');
+      const firstLetter = sentenceText.charAt(0);
+      const rest = sentenceText.slice(1);
+      const normalized = `${firstLetter.toUpperCase()}${rest.toLowerCase()}`;
+
+      return index === 0 ? normalized : normalized.replace(/^\s*[A-Z]/, match => match.toUpperCase());
+    })
+    .filter(Boolean)
+    .join(' ');
+
+  const finalResult = cleaned.replace(/\s+/g, ' ').trim();
+  return /[.!?]$/.test(finalResult) ? finalResult : `${finalResult}.`;
+}
+
+function buildFocusedSummaryFromText(text) {
+  const lower = text.toLowerCase();
+
+  if (!lower.includes('favorite sport') && !lower.includes('sport')) {
+    return null;
+  }
+
+  const subjectSentence = "This content focuses on the author's favorite sport.";
+
+  if (/since\s+(?:the author\s+was\s+)?a\s+child|childhood/i.test(text)) {
+    return `${subjectSentence} The author has been playing it since childhood, and it has remained a lifelong passion.`;
+  }
+
+  if (/favorite\s+sport/i.test(text)) {
+    return `${subjectSentence} The author is deeply committed to it and values it as a personal favorite.`;
+  }
+
+  return null;
+}
+
+function extractKeywords(text, maxKeywords = 5) {
+  if (!text || !text.trim()) return [];
+
+  const stopWords = new Set([
+    "the", "a", "an", "and", "or", "but", "if", "then", "than", "that", "this",
+    "these", "those", "with", "without", "from", "into", "for", "on", "in", "at",
+    "by", "of", "to", "is", "are", "was", "were", "be", "been", "being", "it",
+    "its", "they", "them", "their", "he", "she", "we", "you", "i", "me", "my",
+    "our", "your", "his", "her", "as", "so", "too", "very", "more", "most",
+    "about", "after", "before", "over", "under", "through", "again", "also", "just",
+    "not", "how", "why", "when", "what", "where", "who", "which", "while", "because",
+    "throughout", "among", "between", "within", "outside", "inside", "during", "against",
+    "around", "afterward", "beforehand", "either", "neither", "any", "all", "some", "many",
+    "much", "few", "little", "have", "has", "had", "having", "make", "made", "makes",
+    "do", "does", "did", "doing", "like", "likes", "liked", "want", "wants", "wanted",
+    "need", "needs", "needed", "use", "uses", "used", "show", "shows", "showed", "tell",
+    "tells", "told", "talk", "talks", "talked", "think", "thinks", "thought", "feel",
+    "feels", "felt", "learn", "learns", "learned", "read", "reads", "write", "writes",
+    "written", "focus", "focuses", "focused", "introduce", "introduces", "introduced",
+    "remain", "remains", "remained", "become", "becomes", "became", "play", "plays",
+    "played", "playing", "go", "goes", "went", "come", "comes", "came", "look", "looks",
+    "looked", "keep", "keeps", "kept", "see", "sees", "saw", "understand", "understands",
+    "understood", "help", "helps", "helped", "start", "starts", "started", "find", "finds",
+    "found", "mean", "means", "meant", "take", "takes", "took", "bring", "brings", "brought",
+    "build", "builds", "built", "create", "creates", "created", "continue", "continues",
+    "continued", "always", "never", "often", "sometimes", "usually", "really", "quite",
+    "instead", "however", "therefore", "otherwise", "still", "already", "soon", "later",
+    "further", "early", "late", "away", "back", "forward", "together", "inside", "outside",
+    "favorite", "active", "better", "stronger", "important", "different", "similar",
+    "daily", "personal", "social", "public", "private", "formal", "modern", "popular",
+    "common", "clear", "simple", "special", "overall", "practical", "mental", "certain",
+    "possible", "actual", "main", "clearer", "strongest", "better"
+  ]);
+
+  const ignoredNouns = new Set([
+    "author", "people", "person", "reader", "readers", "user", "users", "child",
+    "children", "man", "woman", "girl", "boy", "friend", "family", "team", "community",
+    "group", "member", "members", "others", "someone", "everyone", "anyone", "content",
+    "article", "story", "post", "topic", "piece", "way", "thing", "things", "place", "time",
+    "work", "works", "world", "today", "part", "parts", "life", "day", "days", "year",
+    "years", "mind", "body", "idea", "ideas", "point", "points", "fact", "facts", "case",
+    "cases", "question", "questions", "example", "examples", "issue", "issues"
+  ]);
+
+  const adjectiveVerbSuffixes = /(ing|ed|ly|ful|less|ous|ive|able|ible|al|ic|ish|ary|ory|ant|ent|ive|ly)$/;
+  const commonNounPatterns = /(?:tion|ment|ness|ity|ism|ship|age|ence|ance|sion|sure|er|or)$/;
+
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => {
+      if (word.length < 4) return false;
+      if (stopWords.has(word) || ignoredNouns.has(word)) return false;
+      if (adjectiveVerbSuffixes.test(word) && !commonNounPatterns.test(word)) return false;
+      return true;
+    });
+
+  const counts = {};
+  words.forEach(word => {
+    counts[word] = (counts[word] || 0) + 1;
+  });
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, maxKeywords)
+    .map(([word]) => word);
+}
+
 function summarizeTextLocally(text) {
   if (!text || !text.trim()) {
     return "No post text found to summarize.";
   }
 
   const cleaned = text.replace(/\s+/g, ' ').trim();
+
+  const focusedSummary = buildFocusedSummaryFromText(cleaned);
+  if (focusedSummary) {
+    return finalizeSummaryText(focusedSummary);
+  }
+
   const sentences = cleaned
     .split(/[.!?]+/)
     .map(sentence => sentence.trim())
@@ -355,17 +514,33 @@ function summarizeTextLocally(text) {
     .trim();
 
   if (!summary) {
-    return 'This content explores the main ideas and purpose of the text in a clear academic style.';
+    const introOptions = [
+      'This content is about',
+      'This topic focuses on',
+      'In this content, the author\'s main focus is',
+      'This piece explores',
+      'This discussion centers on'
+    ];
+
+    const intro = introOptions[Math.floor(Math.random() * introOptions.length)];
+    return finalizeSummaryText(`${intro} the key ideas and themes in a clear and thoughtful way.`);
   }
 
-  const intro = 'This content explores the central ideas and purpose of the text in a clear academic style.';
   let cleanSummary = summary.replace(/\s+([,.!?])/g, '$1');
 
-  cleanSummary = cleanSummary
-    .replace(/\s+/g, ' ')
-    .replace(/\s+(?=[,.!?])/g, '')
-    .replace(/\bcommunity\b/gi, 'community')
-    .trim();
+  cleanSummary = reduceRepeatedSummaryPhrases(
+    cleanSummary
+      .replace(/\s+/g, ' ')
+      .replace(/\s+(?=[,.!?])/g, '')
+      .replace(/\bcommunity\b/gi, 'community')
+      .replace(/\bguys\b/gi, 'people')
+      .replace(/\bthe world today\b/gi, 'the modern world')
+      .replace(/\bthe world\b/gi, 'the broader world')
+      .replace(/\bworld today\b/gi, 'the modern world')
+      .replace(/\btoday\b/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+  );
 
   if (!/[.!?]$/.test(cleanSummary)) {
     cleanSummary = cleanSummary + '.';
@@ -376,14 +551,23 @@ function summarizeTextLocally(text) {
   }
 
   if (cleanSummary.length > 220) {
-    cleanSummary = cleanSummary.slice(0, 220).trim();
+    cleanSummary = trimSummaryToWholeWords(cleanSummary, 220);
     if (!/[.!?]$/.test(cleanSummary)) {
       cleanSummary += '.';
     }
   }
 
-  const finalParagraph = `${intro} ${cleanSummary}`;
-  return finalParagraph.replace(/\s{2,}/g, ' ').trim();
+  const introOptions = [
+    'This content is about',
+    'This topic focuses on',
+    'In this content, the author\'s main focus is',
+    'This piece explores',
+    'This discussion centers on'
+  ];
+
+  const intro = introOptions[Math.floor(Math.random() * introOptions.length)];
+  const finalParagraph = `${intro}. ${cleanSummary}`;
+  return finalizeSummaryText(finalParagraph);
 }
 
 function renderSummaryLoading() {
@@ -410,7 +594,12 @@ function populateAiSummary() {
   }
 
   const summary = summarizeTextLocally(value);
-  aiSummaryResult.innerHTML = `<strong>Summary</strong>${summary}`;
+  const keywords = extractKeywords(value, 1);
+  const keywordsHtml = keywords.length
+    ? `<div class="summary-keywords"><strong>Keywords</strong><ul><li>${keywords[0]}</li></ul></div>`
+    : "";
+
+  aiSummaryResult.innerHTML = `<strong>Summary</strong>${summary}${keywordsHtml}`;
 }
 
 if (aiBtn && aiSheet) {

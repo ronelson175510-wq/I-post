@@ -19,7 +19,7 @@
         }
 
         .header{
-            background-image: linear-gradient(to right, black, rgb(12, 12, 12),  rgb(177, 151, 252));
+            background-image: linear-gradient(to right, black, black, black, blueviolet);
             background-repeat: no-repeat;
             background-size: cover;
             background-position: center;
@@ -35,13 +35,17 @@
             align-items: center;
             justify-content: space-between;
             box-sizing: border-box;
-            
-            border-bottom-right-radius: 12px;
         }
 
-        
-        
-
+        .header::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ff0000, #ff7a00, #ffd400, #00d400, #1a73ff, #7a2cff, #ff00d4);
+        }
 
         .title-wrap{
           margin-left: -10px;
@@ -50,7 +54,6 @@
             float: left;
             margin-top: 0;
             
-            text-shadow: 0 , 1px 2px 3px yellow, 1px 3px 4px blue;
         }
 
       
@@ -68,7 +71,8 @@
             
             font-family: 'Roboto', sans-serif;
           
-            text-shadow: 1px 3px 2px rgb(177, 151, 252);
+            background: linear-gradient(to right, red, red, black, rgb(237, 137, 7));
+          
         }
 
         .header-icons{
@@ -76,14 +80,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: transparent;
-            border:1.5px solid rgb(30, 29, 29);
+            background: linear-gradient(to right, rgb(98, 9, 240), black, rgb(134, 65, 238), blueviolet);
+            border:1.5px solid rgb(52, 49, 49);
             float: right;
             border-radius: 12px;
             padding: 6px 10px;
             gap: 12px;
             margin-top: -6px;
-            box-shadow:  0px 0px 10px 0px rgb(175, 37, 199);
+            box-shadow: 0px 0px 0px 0px rgb(52, 7, 216), 0px 0px 10px 0px blueviolet;
             height: 30px;
             cursor: pointer;
             transition: 0.3s ease;
@@ -1010,14 +1014,15 @@ width: 40px;
 
 
         .footer{
-            background-color: white;
+            background-color: black;
             position: fixed;
             width: 100%;
             height: 30px;
             left: 0;
             bottom: 0;
             overflow: visible;
-            border-top: 1.5px solid black;
+            border-top: 4px solid;
+           
             border-top-right-radius: 12px;
             border-top-left-radius: 12px;
             z-index: 999;
@@ -1056,7 +1061,7 @@ width: 40px;
 
 .footer-icon-menu {
   position: absolute;
-  bottom: 30px; 
+  margin-bottom: 0px; 
   width: 80%;
   display: flex;
   justify-content: space-between;
@@ -1139,12 +1144,12 @@ width: 40px;
         <div class="header-icons">
           
            <div class="notification-bell"> 
-            <i id="notifyBell" class="fa-solid fa-bell fa-xl"style="color: rgb(177, 151, 252); display: flex;"></i>
+            <i id="notifyBell" class="fa-solid fa-bell fa-xl"style="color: rgb(98, 9, 240); display: flex;"></i>
             <span id="notifyCount" class="notify-bubble">1</span>
            </div>
           
-            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(177, 151, 252);"></i>
-            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(252, 252, 252);"></i></button>
+            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(216, 11, 193);"></i>
+            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(248, 10, 248);"></i></button>
         </div>
     </div>
 
@@ -1154,7 +1159,7 @@ width: 40px;
     <div class="menu-user">
     <img src="./bookmeassets/b3213a26-b2cd-4b52-a4aa-376ecf9cd365.jpeg" alt="Jhon Michel" style="border-radius: 50%; width: 60px; height: 60px; object-fit: cover;">
     </div>
-    <a href="#"> <i class="fa-solid fa-bookmark fa-sm" style="color: rgb(177, 151, 252);"></i>Saved</a>
+    <a href="#"> <i class="fa-solid fa-bookmark fa-sm" style="color: rgb(62, 4, 238);"></i>Saved</a>
     <a href="#"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(177, 151, 252);"></i>Friends</a>
     <a href="#"><i class="fa-solid fa-comment fa-sm" style="color: rgb(177, 151, 252);"></i>Chat</a>
     <a href="#"><i class="fa-solid fa-cog fa-sm" style="color: rgb(0, 0, 0);"></i>Settings</a>
@@ -1187,14 +1192,12 @@ width: 40px;
   <p id="adStatusLabel" style="float: right; margin-right: 8px; color: gray;">Contains ads <i class="fa-solid fa-bullhorn fa-sm" style="color: rgb(0, 0, 0);"></i></p>
     
   <div class="ipost-text" id="ipostText">
-    <h3><i class="fa-solid fa-brain fa-lg" style="color: rgb(252, 151, 161);"></i> The conscious mind vs the subconscious mind</h3>
-    <p>Hi, guys. Today I want to talk about a very interesting topic that I'm pretty sure concerns everybody. I wanna talk about 
-      the differences between the conscious and the subconscious mind. </p>
-      <p>The conscious represents our awareness of thoughts, feelings, and surroundings, which is about 10% of our brain, and it is located in the prefrontal cortex.</p>
-      <p>While the subconscious operates below the level of conscious awareness, influencing our behavior and decisions.</p>
+    <h3><i class="fa-solid fa-brain fa-lg" style="color: rgb(252, 151, 161);"></i> My favorite sport</h3>
+    <p>Today I would like to introduce you guys to my favorite sport. It's name is soccer.
+      I have been playing it since I was a child and it has always been my favorite way to stay active and have fun.
+      Soccer has taught me valuable life skills such as teamwork, discipline, and perseverance.
+      I hope to continue playing it for many years to come.
     </p>
-
-    <p style="font-weight: bold;">What do you need to know about the conscious and the subconscious mind?</p>
 
   </div>
 
@@ -1334,16 +1337,16 @@ width: 40px;
         <div class="footer-plus-menu">
                <div id="footerIconMenu" class="footer-icon-menu">
                   <div class="left-icons">
-                   <i id="userSheetBtn" class="fa-solid fa-user fa-xl"></i>
-                    <a href="message.html"><i class="fa-solid fa-envelope fa-xl" style="color: rgb(0, 0, 0);"></i></a>
+                   <i id="userSheetBtn" class="fa-solid fa-user fa-xl" style="color: rgb(255, 255, 255);"></i>
+                    <a href="message.html"><i class="fa-solid fa-envelope fa-xl" style="color: rgb(255, 255, 255);"></i></a>
                 </div>
 
             <div class="right-icons">
               <button id="uploadMediaBtn" class="footer-action-btn" type="button" aria-label="Upload media">
-                <i class="fa-solid fa-image fa-lg" style="color: rgb(0, 0, 0);"></i>
+                <i class="fa-solid fa-image fa-lg" style="color: rgb(255, 255, 255);"></i>
               </button>
               <button id="writePostBtn" class="footer-action-btn" type="button" aria-label="Write post">
-                <i class="fa-solid fa-pen fa-lg" style="color: rgb(0, 0, 0);"></i>
+                <i class="fa-solid fa-pen fa-lg" style="color: rgb(255, 255, 255);"></i>
               </button>
             </div>
          </div>
