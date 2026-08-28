@@ -321,6 +321,74 @@ function trimSummaryToWholeWords(text, maxLength) {
   return trimmed.replace(/\s+[A-Za-z0-9-]+$/, '').trim();
 }
 
+function collapseRepeatedWords(text) {
+  if (!text) return "";
+
+  const stopWords = new Set([
+    'the', 'a', 'an', 'and', 'or', 'but', 'if', 'then', 'than', 'that', 'this',
+    'these', 'those', 'with', 'without', 'from', 'into', 'for', 'on', 'in', 'at',
+    'by', 'of', 'to', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'it',
+    'its', 'they', 'them', 'their', 'he', 'she', 'we', 'you', 'i', 'me', 'my',
+    'our', 'your', 'his', 'her', 'as', 'so', 'too', 'very', 'more', 'most',
+    'about', 'after', 'before', 'over', 'under', 'through', 'again', 'also', 'just',
+    'not', 'how', 'why', 'when', 'what', 'where', 'who', 'which', 'while', 'because'
+  ]);
+
+  const tokens = text.split(/(\s+)/);
+  const seen = new Set();
+  const output = [];
+
+  for (const token of tokens) {
+    const clean = token.trim();
+    if (!clean) {
+      output.push(token);
+      continue;
+    }
+
+    const wordMatch = clean.match(/[A-Za-z]+(?:['-][A-Za-z]+)?/);
+    if (!wordMatch) {
+      output.push(token);
+      continue;
+    }
+
+    const word = wordMatch[0].toLowerCase();
+    if (stopWords.has(word)) {
+      output.push(token);
+      continue;
+    }
+
+    if (seen.has(word)) {
+      continue;
+    }
+
+    seen.add(word);
+    output.push(token);
+  }
+
+  return output.join('').replace(/\s{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
+}
+
+function stripDanglingSummaryWord(text) {
+  if (!text) return "";
+
+  return text
+    .replace(/\s+(?:this|that|these|those)\s*[.!?]?\s*$/gi, '.')
+    .replace(/\s+(?:in|of|for|to|from)\s+(?:this|that|these|those)\s*[.!?]?\s*$/gi, '.')
+    .replace(/\s+[,.!?]+\s*$/g, '.')
+    .replace(/\.{2,}/g, '.')
+    .trim();
+}
+
+function stripGenericSummaryIntro(text) {
+  if (!text) return "";
+
+  return text
+    .replace(/^(this content is about|this topic focuses on|this piece explores|this discussion centers on|in this content, the author's main focus is)\s*[:.]*\s*/i, '')
+    .replace(/^(this content is about|this topic focuses on|this piece explores|this discussion centers on|in this content, the author's main focus is)\s*/i, '')
+    .replace(/\b([A-Za-z]+)\s+\1\b/gi, '$1')
+    .trim();
+}
+
 function finalizeSummaryText(text) {
   if (!text) return "";
 
@@ -352,28 +420,24 @@ function finalizeSummaryText(text) {
     .filter(Boolean)
     .join(' ');
 
-  const finalResult = cleaned.replace(/\s+/g, ' ').trim();
+  const finalResult = stripDanglingSummaryWord(
+    collapseRepeatedWords(cleaned.replace(/\s+/g, ' ').trim())
+  );
+
   return /[.!?]$/.test(finalResult) ? finalResult : `${finalResult}.`;
 }
 
 function buildFocusedSummaryFromText(text) {
-  const lower = text.toLowerCase();
+  if (!text || !text.trim()) return null;
 
-  if (!lower.includes('favorite sport') && !lower.includes('sport')) {
-    return null;
-  }
+  const sentences = text
+    .split(/[.!?]+/)
+    .map(sentence => sentence.trim())
+    .filter(Boolean);
 
-  const subjectSentence = "This content focuses on the author's favorite sport.";
+  if (sentences.length === 0) return null;
 
-  if (/since\s+(?:the author\s+was\s+)?a\s+child|childhood/i.test(text)) {
-    return `${subjectSentence} The author has been playing it since childhood, and it has remained a lifelong passion.`;
-  }
-
-  if (/favorite\s+sport/i.test(text)) {
-    return `${subjectSentence} The author is deeply committed to it and values it as a personal favorite.`;
-  }
-
-  return null;
+  return sentences.slice(0, 2).join(' ');
 }
 
 function extractKeywords(text, maxKeywords = 5) {
@@ -452,11 +516,6 @@ function summarizeTextLocally(text) {
 
   const cleaned = text.replace(/\s+/g, ' ').trim();
 
-  const focusedSummary = buildFocusedSummaryFromText(cleaned);
-  if (focusedSummary) {
-    return finalizeSummaryText(focusedSummary);
-  }
-
   const sentences = cleaned
     .split(/[.!?]+/)
     .map(sentence => sentence.trim())
@@ -514,33 +573,35 @@ function summarizeTextLocally(text) {
     .trim();
 
   if (!summary) {
-    const introOptions = [
-      'This content is about',
-      'This topic focuses on',
-      'In this content, the author\'s main focus is',
-      'This piece explores',
-      'This discussion centers on'
-    ];
-
-    const intro = introOptions[Math.floor(Math.random() * introOptions.length)];
-    return finalizeSummaryText(`${intro} the key ideas and themes in a clear and thoughtful way.`);
+    const fallbackText = sentences.slice(0, 2).map(normalizeSentenceForSummary).join(' ');
+    return finalizeSummaryText(collapseRepeatedWords(fallbackText || cleaned));
   }
 
   let cleanSummary = summary.replace(/\s+([,.!?])/g, '$1');
 
   cleanSummary = reduceRepeatedSummaryPhrases(
-    cleanSummary
-      .replace(/\s+/g, ' ')
-      .replace(/\s+(?=[,.!?])/g, '')
-      .replace(/\bcommunity\b/gi, 'community')
-      .replace(/\bguys\b/gi, 'people')
-      .replace(/\bthe world today\b/gi, 'the modern world')
-      .replace(/\bthe world\b/gi, 'the broader world')
-      .replace(/\bworld today\b/gi, 'the modern world')
-      .replace(/\btoday\b/gi, '')
-      .replace(/\s{2,}/g, ' ')
-      .trim()
+    collapseRepeatedWords(
+      cleanSummary
+        .replace(/\s+/g, ' ')
+        .replace(/\s+(?=[,.!?])/g, '')
+        .replace(/\bcommunity\b/gi, 'community')
+        .replace(/\bguys\b/gi, 'people')
+        .replace(/\bthe world today\b/gi, 'the modern world')
+        .replace(/\bthe world\b/gi, 'the broader world')
+        .replace(/\bworld today\b/gi, 'the modern world')
+        .replace(/\btoday\b/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+    )
   );
+
+  const sentenceParts = cleanSummary
+    .split(/(?<=[.!?])\s+/)
+    .map(part => part.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+
+  cleanSummary = sentenceParts.join(' ');
 
   if (!/[.!?]$/.test(cleanSummary)) {
     cleanSummary = cleanSummary + '.';
@@ -557,17 +618,8 @@ function summarizeTextLocally(text) {
     }
   }
 
-  const introOptions = [
-    'This content is about',
-    'This topic focuses on',
-    'In this content, the author\'s main focus is',
-    'This piece explores',
-    'This discussion centers on'
-  ];
-
-  const intro = introOptions[Math.floor(Math.random() * introOptions.length)];
-  const finalParagraph = `${intro}. ${cleanSummary}`;
-  return finalizeSummaryText(finalParagraph);
+  const normalizedCleanSummary = stripGenericSummaryIntro(collapseRepeatedWords(cleanSummary));
+  return finalizeSummaryText(normalizedCleanSummary || cleanSummary);
 }
 
 function renderSummaryLoading() {
@@ -596,7 +648,7 @@ function populateAiSummary() {
   const summary = summarizeTextLocally(value);
   const keywords = extractKeywords(value, 1);
   const keywordsHtml = keywords.length
-    ? `<div class="summary-keywords"><strong>Keywords</strong><ul><li>${keywords[0]}</li></ul></div>`
+    ? `<div class="summary-keywords"><strong>Keywords:</strong><ul><li><b>${keywords[0].charAt(0).toUpperCase() + keywords[0].slice(1)}.</b></li></ul></div>`
     : "";
 
   aiSummaryResult.innerHTML = `<strong>Summary</strong>${summary}${keywordsHtml}`;
