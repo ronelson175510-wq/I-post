@@ -19,16 +19,22 @@
         }
 
         .header{
-            background-color: black;
+            background-image: linear-gradient(to right, black, rgb(6, 6, 6), rgb(86, 28, 86));
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-position: center;
             left: 0;
             top: 0;
             position: relative;
-            padding:15px 2px;
+            padding: 8px 12px;
             font-size: 12px;
             font-family:'Times New Roman', Times, serif;
-           
-            
             overflow: hidden;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
         }
 
         
@@ -46,12 +52,19 @@
         .title-wrap{
             display: flex;
             align-items: center;
-            
-            
             float: left;
-            margin-top: 5px;
-            
-           text-shadow: 1px 1px 2px blueviolet, 1px 2px 3px yellow, 1px 3px 4px blue;
+            margin-top: 0;
+            text-shadow: 1px 1px 2px blueviolet, 1px 2px 3px yellow, 1px 3px 4px blue;
+        }
+
+        .title-wrap img {
+            display: block;
+            height: 40px;
+            width: auto;
+            max-width: 150px;
+            object-fit: contain;
+            transform: scale(1.08);
+            transform-origin: left center;
         }
 
         .title-wrap i {
@@ -60,13 +73,13 @@
         }
 
         .title{
-            color: white;
+            color: rgb(11, 11, 11);
             letter-spacing: 2px;
             font-weight: 700;
             font-size: 27px;
             font-style: italic;
             font-family:'Times New Roman', Times, serif;
-            background: linear-gradient(90deg, #ffffff 0%, #d9c8ff 35%, #9b8cff 100%);
+            background: linear-gradient(90deg, #0b0b0b 0%, #0c0c0c 35%, #200ca4 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -81,14 +94,13 @@
             border:1.5px solid blueviolet;
             float: right;
             border-radius: 12px;
-            padding:8px 12px;
+            padding: 6px 10px;
             gap: 12px;
-            margin-top: -5px;
+            margin-top: 0;
             box-shadow: 0px 0px 10px 0px blueviolet;
-            height: 28px;
+            height: 30px;
             cursor: pointer;
             transition: 0.3s ease;
-            
         }
 
         .header-icons i,
@@ -1132,7 +1144,7 @@ width: 40px;
     <div class="header">
         <div class="title-wrap">
             
-            <div class="title">I-Post</div>
+            <img src="./bookmeassets/logo.png" alt="I-Post Logo" style="height: 40px; width: auto; object-fit: contain; display: block;">
            
         </div>
        
