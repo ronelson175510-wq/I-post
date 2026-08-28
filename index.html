@@ -19,7 +19,7 @@
         }
 
         .header{
-            background-image: linear-gradient(to right, black, rgb(6, 6, 6), rgb(86, 28, 86));
+            background-image: linear-gradient(to right, black, rgb(12, 12, 12),  rgb(177, 151, 252));
             background-repeat: no-repeat;
             background-size: cover;
             background-position: center;
@@ -35,37 +35,25 @@
             align-items: center;
             justify-content: space-between;
             box-sizing: border-box;
+            
+            border-bottom-right-radius: 12px;
         }
 
         
-        .header::after {
-            content: "";
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 4px;
-            background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
-        }
+        
 
 
         .title-wrap{
+          margin-left: -10px;
             display: flex;
             align-items: center;
             float: left;
             margin-top: 0;
-            text-shadow: 1px 1px 2px blueviolet, 1px 2px 3px yellow, 1px 3px 4px blue;
+            
+            text-shadow: 0 , 1px 2px 3px yellow, 1px 3px 4px blue;
         }
 
-        .title-wrap img {
-            display: block;
-            height: 40px;
-            width: auto;
-            max-width: 150px;
-            object-fit: contain;
-            transform: scale(1.08);
-            transform-origin: left center;
-        }
+      
 
         .title-wrap i {
             font-size: 1.8rem;
@@ -73,31 +61,29 @@
         }
 
         .title{
-            color: rgb(11, 11, 11);
+            color: white;
             letter-spacing: 2px;
             font-weight: 700;
-            font-size: 27px;
-            font-style: italic;
-            font-family:'Times New Roman', Times, serif;
-            background: linear-gradient(90deg, #0b0b0b 0%, #0c0c0c 35%, #200ca4 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 18px rgba(155, 140, 255, 0.35);
+            font-size: 22px;
+            
+            font-family: 'Roboto', sans-serif;
+          
+            text-shadow: 1px 3px 2px rgb(177, 151, 252);
         }
 
         .header-icons{
+          margin-right: -7px;
             display: flex;
             align-items: center;
             justify-content: center;
             background-color: transparent;
-            border:1.5px solid blueviolet;
+            border:1.5px solid rgb(30, 29, 29);
             float: right;
             border-radius: 12px;
             padding: 6px 10px;
             gap: 12px;
-            margin-top: 0;
-            box-shadow: 0px 0px 10px 0px blueviolet;
+            margin-top: -6px;
+            box-shadow:  0px 0px 10px 0px rgb(175, 37, 199);
             height: 30px;
             cursor: pointer;
             transition: 0.3s ease;
@@ -332,18 +318,18 @@
 
 
         .ipostcard{
-            width: 80%;
+            width: 85%;
            
-            margin-left: 5px;
+           margin-left: 3px;
             top: 20px;
-            background-color: #fbf9f8; 
+            background-color: rgb(249, 250, 250); 
             border-radius: 12px;
             text-align: left;
-            font-family:'Times New Roman', Times, serif;
+            font-family: 'Times New Roman', Times, serif;
             color: black;
             font-size: 16px;
             margin-top: 20px;
-            border: 1px solid rgb(30, 30, 30);
+            border: 1px solid rgb(178, 171, 171);
             box-shadow: 0px 0px 10px 0px rgb(148, 144, 148);
             padding-left: 10px;
             display:inline-block;
@@ -1057,7 +1043,7 @@ width: 40px;
             transform: translateX(-50%);
             z-index: 99909;
             box-shadow: 0 8px 18px rgba(13, 13, 13, 0.5);
-            box-sizing: border-box;
+            
         }
 
         .footer-plus-menu {
@@ -1144,9 +1130,11 @@ width: 40px;
     <div class="header">
         <div class="title-wrap">
             
-            <img src="./bookmeassets/logo.png" alt="I-Post Logo" style="height: 40px; width: auto; object-fit: contain; display: block;">
+         <div class="title">MYSPOT</div>
            
         </div>
+
+     
        
         <div class="header-icons">
           
@@ -1154,8 +1142,9 @@ width: 40px;
             <i id="notifyBell" class="fa-solid fa-bell fa-xl"style="color: rgb(177, 151, 252); display: flex;"></i>
             <span id="notifyCount" class="notify-bubble">1</span>
            </div>
+          
             <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(177, 151, 252);"></i>
-            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(255, 255, 255);"></i></button>
+            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(252, 252, 252);"></i></button>
         </div>
     </div>
 
