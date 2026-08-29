@@ -3,7 +3,7 @@ const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
-const db = require("./db");
+const { db, isDbEnabled } = require("./db");
 
 const app = express();
 const uploadsDir = path.join(__dirname, "uploads");
@@ -80,7 +80,69 @@ app.get("/health", (req, res) => {
   res.json({ ok: true, message: "Backend healthy", publicBaseUrl });
 });
 
+app.post("/api/translate", async (req, res) => {
+  const { text, source = "auto", target = "en" } = req.body || {};
+
+  if (!text || !target) {
+    return res.status(400).json({ error: "Missing translation text or target language" });
+  }
+
+  const candidateUrls = [
+    process.env.LIBRETRANSLATE_URL,
+    "http://localhost:5000/translate",
+    "http://127.0.0.1:5000/translate",
+    "https://libretranslate.com/translate",
+    "https://translate.terraprint.co/translate",
+    "https://translate.argosopentech.com/translate"
+  ].filter(Boolean);
+
+  const uniqueUrls = [...new Set(candidateUrls)];
+
+  let lastError = null;
+
+  for (const libreTranslateUrl of uniqueUrls) {
+    try {
+      const response = await fetch(libreTranslateUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          q: text,
+          source,
+          target,
+          format: "text"
+        })
+      });
+
+      const data = await response.json();
+      const translatedText = data?.translatedText || data?.translation || data?.[0]?.translatedText || data?.[0]?.translation;
+
+      if (response.ok && translatedText) {
+        return res.json({ translatedText });
+      }
+
+      lastError = new Error(data?.error || "Translation request failed");
+    } catch (error) {
+      lastError = error;
+      console.warn(`Translation attempt failed for ${libreTranslateUrl}:`, error.message);
+    }
+  }
+
+  console.error("TRANSLATE ERROR:", lastError?.message || "Translation service unavailable");
+  return res.status(503).json({
+    error: "Translation service unavailable. Set LIBRETRANSLATE_URL to a working LibreTranslate instance."
+  });
+});
+
 app.post("/api/posts", upload.single("file"), (req, res) => {
+  if (!isDbEnabled()) {
+    return res.status(503).json({
+      error: "Database is not enabled yet. Set DB credentials and DB_ENABLED=true to use posts.",
+      dbDisabled: true
+    });
+  }
+
   const user_id = req.body.user_id || "anonymous";
   const content = req.body.content || "";
   const media_type = req.body.media_type || "image";
@@ -112,6 +174,14 @@ app.post("/api/posts", upload.single("file"), (req, res) => {
 });
 
 app.get("/api/posts", (req, res) => {
+  if (!isDbEnabled()) {
+    return res.status(503).json({
+      error: "Database is not enabled yet. Set DB credentials and DB_ENABLED=true to use posts.",
+      dbDisabled: true,
+      posts: []
+    });
+  }
+
   db.query("SELECT * FROM posts ORDER BY created_at DESC", (err, results) => {
     if (err) {
       console.error("DB SELECT ERROR:", err);
@@ -130,6 +200,13 @@ app.get("/api/posts", (req, res) => {
 });
 
 app.post("/api/text-post", (req, res) => {
+  if (!isDbEnabled()) {
+    return res.status(503).json({
+      error: "Database is not enabled yet. Set DB credentials and DB_ENABLED=true to use posts.",
+      dbDisabled: true
+    });
+  }
+
   const { user_id, content } = req.body;
 
   if (!user_id || !content) {

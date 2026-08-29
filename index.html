@@ -19,7 +19,7 @@
         }
 
         .header{
-            background-image: linear-gradient(to right, black, black, black, );
+           background-color: black;
             background-repeat: no-repeat;
             background-size: cover;
             background-position: center;
@@ -80,7 +80,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            border:1.5px solid rgb(249, 249, 249);
+            border:1.5px solid rgb(44, 44, 44);
             float: right;
             border-radius: 12px;
             padding: 6px 10px;
@@ -404,22 +404,19 @@
 
 /* Read More button css */
 .readmore-btn {
-    
-  background: rgb(177, 151, 252);
-  color: white;
+   float: right;
+  background: white;
+  color: rgb(160, 129, 252);
   border: none;
   padding: 10px 16px;
-  border-radius: 10px;
+  
   font-size: 15px;
   cursor: pointer;
   margin-top: 10px;
   transition: background 0.3s ease, transform 0.2s ease;
 }
 
-.readmore-btn:hover {
-  background: rgb(150, 120, 240);
-  transform: scale(1.03);
-}
+
 
 .ad-countdown {
   margin: 12px 10px 0;
@@ -502,6 +499,7 @@ width: 40px;
         }
 
         .actions{
+         
           border-top: 1.5px solid #ccc;
             display: flex;
             align-items: center;
@@ -509,8 +507,8 @@ width: 40px;
             width: 92%;
             margin: 18px auto 0;
             padding: 8px 4px;
-            gap: 14px;
-            padding-left: 5px;
+            gap: 34px;
+            padding-left: 1px;
             padding-right: 3px;
         }
 
@@ -522,6 +520,19 @@ width: 40px;
             align-items: center;
             justify-content: center;
         }
+
+/*translation css*/
+
+.translate-btn{
+  background-color: rgb(177, 151, 252);
+  padding: 1px 8px;
+  color: black;
+  border:2px solid black;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
         .lang-wrapper {
   position: relative;
@@ -1068,7 +1079,7 @@ width: 40px;
             left: 0;
             bottom: 0;
             overflow: visible;
-            
+            background: black;
             
            
             
@@ -1120,7 +1131,7 @@ width: 40px;
 
 .footer-icon-menu {
   position: absolute;
-  margin-bottom: 0px; 
+  margin-top: -19px; 
   width: 80%;
   display: flex;
   justify-content: space-between;
@@ -1138,10 +1149,27 @@ width: 40px;
 }
 
 
-.left-icons,
+
 .right-icons {
   display: flex;
   gap: 20px;
+  background-color: black;
+  padding: 12px 8px;
+  border-radius: 12px;
+  background-color: black;
+ border-top: 2px solid blueviolet;
+}
+
+.left-icons {
+
+  display: flex;
+  gap: 20px;
+  background-color: black;
+  padding: 12px 8px;
+  border-radius: 12px;
+  border-top: 2px solid rgb(226, 211, 43);
+ 
+
 }
 
 
@@ -1208,7 +1236,7 @@ width: 40px;
            </div>
           
             <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(164, 63, 164);"></i>
-            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(26, 26, 26);"></i></button>
+            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(164, 63, 164);"></i></button>
         </div>
     </div>
 
@@ -1288,7 +1316,8 @@ width: 40px;
 
   <div class="actions">
       <div class="lang-wrapper">
-        <i id="langBtn" class="fa-solid fa-language"></i>
+        <button class="translate-btn">Translate<i id="langBtn" class="fa-solid fa-language"></i></button>
+        
 
       <div id="langDropdown" class="lang-dropdown">
          <div data-lang="en">English</div>
@@ -1400,16 +1429,16 @@ width: 40px;
         <div class="footer-plus-menu">
                <div id="footerIconMenu" class="footer-icon-menu">
                   <div class="left-icons">
-                   <i id="userSheetBtn" class="fa-solid fa-user fa-xl" style="color: rgb(16, 15, 15);"></i>
-                    <a href="message.html"><i class="fa-solid fa-envelope fa-xl" style="color: rgb(16, 15, 15);"></i></a>
+                   <i id="userSheetBtn" class="fa-solid fa-user fa-xl" style="color: rgb(255, 255, 255);"></i>
+                    <a href="message.html"><i class="fa-solid fa-envelope fa-xl" style="color: rgb(255, 255, 255);"></i></a>
                 </div>
 
             <div class="right-icons">
               <button id="uploadMediaBtn" class="footer-action-btn" type="button" aria-label="Upload media">
-                <i class="fa-solid fa-image fa-lg" style="color: rgb(9, 9, 9);"></i>
+                <i class="fa-solid fa-image fa-xl" style="color: rgb(255, 255, 255);"></i>
               </button>
               <button id="writePostBtn" class="footer-action-btn" type="button" aria-label="Write post">
-                <i class="fa-solid fa-pen fa-lg" style="color: rgb(9, 9, 9 );"></i>
+                <i class="fa-solid fa-pen fa-xl" style="color: rgb(255, 255, 255 );"></i>
               </button>
             </div>
          </div>

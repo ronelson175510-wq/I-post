@@ -152,11 +152,87 @@ if (langBtn && langDropdown) {
     langDropdown.style.display = langDropdown.style.display === "block" ? "none" : "block";
   });
 
+  const getTranslateEndpoints = () => {
+    const candidates = [];
+    const origin = window.location.origin;
+
+    if (origin && origin !== "null") {
+      candidates.push(`${origin}/api/translate`);
+    }
+
+    candidates.push("/api/translate");
+    candidates.push("http://localhost:10000/api/translate");
+    candidates.push("http://127.0.0.1:10000/api/translate");
+
+    return [...new Set(candidates)];
+  };
+
+  const translatePostText = async (targetLang) => {
+    const postTextElement = document.getElementById("ipostText");
+    if (!postTextElement) return;
+
+    const originalText = postTextElement.dataset.originalText || postTextElement.textContent.trim();
+    if (!originalText) return;
+
+    if (!postTextElement.dataset.originalText) {
+      postTextElement.dataset.originalText = originalText;
+    }
+
+    if (targetLang === "en") {
+      postTextElement.textContent = postTextElement.dataset.originalText;
+      langDropdown.style.display = "none";
+      return;
+    }
+
+    let lastError = null;
+
+    try {
+      for (const endpoint of getTranslateEndpoints()) {
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              text: postTextElement.dataset.originalText,
+              source: "auto",
+              target: targetLang
+            })
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result?.error || "Translation request failed");
+          }
+
+          if (result && result.translatedText) {
+            postTextElement.textContent = result.translatedText;
+            langDropdown.style.display = "none";
+            return;
+          }
+
+          throw new Error("No translated text returned");
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      throw lastError || new Error("Translation failed");
+    } catch (error) {
+      console.error("Translation failed:", error);
+      postTextElement.textContent = postTextElement.dataset.originalText;
+    } finally {
+      langDropdown.style.display = "none";
+    }
+  };
+
   langDropdown.querySelectorAll("div").forEach(item => {
     item.addEventListener("click", () => {
       const selectedLang = item.dataset.lang;
       console.log("Selected language:", selectedLang);
-      langDropdown.style.display = "none";
+      translatePostText(selectedLang);
     });
   });
 
