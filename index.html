@@ -258,6 +258,41 @@
  
 }
 
+.menu-auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 18px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-btn {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.96;
+}
+
+.sign-in-btn {
+  background: linear-gradient(135deg, #b19bff, #7c3aed);
+  color: white;
+  box-shadow: 0 8px 18px rgba(124, 58, 237, 0.26);
+}
+
+.sign-out-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f4f4f5;
+}
 
 
         .sidemenu {
@@ -1182,6 +1217,10 @@ width: 40px;
     <a href="javascript:void(0)" class="closebtn" onclick="closeNav()" style="background-color: #090909;">&times;</a>
     <div class="menu-user">
     <img src="./bookmeassets/b3213a26-b2cd-4b52-a4aa-376ecf9cd365.jpeg" alt="Jhon Michel" style="border-radius: 50%; width: 60px; height: 60px; object-fit: cover;">
+    </div>
+    <div class="menu-auth-actions">
+      <a href="login.html"><button class="auth-btn sign-in-btn" type="button">Sign in</button></a>
+      <a href="logout.html"><button class="auth-btn sign-out-btn" type="button">Sign out</button></a>
     </div>
     <a href="#"> <i class="fa-solid fa-bookmark fa-sm" style="color: rgb(249, 249, 250);"></i>Saved</a>
     <a href="#"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(253, 253, 254);"></i>Friends</a>
