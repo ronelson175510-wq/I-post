@@ -80,14 +80,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(to right, rgb(98, 9, 240), black, rgb(134, 65, 238), rgb(239, 9, 239));
-            border:1.5px solid rgb(130, 128, 128);
+            border:1.5px solid rgb(249, 249, 249);
             float: right;
             border-radius: 12px;
             padding: 6px 10px;
             gap: 12px;
             margin-top: -6px;
-            box-shadow: 0px 0px 10px 10px rgb(52, 7, 216), 0px 0px 10px 10px rgb(217, 3, 236);
+           
             height: 30px;
             cursor: pointer;
             transition: 0.3s ease;
@@ -268,7 +267,7 @@
     z-index: 1;
     top: 0;
     left: 0;
-    background: linear-gradient(180deg, rgba(88, 14, 98, 0.98), rgba(88, 23, 97, 0.97));
+    background: linear-gradient(180deg, rgba(16, 16, 16, 0.98), rgba(32, 32, 32, 0.97));
     box-shadow: 8px 0 24px rgba(0, 0, 0, 0.28);
     overflow-x: hidden;
     transition: 0.45s ease;
@@ -1027,19 +1026,31 @@ width: 40px;
 
 
         .footer{
-            background-color: black;
+            
             position: fixed;
             width: 100%;
             height: 30px;
             left: 0;
             bottom: 0;
             overflow: visible;
-            border-top: 4px solid;
+            
+            
            
-            border-top-right-radius: 12px;
-            border-top-left-radius: 12px;
+            
             z-index: 999;
         }
+
+        .footer::before {
+          border-top-right-radius: 12px;
+            border-top-left-radius: 12px;
+    content: "";
+    position: absolute;
+    top: -5px;
+   left: 0px;
+    height: 5px; 
+    width: 100%;
+    background: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet);
+}
 
         .plus-btn{
             width: 48px;
@@ -1161,7 +1172,7 @@ width: 40px;
             <span id="notifyCount" class="notify-bubble">1</span>
            </div>
           
-            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(253, 251, 253);"></i>
+            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(164, 63, 164);"></i>
             <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(26, 26, 26);"></i></button>
         </div>
     </div>
@@ -1172,10 +1183,10 @@ width: 40px;
     <div class="menu-user">
     <img src="./bookmeassets/b3213a26-b2cd-4b52-a4aa-376ecf9cd365.jpeg" alt="Jhon Michel" style="border-radius: 50%; width: 60px; height: 60px; object-fit: cover;">
     </div>
-    <a href="#"> <i class="fa-solid fa-bookmark fa-sm" style="color: rgb(62, 4, 238);"></i>Saved</a>
-    <a href="#"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(177, 151, 252);"></i>Friends</a>
-    <a href="#"><i class="fa-solid fa-comment fa-sm" style="color: rgb(177, 151, 252);"></i>Chat</a>
-    <a href="#"><i class="fa-solid fa-cog fa-sm" style="color: rgb(0, 0, 0);"></i>Settings</a>
+    <a href="#"> <i class="fa-solid fa-bookmark fa-sm" style="color: rgb(249, 249, 250);"></i>Saved</a>
+    <a href="#"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(253, 253, 254);"></i>Friends</a>
+    <a href="#"><i class="fa-solid fa-comment fa-sm" style="color: rgb(246, 245, 247);"></i>Chat</a>
+    <a href="#"><i class="fa-solid fa-cog fa-sm" style="color: rgb(255, 254, 254);"></i>Settings</a>
 </div>
 
  <div id="searchSheet" class="sheet">
@@ -1206,9 +1217,10 @@ width: 40px;
     
   <div class="ipost-text" id="ipostText">
     <h3><i class="fa-solid fa-brain fa-lg" style="color: rgb(252, 151, 161);"></i> Real Madrid</h3>
-    <p>Real Madrid is the most successful football club in Spain, known for its rich history, numerous trophies, and world-class players.
-      They won 15 champions league titles, making them one of the most successful clubs in European football history. This year, they continue to compete at the highest level, 
-      aiming for more victories and maintaining their prestigious legacy.
+    <p>I wanna talk about the danger of consuming alcohol. 
+      Alcohol can impair judgment, coordination, and reaction times, leading to accidents and risky behavior.
+       It can also have long-term effects on physical and mental health, including liver damage, addiction, and cognitive decline.
+        It's important to consume alcohol responsibly and be aware of its potential dangers.
     </p>
 
   </div>
@@ -1349,16 +1361,16 @@ width: 40px;
         <div class="footer-plus-menu">
                <div id="footerIconMenu" class="footer-icon-menu">
                   <div class="left-icons">
-                   <i id="userSheetBtn" class="fa-solid fa-user fa-xl" style="color: rgb(255, 255, 255);"></i>
-                    <a href="message.html"><i class="fa-solid fa-envelope fa-xl" style="color: rgb(255, 255, 255);"></i></a>
+                   <i id="userSheetBtn" class="fa-solid fa-user fa-xl" style="color: rgb(16, 15, 15);"></i>
+                    <a href="message.html"><i class="fa-solid fa-envelope fa-xl" style="color: rgb(16, 15, 15);"></i></a>
                 </div>
 
             <div class="right-icons">
               <button id="uploadMediaBtn" class="footer-action-btn" type="button" aria-label="Upload media">
-                <i class="fa-solid fa-image fa-lg" style="color: rgb(255, 255, 255);"></i>
+                <i class="fa-solid fa-image fa-lg" style="color: rgb(9, 9, 9);"></i>
               </button>
               <button id="writePostBtn" class="footer-action-btn" type="button" aria-label="Write post">
-                <i class="fa-solid fa-pen fa-lg" style="color: rgb(255, 255, 255);"></i>
+                <i class="fa-solid fa-pen fa-lg" style="color: rgb(9, 9, 9 );"></i>
               </button>
             </div>
          </div>
