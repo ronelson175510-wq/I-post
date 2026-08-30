@@ -37,7 +37,10 @@
             align-items: center;
             justify-content: space-between;
             box-sizing: border-box;
-        }
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+                 
+           }
 
         .header::after {
             content: "";
@@ -46,7 +49,8 @@
             right: 0;
             bottom: 0;
             height: 4px;
-            background: linear-gradient(90deg, #ff0000, #ff7a00, #ffd400, #00d400, #1a73ff, #7a2cff, #ff00d4);
+            background-color: turquoise
+           
         }
 
         .title-wrap{
@@ -73,7 +77,7 @@
             
             font-family: 'Roboto', sans-serif;
           
-            background: linear-gradient(to right, red, red, black, rgb(237, 137, 7));
+          
           
         }
 
@@ -233,7 +237,7 @@
 .sheet-drag {
   width: 45px;
   height: 6px;
-  background: #d0c2ff;
+  background: turquoise;
   border-radius: 10px;
   display: block;
   margin: 0 auto;
@@ -261,10 +265,11 @@
 }
 
 .menu-auth-actions {
+  background-color: white;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 18px 18px 10px;
+  gap: 1px;
+  padding: 8px  10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -285,15 +290,15 @@
 }
 
 .sign-in-btn {
-  background: linear-gradient(135deg, #b19bff, #7c3aed);
+  background: turquoise;
   color: white;
   box-shadow: 0 8px 18px rgba(124, 58, 237, 0.26);
 }
 
 .sign-out-btn {
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #f4f4f5;
+  border: 1px solid rgba(12, 12, 12, 0.12);
+  color: #111112;
 }
 
 
@@ -370,16 +375,16 @@
 
 
         .ipostcard{
-            width: 90%;
+            width: 96%;
             box-sizing: border-box;
-            top: -10px;
+            top: 10px;
             background-color: rgb(249, 250, 250); 
             border-radius: 12px;
             text-align: left;
             font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
             color: black;
             font-size: 16px;
-            margin-top: 20px;
+            margin-left: 5px;
             border: 1px solid rgb(178, 171, 171);
             box-shadow: 0px 0px 10px 0px rgb(148, 144, 148);
             padding: 0;
@@ -410,13 +415,13 @@
 .readmore-btn {
    float: right;
  background-color: transparent;
-  color: rgb(160, 129, 252);
+  color: rgb(7, 7, 7);
   border: none;
   padding: 10px 16px;
   
   font-size: 15px;
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: 1px;
   transition: background 0.3s ease, transform 0.2s ease;
 }
 
@@ -505,7 +510,7 @@ width: 40px;
         .actions{
           position: relative;
           box-sizing: border-box;
-          background-color: rgb(234, 234, 234);
+          background-color: black;
           border-top: 1.5px solid #ccc;
           border-radius: 0 0 12px 12px;
           display: flex;
@@ -513,7 +518,7 @@ width: 40px;
           justify-content: space-between;
           width: 100%;
           margin: 18px 0 0;
-          padding: 18px 10px 10px;
+          padding: 8px 10px 10px;
           gap: 12px;
           box-sizing: border-box;
         }
@@ -530,7 +535,7 @@ width: 40px;
 /*translation css*/
 
 .translate-btn{
-  background-color: rgb(177, 151, 252);
+  background-color: white;
   padding: 1px 8px;
   color: black;
   border:2px solid black;
@@ -576,7 +581,7 @@ width: 40px;
 
 
         .like-btn{
-            background-color: rgb(240, 238, 226);
+            background-color: white;
             border:1.5px solid black;
             border-radius: 12px;
             padding: 1px 10px;
@@ -931,7 +936,7 @@ width: 40px;
 .sheet-drag {
   width: 45px;
   height: 6px;
-  background: #d0c2ff;
+  background: turquoise;
   border-radius: 10px;
   display: block;
   margin: 0 auto;
@@ -959,7 +964,7 @@ width: 40px;
   
   flex: 1;
   padding: 12px;
-  background: rgb(177, 151, 252);
+  background: turquoise;
   color: white;
   border: none;
   border-radius: 12px;
@@ -1081,7 +1086,7 @@ width: 40px;
             
             position: fixed;
             width: 100%;
-            height: 30px;
+            height: 40px;
             left: 0;
             bottom: 0;
             overflow: visible;
@@ -1101,7 +1106,7 @@ width: 40px;
    left: 0px;
     height: 5px; 
     width: 100%;
-    background: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet);
+    
 }
 
         .plus-btn{
@@ -1109,11 +1114,8 @@ width: 40px;
             height: 48px;
             border: 2px solid transparent;
             border-radius: 50%;
-            background:
-                linear-gradient(#000000, #0b0b0b) padding-box,
-                linear-gradient(135deg, #7c3aed, #00ff00, #fd0303, #38bdf8, #0000ff) border-box;
-            
-            background-clip: padding-box, border-box;
+            background: black;
+            border: 1.5px solid turquoise;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1137,7 +1139,7 @@ width: 40px;
 
 .footer-icon-menu {
   position: absolute;
-  margin-top: -19px; 
+  margin-top: -39px; 
   width: 80%;
   display: flex;
   justify-content: space-between;
@@ -1159,21 +1161,21 @@ width: 40px;
 .right-icons {
   display: flex;
   gap: 20px;
-  background-color: black;
+ 
   padding: 12px 8px;
   border-radius: 12px;
-  background-color: black;
- border-top: 2px solid blueviolet;
+ 
+ 
 }
 
 .left-icons {
 
   display: flex;
   gap: 20px;
-  background-color: black;
+
   padding: 12px 8px;
   border-radius: 12px;
-  border-top: 2px solid rgb(226, 211, 43);
+  
  
 
 }
@@ -1237,12 +1239,12 @@ width: 40px;
         <div class="header-icons">
           
            <div class="notification-bell"> 
-            <i id="notifyBell" class="fa-solid fa-bell fa-xl"style="color: rgb(98, 9, 240); display: flex;"></i>
+            <i id="notifyBell" class="fa-solid fa-bell fa-xl" style="color: rgb(244, 231, 157); display: flex;"></i>
             <span id="notifyCount" class="notify-bubble">1</span>
            </div>
           
-            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(164, 63, 164);"></i>
-            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(164, 63, 164);"></i></button>
+            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(104, 93, 104);"></i>
+            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(248, 247, 248);"></i></button>
         </div>
     </div>
 
@@ -1252,15 +1254,19 @@ width: 40px;
     <div class="menu-user">
     <img src="./bookmeassets/b3213a26-b2cd-4b52-a4aa-376ecf9cd365.jpeg" alt="Jhon Michel" style="border-radius: 50%; width: 60px; height: 60px; object-fit: cover;">
     </div>
-    <div class="menu-auth-actions">
-      <a href="login.html"><button class="auth-btn sign-in-btn" type="button">Sign in</button></a>
-      <a href="logout.html"><button class="auth-btn sign-out-btn" type="button">Sign out</button></a>
-    </div>
+  
     <a href="#"> <i class="fa-solid fa-bookmark fa-sm" style="color: rgb(249, 249, 250);"></i>Saved</a>
     <a href="#"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(253, 253, 254);"></i>Friends</a>
     <a href="#"><i class="fa-solid fa-comment fa-sm" style="color: rgb(246, 245, 247);"></i>Chat</a>
     <a href="#"><i class="fa-solid fa-cog fa-sm" style="color: rgb(255, 254, 254);"></i>Settings</a>
+
+      <div class="menu-auth-actions">
+      <a href="login.html"><button class="auth-btn sign-in-btn" type="button">Sign in</button></a>
+      <a href="logout.html"><button class="auth-btn sign-out-btn" type="button">Sign out</button></a>
+    </div>
 </div>
+
+ 
 
  <div id="searchSheet" class="sheet">
   <div class="sheet-header">
@@ -1289,7 +1295,7 @@ width: 40px;
   <p id="adStatusLabel" style="float: right; margin-right: 8px; color: gray;">Contains ads <i class="fa-solid fa-bullhorn fa-sm" style="color: rgb(0, 0, 0);"></i></p>
     
   <div class="ipost-text" id="ipostText">
-    <h3><i class="fa-solid fa-brain fa-lg" style="color: rgb(252, 151, 161);"></i> Real Madrid</h3>
+    <h3>Danger of consuming alcohol</h3>
     <p>I wanna talk about the danger of consuming alcohol. 
       Alcohol can impair judgment, coordination, and reaction times, leading to accidents and risky behavior.
        It can also have long-term effects on physical and mental health, including liver damage, addiction, and cognitive decline.
@@ -1339,77 +1345,17 @@ width: 40px;
   <img src="./bookmeassets/AI logo (1).png" width="38px" height="28px"
        style="border-radius: 50%; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: none; background: transparent;">
 </button>
-       <i class="fa-solid fa-comment fa-lg" style="color: rgb(177, 151, 252);"></i>
+       <i class="fa-solid fa-comment fa-lg" style="color: rgb(251, 251, 251);"></i>
       <button class="like-btn">
-        <i class="fa-solid fa-thumbs-up fa-lg" style="color: rgb(177, 151, 252);"></i>
-        <i class="fa-solid fa-thumbs-down fa-lg" style="color: rgb(177, 151, 252);"></i>
+        <i class="fa-solid fa-thumbs-up fa-lg" style="color: rgb(0, 0, 0);"></i>
+        <i class="fa-solid fa-thumbs-down fa-lg" style="color: rgb(1, 1, 1);"></i>
       </button>
   </div>
 </div>
 
     
-<div class="ipostcard" style="float: right;">
-  <img id="jhonimage" src="./bookmeassets/b3213a26-b2cd-4b52-a4aa-376ecf9cd365.jpeg" alt="Jhon Michel">
-  <p id="adStatusLabel" style="float: right; margin-right: 8px; color: gray;">Contains ads <i class="fa-solid fa-bullhorn fa-sm" style="color: rgb(0, 0, 0);"></i></p>
-    
-  <div class="ipost-text" id="ipostText">
-    <h3><i class="fa-solid fa-brain fa-lg" style="color: rgb(252, 151, 161);"></i> Real Madrid</h3>
-    <p>I wanna talk about the danger of consuming alcohol. 
-      Alcohol can impair judgment, coordination, and reaction times, leading to accidents and risky behavior.
-       It can also have long-term effects on physical and mental health, including liver damage, addiction, and cognitive decline.
-        It's important to consume alcohol responsibly and be aware of its potential dangers.
-    </p>
 
-  </div>
 
-  <button class="readmore-btn" id="readMoreIpost">Read more</button>
-
-  
-
-  <div id="adPopup" class="ad-popup">
-    <div class="ad-video-container">
-      <video id="ad-video" src="./bookmeassets/VID-20260729-WA0067.mp4" autoplay muted playsinline></video>
-
-      <div class="ad-actions">
-        <button class="visit-btn">
-          Visit <i class="fa-solid fa-arrow-up-right-from-square fa-lg" style="color: rgb(255, 255, 255);"></i>
-        </button>
-        <button class="shopnow-btn">
-          Shop
-        </button>
-        <button id="skipAdBtn" style="position:absolute; top: -150px; right:10px; background:rgba(0,0,0,0.6); color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:14px;">
-          Skip in 5
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div class="actions">
-      <div class="lang-wrapper">
-        <button class="translate-btn">Translate<i id="langBtn" class="fa-solid fa-language"></i></button>
-        
-
-      <div id="langDropdown" class="lang-dropdown">
-         <div data-lang="en">English</div>
-         <div data-lang="fr">French</div>
-         <div data-lang="de">German</div>
-         <div data-lang="es">Spanish</div>
-        <div data-lang="pt">Portuguese</div>
-        <div data-lang="zh">Mandarin</div>
-     </div>
- </div>
-
-<button id="aiBtn" aria-label="Open AI assistant">
-  <img src="./bookmeassets/AI logo (1).png" width="38px" height="28px"
-       style="border-radius: 50%; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: none; background: transparent;">
-</button>
-       <i class="fa-solid fa-comment fa-lg" style="color: rgb(177, 151, 252);"></i>
-      <button class="like-btn">
-        <i class="fa-solid fa-thumbs-up fa-lg" style="color: rgb(177, 151, 252);"></i>
-        <i class="fa-solid fa-thumbs-down fa-lg" style="color: rgb(177, 151, 252);"></i>
-      </button>
-  </div>
-</div>
 
 <!-- Create a Post Slide-Up Sheet -->
 <div id="writePostSheet" class="write-post-sheet">
@@ -1496,16 +1442,16 @@ width: 40px;
         <div class="footer-plus-menu">
                <div id="footerIconMenu" class="footer-icon-menu">
                   <div class="left-icons">
-                   <i id="userSheetBtn" class="fa-solid fa-user fa-xl" style="color: rgb(255, 255, 255);"></i>
-                    <a href="message.html"><i class="fa-solid fa-envelope fa-xl" style="color: rgb(255, 255, 255);"></i></a>
+                   <i id="userSheetBtn" class="fa-solid fa-user fa-xl" style="color: rgb(0, 0, 0);"></i>
+                    <a href="message.html"><i class="fa-solid fa-envelope fa-xl" style="color: rgb(0, 0, 0);"></i></a>
                 </div>
 
             <div class="right-icons">
               <button id="uploadMediaBtn" class="footer-action-btn" type="button" aria-label="Upload media">
-                <i class="fa-solid fa-image fa-xl" style="color: rgb(255, 255, 255);"></i>
+                <i class="fa-solid fa-image fa-xl" style="color: rgb(0, 0, 0);"></i>
               </button>
               <button id="writePostBtn" class="footer-action-btn" type="button" aria-label="Write post">
-                <i class="fa-solid fa-pen fa-xl" style="color: rgb(255, 255, 255 );"></i>
+                <i class="fa-solid fa-pen fa-xl" style="color: rgb(0, 0, 0);"></i>
               </button>
             </div>
          </div>
