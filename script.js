@@ -322,4 +322,146 @@ if (footerPlusBtn && footerIconMenu) {
   });
 }
 
+const aiBtn = document.getElementById("aiBtn");
+const aiSheet = document.getElementById("aiSheet");
+const closeAiSheet = document.getElementById("closeAiSheet");
+const aiSummaryResult = document.getElementById("aiSummaryResult");
+const uploadMediaBtn = document.getElementById("uploadMediaBtn");
+const uploadSheet = document.getElementById("uploadSheet");
+const closeUploadSheet = document.getElementById("closeUploadSheet");
+const mediaInput = document.getElementById("mediaInput");
+const uploadFilesBtn = document.getElementById("uploadFilesBtn");
+const submitFilesBtn = document.getElementById("submitFilesBtn");
+const previewContainer = document.getElementById("previewContainer");
+
+function getCurrentPostText() {
+  const postContainer = document.getElementById("ipostText");
+  if (!postContainer) return "";
+
+  const paragraph = postContainer.querySelector("p");
+  return (paragraph ? paragraph.textContent : postContainer.textContent).trim();
+}
+
+function setAiSummaryLoading() {
+  if (!aiSummaryResult) return;
+
+  aiSummaryResult.innerHTML = `
+    <strong>Summary</strong>
+    <div class="ai-summary-loading">
+      <span class="summary-spinner"></span>
+      <span>Generating summary...</span>
+    </div>
+  `;
+}
+
+async function populateAiSummary() {
+  if (!aiSummaryResult) return;
+
+  const content = getCurrentPostText();
+  if (!content) {
+    aiSummaryResult.innerHTML = "<strong>Summary</strong><div class='ai-summary-output'>No post text available.</div>";
+    return;
+  }
+
+  setAiSummaryLoading();
+
+  try {
+    const response = await fetch("/api/summarize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: content })
+    });
+
+    const data = await response.json();
+    const summary = data?.summary || "Unable to generate a summary.";
+
+    aiSummaryResult.innerHTML = `
+      <strong>Summary</strong>
+      <div class="ai-summary-output">${summary}</div>
+    `;
+  } catch (error) {
+    console.error("AI summary error:", error);
+    aiSummaryResult.innerHTML = `
+      <strong>Summary</strong>
+      <div class="ai-summary-output">Unable to generate summary right now.</div>
+    `;
+  }
+}
+
+if (aiBtn && aiSheet) {
+  aiBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+
+    if (footerIconMenu) {
+      footerIconMenu.classList.remove("show");
+    }
+
+    aiSheet.classList.add("show");
+    populateAiSummary();
+  });
+}
+
+if (closeAiSheet && aiSheet) {
+  closeAiSheet.addEventListener("click", () => {
+    aiSheet.classList.remove("show");
+  });
+}
+
+if (uploadMediaBtn && uploadSheet) {
+  uploadMediaBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+
+    if (footerIconMenu) {
+      footerIconMenu.classList.remove("show");
+    }
+
+    uploadSheet.classList.add("show");
+
+    if (mediaInput) {
+      mediaInput.click();
+    }
+  });
+}
+
+if (closeUploadSheet && uploadSheet) {
+  closeUploadSheet.addEventListener("click", () => {
+    uploadSheet.classList.remove("show");
+  });
+}
+
+if (mediaInput && previewContainer) {
+  mediaInput.addEventListener("change", () => {
+    const files = Array.from(mediaInput.files || []);
+
+    if (!files.length) {
+      previewContainer.innerHTML = "";
+      return;
+    }
+
+    previewContainer.innerHTML = files
+      .map(file => `<div class="preview-item">${file.name}</div>`)
+      .join("");
+  });
+}
+
+if (uploadFilesBtn && mediaInput) {
+  uploadFilesBtn.addEventListener("click", () => {
+    mediaInput.click();
+  });
+}
+
+if (submitFilesBtn && uploadSheet) {
+  submitFilesBtn.addEventListener("click", () => {
+    const files = mediaInput ? mediaInput.files : null;
+
+    if (!files || files.length === 0) {
+      alert("Please choose a file first.");
+      return;
+    }
+
+    alert(`Selected ${files.length} file(s) ready to upload.`);
+    uploadSheet.classList.remove("show");
+  });
+}
+
 
