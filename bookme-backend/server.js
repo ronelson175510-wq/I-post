@@ -135,6 +135,60 @@ app.post("/api/translate", async (req, res) => {
   });
 });
 
+app.post("/api/summarize", async (req, res) => {
+  const { text } = req.body || {};
+
+  if (!text || !String(text).trim()) {
+    return res.status(400).json({ error: "Missing text to summarize" });
+  }
+
+  const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
+  const model = process.env.OLLAMA_MODEL || "llama3.2";
+  const prompt = `Summarize this in exactly one clear sentence, under 22 words, natural English, no repeated words or phrases, and no bullet points.\n\nText:\n${String(text).slice(0, 5000)}`;
+
+  try {
+    const response = await fetch(`${ollamaUrl}/api/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        prompt,
+        stream: false,
+        options: {
+          temperature: 0.3,
+          top_p: 0.8
+        }
+      })
+    });
+
+    const data = await response.json();
+    const summary = String(data?.response || "").replace(/\s+/g, " ").trim();
+
+    if (summary) {
+      return res.json({ summary });
+    }
+
+    throw new Error("Empty summary from Ollama");
+  } catch (error) {
+    console.warn("OLLAMA SUMMARY ERROR:", error.message);
+
+    const fallback = String(text)
+      .split(/[.!?]+/)
+      .map(sentence => sentence.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    return res.json({
+      summary: fallback.length > 0 ? fallback : "No content available to summarize."
+    });
+  }
+});
+
 app.post("/api/posts", upload.single("file"), (req, res) => {
   if (!isDbEnabled()) {
     return res.status(503).json({
