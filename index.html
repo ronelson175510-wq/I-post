@@ -106,7 +106,10 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            border-bottom: 1.5px solid transparent;
+          
             
+
             border-bottom-left-radius: 12px;
            border-bottom-right-radius: 12px;
                  
@@ -1452,8 +1455,8 @@ width: 30px;
   top: 38px;
   width: 29px;
   height: 26px;
-  border-left: 1.5px solid rgb(255, 255, 255);
-  border-bottom: 1.5px solid rgb(255, 255, 255);
+  border-left: 1.5px solid white;
+  border-bottom: 1.5px solid white;
   border-bottom-left-radius: 16px;
   background: transparent;
   z-index: -1;
@@ -1623,7 +1626,7 @@ width: 30px;
 .text-only-post {
   
   float: left;
-  background: #fffdf8;
+  
  
 }
 
@@ -1779,8 +1782,9 @@ width: 30px;
 
 .feed-post-card .feed-actions {
   margin-top: 0;
-  background: rgb(233, 232, 232);
+  background: rgb(255, 255, 255);
   border-top: 1.5px solid rgba(0,0,0,0.08);
+  border-bottom: 1.5px solid rgba(0,0,0,0.08);
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
   padding: 8px 10px 10px;
@@ -2572,7 +2576,7 @@ width: 30px;
      
        
         <div class="header-icons">
-          
+          <i class="fa-brands fa-discourse fa-lg" style="color: rgb(109, 108, 111);"></i>
            <div class="notification-bell"> 
             <i id="notifyBell" class="fa-solid fa-bell fa-xl" style="color: rgb(246, 224, 30); display: flex;"></i>
             <span id="notifyCount" class="notify-bubble">1</span>
