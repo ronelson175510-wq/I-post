@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="script.js" defer></script>
     <style>
         * {
             margin: 0;
@@ -17,7 +21,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(circle at top, #2a1f42 0%, #120f1c 30%, #050507 100%);
+            background: radial-gradient(circle at top, #ffffff 0%, #dddc97 10%, #efe302 100%);
             font-family: Arial, sans-serif;
             color: #f5f5f5;
         }
@@ -26,7 +30,7 @@
             width: min(360px, calc(100vw - 32px));
             padding: 30px 24px 22px;
             border-radius: 24px;
-            background: rgba(17, 17, 23, 0.85);
+            background: rgba(255, 255, 255, 0.85);
             border: 1px solid rgba(177, 151, 252, 0.4);
             box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
             text-align: center;
@@ -35,9 +39,37 @@
 
         .login-container h2 {
             margin-bottom: 22px;
-            color: #f3f0ff;
+            color: #030303;
             font-size: 28px;
             letter-spacing: 0.5px;
+        }
+
+        .login-language-wrap {
+            margin: -10px 0 8px;
+            text-align: left;
+        }
+
+        .login-language-wrap label {
+            display: block;
+            
+            margin-right: 13px;
+            color: #111;
+            font-size: 13px;
+            font-weight: 700;
+            float: right;
+        }
+
+        .login-language-wrap select {
+            width: 30%;
+            margin-top: -28px;
+            padding: 6px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(177, 151, 252, 0.35);
+            background: rgba(255, 255, 255, 0.9);
+            color: #111;
+            font-size: 14px;
+            float: right;
+            outline: none;
         }
 
         .login-container input {
@@ -47,18 +79,18 @@
             border-radius: 12px;
             border: 1px solid rgba(177, 151, 252, 0.35);
             background: rgba(255, 255, 255, 0.04);
-            color: white;
+            color: rgb(10, 10, 10);
             font-size: 14px;
             outline: none;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .login-container input::placeholder {
-            color: rgba(255,255,255,0.6);
+            color: black;
         }
 
         .login-container input:focus {
-            border-color: #b79aff;
+            border-color: #0b0b0b;
             box-shadow: 0 0 0 3px rgba(183, 154, 255, 0.18);
         }
 
@@ -67,11 +99,12 @@
             padding: 13px 12px;
             margin-top: 16px;
             border-radius: 12px;
-            background: white;
-            color: black;
+            background: rgb(0, 0, 0);
+            color: rgb(253, 252, 252);
             border: none;
             cursor: pointer;
             font-size: 16px;
+             font-family: comic sans ms, sans-serif;
             font-weight: 600;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             box-shadow: 0 10px 22px rgba(124, 58, 237, 0.28);
@@ -92,6 +125,44 @@
 
         .login-container a:hover {
             text-decoration: underline;
+        }
+
+        #welcomeMessage { 
+             color: rgb(249, 245, 3);
+            letter-spacing: 2px;
+            font-weight: 700;
+            font-size: 18px;
+           
+            font-family: comic sans ms, sans-serif;
+            text-shadow: black 1px 1px 2px, black 1px 1px 2px;
+        }
+
+        .forgotPassword {
+            text-align: center;
+            background-color: transparent;
+            padding: 10px 0;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 12px;
+        }
+
+        #forgotPasswordBtn {
+            width: auto !important;
+            margin-top: 12px;
+            background: transparent !important;
+            border: none !important;
+            color: #040404 !important;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: 'Times New Roman', Times, serif;
+            box-shadow: none !important;
+            padding: 0 !important;
+            display: inline-block;
+        }
+
+        #forgotPasswordBtn:hover {
+            text-decoration: underline;
+            transform: none !important;
+            box-shadow: none !important;
         }
 
         /* Signup Overlay */
@@ -115,7 +186,7 @@
             transform: translate(-50%, -50%);
             width: min(360px, calc(100vw - 28px));
             max-height: 500px;
-            background: rgba(16, 16, 22, 0.96);
+            background: white;
             border: 1px solid rgba(177, 151, 252, 0.5);
             padding: 40px 24px 26px;
             border-radius: 22px;
@@ -155,7 +226,7 @@
 
         .slide h2 {
             margin-bottom: 20px;
-            color: #f3f0ff;
+            color: #020202;
         }
 
         .slide input,
@@ -167,7 +238,7 @@
             border-radius: 12px;
             font-size: 14px;
             background: rgba(255, 255, 255, 0.04);
-            color: white;
+            color: rgb(2, 2, 2);
             outline: none;
         }
 
@@ -191,7 +262,7 @@
             transform: translateY(-50%);
             background: transparent;
             border: none;
-            color: rgba(255,255,255,0.8);
+            color: rgba(5, 5, 5, 0.8);
             cursor: pointer;
             font-size: 16px;
             line-height: 1;
@@ -216,7 +287,7 @@
 
         .slide input::placeholder,
         .slide select {
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(2, 2, 2, 0.7);
         }
 
         .slide button {
@@ -302,59 +373,171 @@
             text-decoration: underline;
         }
 
+        /*terms of service and privacy policy styles*/
+
+        .terms-of-service {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .terms-of-service a {
+            color: #080808;
+            text-decoration: underline;
+        }
+
+        .legal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(8, 8, 12, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: none;
+        }
+
+        .legal-sheet {
+            position: fixed;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%) translateY(calc(100% + 18px));
+            width: min(420px, calc(100vw - 18px));
+            height: calc(100vh - 18px);
+            max-height: none;
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 26px 26px 0 0;
+            box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.2);
+            padding: 16px 18px 24px;
+            z-index: 1001;
+            transition: transform 0.35s ease;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .legal-sheet::-webkit-scrollbar {
+            display: none;
+        }
+
+        .legal-sheet.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .legal-sheet .sheet-handle {
+            width: 54px;
+            height: 6px;
+            background: #d6d3d1;
+            border-radius: 99px;
+            margin: 0 auto 14px;
+        }
+
+        .legal-sheet-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .legal-sheet-header h3 {
+            color: #111;
+            font-size: 22px;
+            margin: 0;
+        }
+
+        .legal-close-btn {
+            background: transparent;
+            border: none;
+            color: #111;
+            font-size: 28px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .legal-content {
+            color: #272727;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .legal-content p {
+            margin-bottom: 12px;
+        }
+
+        .contact-btn {
+    
+  flex: 1;
+  padding: 12px;
+  background: rgb(238, 242, 5);
+  color: rgb(0, 0, 0);
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
     </style>
 </head>
 <body>
 
     <div id="signupOverlay" onclick="closeSignupSlides()"></div>
+    <div id="legalOverlay" class="legal-overlay" onclick="closeLegalSheet()"></div>
+
+    <div id="legalSheet" class="legal-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <div class="legal-sheet-header">
+            <h3 id="legalTitle">Legal</h3>
+            <button id="closeLegalSheetBtn" class="legal-close-btn" type="button" aria-label="Close legal sheet">×</button>
+        </div>
+        <div id="legalContent" class="legal-content"></div>
+    </div>
 
     <div id="signupSlides" onclick="event.stopPropagation()">
         <div id="closeSignup" onclick="closeSignupSlides()">✖</div>
 
         <!-- Slide 1 -->
         <div class="slide activeSlide" id="slide1">
-            <h2>Create Account</h2>
-            <input id="nameInput" placeholder="Full Name">
-            <input id="emailInput" placeholder="Email">
+            <h2 data-i18n-login="createAccount">Create Account</h2>
+            <input id="nameInput" data-i18n-login-placeholder="fullNamePlaceholder" placeholder="Full Name">
+            <input id="emailInput" data-i18n-login-placeholder="loginEmailPlaceholder" placeholder="Email">
             <div class="password-wrap">
-                <input id="passwordInput" type="password" placeholder="Password">
+                <input id="passwordInput" type="password" data-i18n-login-placeholder="passwordPlaceholder" placeholder="Password">
                 <button type="button" class="toggle-password" onclick="togglePasswordVisibility()" aria-label="Show passwords" style="background: none; border: none; cursor: pointer;">👁️</button>
             </div>
-            <button onclick="nextSlide(2)">Next →</button>
+            <button onclick="nextSlide(2)" data-i18n-login="next">Next →</button>
         </div>
 
         <!-- Slide 2 -->
         <div class="slide" id="slide2">
-            <h2>Verify your email</h2>
+            <h2 data-i18n-login="verifyEmail">Verify your email</h2>
             <p style="color: rgba(255,255,255,0.75); margin-bottom: 12px; font-size: 14px; text-align: center; line-height: 1.5;">
                 We sent a verification code to your email. Enter it below to continue.
             </p>
-            <input id="verifyCodeInput" placeholder="Enter verification code">
+            <input id="verifyCodeInput" data-i18n-login-placeholder="verifyCodePlaceholder" placeholder="Enter verification code">
             <div class="button-group">
-                <button onclick="nextSlide(1)">← Back</button>
-                <button onclick="nextSlide(3)">Next →</button>
+                <button onclick="nextSlide(1)" data-i18n-login="back">← Back</button>
+                <button onclick="nextSlide(3)" data-i18n-login="next">Next →</button>
             </div>
         </div>
 
         <!-- Slide 3 -->
         <div class="slide" id="slide3">
-            <h2>Personal Info</h2>
+            <h2 data-i18n-login="personalInfo">Personal Info (optional)</h2>
             <select id="sexInput">
-                <option value="">Select Sex</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="" data-i18n-login="selectSex">Select Sex</option>
+                <option value="male" data-i18n-login="male">Male</option>
+                <option value="female" data-i18n-login="female">Female</option>
+                <option value="other" data-i18n-login="other">Other</option>
             </select>
             <input id="dobInput" type="date">
             <div class="button-group">
-                <button onclick="nextSlide(2)">← Back</button>
-                <button onclick="nextSlide(4)">Next →</button>
+                <button onclick="nextSlide(2)" data-i18n-login="back">← Back</button>
+                <button onclick="nextSlide(4)" data-i18n-login="skip">Skip →</button>
             </div>
         </div>
 
         <!-- Slide 4 -->
         <div class="slide" id="slide4">
-            <h2>Profile Picture</h2>
+            <h2 data-i18n-login="profilePicOptional">Profile Picture(optional)</h2>
             <div class="profile-pic-section">
                 <div class="profile-pic-placeholder" id="profilePicPlaceholder" onclick="document.getElementById('profilePicInput').click()">
                     👤
@@ -365,28 +548,52 @@
                 <input id="profilePicInput" type="file" accept="image/*" onchange="previewProfilePic()">
             </div>
             <div class="button-group" style="margin-top: 30px;">
-                <button onclick="nextSlide(3)">← Back</button>
-                <button onclick="finishSignup()">Finish</button>
+                <button onclick="nextSlide(3)" data-i18n-login="back">← Back</button>
+                <button onclick="finishSignup()" data-i18n-login="finish">Finish</button>
             </div>
         </div>
     </div>
 
     <div class="login-container">
-        <h2>Welcome to Myspot</h2>
 
-        <input id="loginEmail" type="email" placeholder="Email">
+         <div class="login-language-wrap" style="margin-top: -18px; ">
+            <select id="loginLanguageSelect" aria-label="Select language" style="margin-top: 0; width: 34%;">
+                <option value="en">English</option>
+                <option value="hi">हिन्दी</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+                <option value="ru">Русский</option>
+                <option value="pt">Português</option>
+                <option value="ar">العربية</option>
+                <option value="zh">中文</option>
+                <option value="bn">বাংলা</option>
+                <option value="ur">اردو</option>
+            </select>
+        </div>
+
+        <h2 id="welcomeMessage" data-i18n-login="welcome" style="margin-top: 35px;">Welcome to CHAT-MINI</h2>
+
+        <input id="loginEmail" type="email" data-i18n-login-placeholder="loginEmailPlaceholder" placeholder="Email">
         <div class="password-wrap login-password-wrap">
-            <input id="loginPassword" type="password" placeholder="Password">
+            <input id="loginPassword" type="password" style="color: black;" data-i18n-login-placeholder="loginPasswordPlaceholder" placeholder="Password">
             <button type="button" class="toggle-password login-toggle-password" onclick="toggleLoginPasswordVisibility()" aria-label="Show password">👁️</button>
         </div>
 
-        <button id="loginBtn">Log In 
+        <button id="loginBtn" data-i18n-login="login">Log In 
         </button>  
-        <button onclick="showSignupSlides()">Sign Up</button>
-        <a href="" style="margin-bottom: 62px;">Forgot Password?</a>
+        <button onclick="showSignupSlides()" data-i18n-login="signUp">Sign Up</button>
+        <div class="forgotPassword">
+            <button id="forgotPasswordBtn" type="button" data-i18n-login="forgotPassword">Forgot Password?</button>
+        </div>
+
+        <p class="terms-of-service">
+            <span data-i18n-login="bySigningUp">By signing up, you agree to our</span> <a href="#" id="termsLink" data-i18n-login="termsOfService">Terms of Service</a> <span data-i18n-login="and">and</span> <a href="#" id="privacyLink" data-i18n-login="privacyPolicy">Privacy Policy</a>.
+        </p>
 
         <p id="loginMessage"></p>
     </div>
+
+ 
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -402,11 +609,538 @@
             measurementId: "G-M8PGSMBP97"
         };
 
+        const TRANSLATIONS = {
+            en: {
+                settings: "Settings",
+                report: "Report",
+                friends: "Friends",
+                chat: "Chat",
+                signOut: "Sign out",
+                privacyPolicy: "Privacy Policy",
+                termsOfService: "Terms of Service",
+                firstName: "First name",
+                lastName: "Last name",
+                dob: "Date of birth",
+                email: "Email",
+                language: "Language",
+                saveProfile: "Save profile",
+                contactUs: "Contact us",
+                firstNamePlaceholder: "First name",
+                lastNamePlaceholder: "Last name",
+                emailPlaceholder: "Email",
+                search: "Search",
+                comments: "Comments",
+                noComments: "No comments yet.",
+                createPost: "Create a Post",
+                postPlaceholder: "Write something...",
+                post: "Post",
+                searchPlaceholder: "Search people or posts",
+                youMightLike: "We think you might like:",
+                uploadDescription: "Add a description or tag someone...",
+                upload: "Upload",
+                submit: "Submit",
+                login: "Log In",
+                signUp: "Sign Up",
+                forgotPassword: "Forgot Password?",
+                welcome: "Welcome to CHAT-MINI",
+                createAccount: "Create Account",
+                verifyEmail: "Verify your email",
+                personalInfo: "Personal Info (optional)",
+                profilePicOptional: "Profile Picture(optional)",
+                selectSex: "Select Sex",
+                male: "Male",
+                female: "Female",
+                other: "Other",
+                next: "Next →",
+                back: "← Back",
+                skip: "Skip →",
+                finish: "Finish",
+                bySigningUp: "By signing up, you agree to our",
+                and: "and",
+                showPassword: "Show password",
+                hidePassword: "Hide password",
+                loginEmailPlaceholder: "Email",
+                loginPasswordPlaceholder: "Password",
+                fullNamePlaceholder: "Full Name",
+                verifyCodePlaceholder: "Enter verification code",
+                passwordPlaceholder: "Password",
+                termsOfServiceText: "Terms of Service",
+                privacyPolicyText: "Privacy Policy"
+            },
+            hi: {
+                settings: "सेटिंग्स",
+                report: "रिपोर्ट",
+                friends: "दोस्त",
+                chat: "चैट",
+                signOut: "साइन आउट",
+                privacyPolicy: "गोपनीयता नीति",
+                termsOfService: "सेवा की शर्तें",
+                firstName: "पहला नाम",
+                lastName: "अंतिम नाम",
+                dob: "जन्म तिथि",
+                email: "ईमेल",
+                language: "भाषा",
+                saveProfile: "प्रोफ़ाइल सेव करें",
+                contactUs: "संपर्क करें",
+                firstNamePlaceholder: "पहला नाम",
+                lastNamePlaceholder: "अंतिम नाम",
+                emailPlaceholder: "ईमेल",
+                search: "खोज",
+                comments: "टिप्पणियाँ",
+                noComments: "अभी तक कोई टिप्पणी नहीं है।",
+                createPost: "पोस्ट बनाएं",
+                postPlaceholder: "कुछ लिखें...",
+                post: "पोस्ट",
+                searchPlaceholder: "लोगों या पोस्ट को खोजें",
+                youMightLike: "हमें लगता है आपको यह पसंद आ सकता है:",
+                uploadDescription: "एक विवरण जोड़ें या किसी को टैग करें...",
+                upload: "अपलोड",
+                submit: "सबमिट",
+                login: "लॉग इन",
+                signUp: "साइन अप",
+                forgotPassword: "पासवर्ड भूल गए?",
+                welcome: "CHAT-MINI में आपका स्वागत है",
+                createAccount: "अकाउंट बनाएं",
+                verifyEmail: "अपना ईमेल सत्यापित करें",
+                personalInfo: "व्यक्तिगत जानकारी (वैकल्पिक)",
+                profilePicOptional: "प्रोफ़ाइल फोटो (वैकल्पिक)",
+                selectSex: "लिंग चुनें",
+                male: "पुरुष",
+                female: "महिला",
+                other: "अन्य",
+                next: "अगला →",
+                back: "← वापस",
+                skip: "छोड़ें →",
+                finish: "समाप्त",
+                bySigningUp: "साइन अप करके, आप हमारी",
+                and: "और",
+                showPassword: "पासवर्ड दिखाएं",
+                hidePassword: "पासवर्ड छिपाएं",
+                loginEmailPlaceholder: "ईमेल",
+                loginPasswordPlaceholder: "पासवर्ड",
+                fullNamePlaceholder: "पूरा नाम",
+                verifyCodePlaceholder: "सत्यापन कोड दर्ज करें",
+                passwordPlaceholder: "पासवर्ड",
+                termsOfServiceText: "सेवा की शर्तें",
+                privacyPolicyText: "गोपनीयता नीति"
+            },
+            es: {
+                settings: "Configuración",
+                report: "Reporte",
+                friends: "Amigos",
+                chat: "Chat",
+                signOut: "Cerrar sesión",
+                privacyPolicy: "Política de privacidad",
+                termsOfService: "Términos del servicio",
+                firstName: "Nombre",
+                lastName: "Apellido",
+                dob: "Fecha de nacimiento",
+                email: "Correo",
+                language: "Idioma",
+                saveProfile: "Guardar perfil",
+                contactUs: "Contáctanos",
+                firstNamePlaceholder: "Nombre",
+                lastNamePlaceholder: "Apellido",
+                emailPlaceholder: "Correo",
+                search: "Buscar",
+                comments: "Comentarios",
+                noComments: "Aún no hay comentarios.",
+                createPost: "Crear una publicación",
+                postPlaceholder: "Escribe algo...",
+                post: "Publicar",
+                searchPlaceholder: "Buscar personas o publicaciones",
+                youMightLike: "Creemos que te podría gustar:",
+                uploadDescription: "Agrega una descripción o etiqueta a alguien...",
+                upload: "Subir",
+                submit: "Enviar",
+                login: "Iniciar sesión",
+                signUp: "Registrarse",
+                forgotPassword: "¿Olvidaste tu contraseña?",
+                welcome: "Bienvenido a CHAT-MINI",
+                createAccount: "Crear cuenta",
+                verifyEmail: "Verifica tu correo",
+                personalInfo: "Información personal (opcional)",
+                profilePicOptional: "Foto de perfil (opcional)",
+                selectSex: "Selecciona sexo",
+                male: "Masculino",
+                female: "Femenino",
+                other: "Otro",
+                next: "Siguiente →",
+                back: "← Atrás",
+                skip: "Omitir →",
+                finish: "Finalizar",
+                bySigningUp: "Al registrarte, aceptas nuestras",
+                and: "y",
+                showPassword: "Mostrar contraseña",
+                hidePassword: "Ocultar contraseña",
+                loginEmailPlaceholder: "Correo",
+                loginPasswordPlaceholder: "Contraseña",
+                fullNamePlaceholder: "Nombre completo",
+                verifyCodePlaceholder: "Ingresa el código de verificación",
+                passwordPlaceholder: "Contraseña",
+                termsOfServiceText: "Términos del servicio",
+                privacyPolicyText: "Política de privacidad"
+            },
+            fr: {
+                settings: "Paramètres",
+                report: "Signaler",
+                friends: "Amis",
+                chat: "Chat",
+                signOut: "Déconnexion",
+                privacyPolicy: "Politique de confidentialité",
+                termsOfService: "Conditions d'utilisation",
+                login: "Connexion",
+                signUp: "S'inscrire",
+                forgotPassword: "Mot de passe oublié ?",
+                welcome: "Bienvenue sur CHAT-MINI",
+                createAccount: "Créer un compte",
+                verifyEmail: "Vérifiez votre e-mail",
+                personalInfo: "Informations personnelles (optionnel)",
+                profilePicOptional: "Photo de profil (optionnel)",
+                selectSex: "Sélectionnez le sexe",
+                male: "Homme",
+                female: "Femme",
+                other: "Autre",
+                next: "Suivant →",
+                back: "← Retour",
+                skip: "Ignorer →",
+                finish: "Terminer",
+                bySigningUp: "En vous inscrivant, vous acceptez nos",
+                and: "et",
+                showPassword: "Afficher le mot de passe",
+                hidePassword: "Masquer le mot de passe",
+                loginEmailPlaceholder: "E-mail",
+                loginPasswordPlaceholder: "Mot de passe",
+                fullNamePlaceholder: "Nom complet",
+                verifyCodePlaceholder: "Entrez le code de vérification",
+                passwordPlaceholder: "Mot de passe",
+                language: "Langue",
+                termsOfServiceText: "Conditions d'utilisation",
+                privacyPolicyText: "Politique de confidentialité"
+            },
+            ru: {
+                settings: "Настройки",
+                report: "Жалоба",
+                friends: "Друзья",
+                chat: "Чат",
+                signOut: "Выйти",
+                privacyPolicy: "Политика конфиденциальности",
+                termsOfService: "Условия использования",
+                login: "Войти",
+                signUp: "Регистрация",
+                forgotPassword: "Забыли пароль?",
+                welcome: "Добро пожаловать в CHAT-MINI",
+                createAccount: "Создать аккаунт",
+                verifyEmail: "Подтвердите ваш email",
+                personalInfo: "Личная информация (по желанию)",
+                profilePicOptional: "Фото профиля (по желанию)",
+                selectSex: "Выберите пол",
+                male: "Мужской",
+                female: "Женский",
+                other: "Другое",
+                next: "Далее →",
+                back: "← Назад",
+                skip: "Пропустить →",
+                finish: "Готово",
+                bySigningUp: "Регистрируясь, вы соглашаетесь с нашими",
+                and: "и",
+                showPassword: "Показать пароль",
+                hidePassword: "Скрыть пароль",
+                loginEmailPlaceholder: "Электронная почта",
+                loginPasswordPlaceholder: "Пароль",
+                fullNamePlaceholder: "Полное имя",
+                verifyCodePlaceholder: "Введите код подтверждения",
+                passwordPlaceholder: "Пароль",
+                language: "Язык",
+                termsOfServiceText: "Условия использования",
+                privacyPolicyText: "Политика конфиденциальности"
+            },
+            pt: {
+                settings: "Configurações",
+                report: "Denunciar",
+                friends: "Amigos",
+                chat: "Chat",
+                signOut: "Sair",
+                privacyPolicy: "Política de privacidade",
+                termsOfService: "Termos de serviço",
+                login: "Entrar",
+                signUp: "Cadastrar",
+                forgotPassword: "Esqueceu sua senha?",
+                welcome: "Bem-vindo ao CHAT-MINI",
+                createAccount: "Criar conta",
+                verifyEmail: "Verifique seu e-mail",
+                personalInfo: "Informações pessoais (opcional)",
+                profilePicOptional: "Foto de perfil (opcional)",
+                selectSex: "Selecione o sexo",
+                male: "Masculino",
+                female: "Feminino",
+                other: "Outro",
+                next: "Próximo →",
+                back: "← Voltar",
+                skip: "Pular →",
+                finish: "Concluir",
+                bySigningUp: "Ao se inscrever, você concorda com nossos",
+                and: "e",
+                showPassword: "Mostrar senha",
+                hidePassword: "Ocultar senha",
+                loginEmailPlaceholder: "E-mail",
+                loginPasswordPlaceholder: "Senha",
+                fullNamePlaceholder: "Nome completo",
+                verifyCodePlaceholder: "Digite o código de verificação",
+                passwordPlaceholder: "Senha",
+                language: "Idioma",
+                termsOfServiceText: "Termos de serviço",
+                privacyPolicyText: "Política de privacidade"
+            },
+            ar: {
+                settings: "الإعدادات",
+                report: "إبلاغ",
+                friends: "الأصدقاء",
+                chat: "الدردشة",
+                signOut: "تسجيل الخروج",
+                privacyPolicy: "سياسة الخصوصية",
+                termsOfService: "شروط الخدمة",
+                login: "تسجيل الدخول",
+                signUp: "إنشاء حساب",
+                forgotPassword: "هل نسيت كلمة المرور؟",
+                welcome: "مرحبًا بك في CHAT-MINI",
+                createAccount: "إنشاء حساب",
+                verifyEmail: "تحقق من بريدك الإلكتروني",
+                personalInfo: "المعلومات الشخصية (اختياري)",
+                profilePicOptional: "صورة الملف الشخصي (اختياري)",
+                selectSex: "اختر الجنس",
+                male: "ذكر",
+                female: "أنثى",
+                other: "أخرى",
+                next: "التالي →",
+                back: "← رجوع",
+                skip: "تخطي →",
+                finish: "إنهاء",
+                bySigningUp: "بالتسجيل، فإنك توافق على",
+                and: "و",
+                showPassword: "إظهار كلمة المرور",
+                hidePassword: "إخفاء كلمة المرور",
+                loginEmailPlaceholder: "البريد الإلكتروني",
+                loginPasswordPlaceholder: "كلمة المرور",
+                fullNamePlaceholder: "الاسم الكامل",
+                verifyCodePlaceholder: "أدخل رمز التحقق",
+                passwordPlaceholder: "كلمة المرور",
+                language: "اللغة",
+                termsOfServiceText: "شروط الخدمة",
+                privacyPolicyText: "سياسة الخصوصية"
+            },
+            zh: {
+                settings: "设置",
+                report: "举报",
+                friends: "朋友",
+                chat: "聊天",
+                signOut: "退出",
+                privacyPolicy: "隐私政策",
+                termsOfService: "服务条款",
+                login: "登录",
+                signUp: "注册",
+                forgotPassword: "忘记密码？",
+                welcome: "欢迎来到 CHAT-MINI",
+                createAccount: "创建账户",
+                verifyEmail: "验证你的电子邮件",
+                personalInfo: "个人信息（可选）",
+                profilePicOptional: "头像（可选）",
+                selectSex: "选择性别",
+                male: "男",
+                female: "女",
+                other: "其他",
+                next: "下一步 →",
+                back: "← 返回",
+                skip: "跳过 →",
+                finish: "完成",
+                bySigningUp: "注册即表示你同意我们的",
+                and: "和",
+                showPassword: "显示密码",
+                hidePassword: "隐藏密码",
+                loginEmailPlaceholder: "电子邮件",
+                loginPasswordPlaceholder: "密码",
+                fullNamePlaceholder: "全名",
+                verifyCodePlaceholder: "输入验证码",
+                passwordPlaceholder: "密码",
+                language: "语言",
+                termsOfServiceText: "服务条款",
+                privacyPolicyText: "隐私政策"
+            },
+            bn: {
+                settings: "সেটিংস",
+                report: "রিপোর্ট",
+                friends: "বন্ধুরা",
+                chat: "চ্যাট",
+                signOut: "সাইন আউট",
+                privacyPolicy: "গোপনীয়তা নীতি",
+                termsOfService: "সেবার শর্তাবলী",
+                login: "লগইন",
+                signUp: "সাইন আপ",
+                forgotPassword: "পাসওয়ার্ড ভুলে গেছেন?",
+                welcome: "CHAT-MINI-এ স্বাগতম",
+                createAccount: "অ্যাকাউন্ট তৈরি করুন",
+                verifyEmail: "আপনার ইমেল যাচাই করুন",
+                personalInfo: "ব্যক্তিগত তথ্য (ঐচ্ছিক)",
+                profilePicOptional: "প্রোফাইল ছবি (ঐচ্ছিক)",
+                selectSex: "লিঙ্গ নির্বাচন করুন",
+                male: "পুরুষ",
+                female: "নারী",
+                other: "অন্যান্য",
+                next: "পরবর্তী →",
+                back: "← ফিরে যান",
+                skip: "এড়িয়ে যান →",
+                finish: "শেষ করুন",
+                bySigningUp: "সাইন আপ করে আপনি আমাদের",
+                and: "এবং",
+                showPassword: "পাসওয়ার্ড দেখান",
+                hidePassword: "পাসওয়ার্ড লুকান",
+                loginEmailPlaceholder: "ইমেল",
+                loginPasswordPlaceholder: "পাসওয়ার্ড",
+                fullNamePlaceholder: "পূর্ণ নাম",
+                verifyCodePlaceholder: "যাচাইকরণ কোড লিখুন",
+                passwordPlaceholder: "পাসওয়ার্ড",
+                language: "ভাষা",
+                termsOfServiceText: "সেবার শর্তাবলী",
+                privacyPolicyText: "গোপনীয়তা নীতি"
+            },
+            ur: {
+                settings: "سیٹنگز",
+                report: "رپورٹ",
+                friends: "دوست",
+                chat: "چیٹ",
+                signOut: "سائن آؤٹ",
+                privacyPolicy: "رازداری کی پالیسی",
+                termsOfService: "خدمات کی شرائط",
+                login: "لاگ ان",
+                signUp: "سائن اپ",
+                forgotPassword: "پاس ورڈ بھول گئے؟",
+                welcome: "CHAT-MINI میں خوش آمدید",
+                createAccount: "اکاؤنٹ بنائیں",
+                verifyEmail: "اپنا ای میل تصدیق کریں",
+                personalInfo: "ذاتی معلومات (اختیاری)",
+                profilePicOptional: "پروفائل تصویر (اختیاری)",
+                selectSex: "صنف منتخب کریں",
+                male: "مرد",
+                female: "عورت",
+                other: "دیگر",
+                next: "اگلا →",
+                back: "← واپس",
+                skip: "اسکپ →",
+                finish: "ختم",
+                bySigningUp: "سائن اپ کرکے، آپ ہماری",
+                and: "اور",
+                showPassword: "پاس ورڈ دکھائیں",
+                hidePassword: "پاس ورڈ چھپائیں",
+                loginEmailPlaceholder: "ای میل",
+                loginPasswordPlaceholder: "پاس ورڈ",
+                fullNamePlaceholder: "پورا نام",
+                verifyCodePlaceholder: "تصدیقی کوڈ درج کریں",
+                passwordPlaceholder: "پاس ورڈ",
+                language: "زبان",
+                termsOfServiceText: "خدمات کی شرائط",
+                privacyPolicyText: "رازداری کی پالیسی"
+            }
+        };
+
+        const LANGUAGE_KEY = "bookme_language";
+
+        function getPreferredLanguage() {
+            const saved = localStorage.getItem(LANGUAGE_KEY);
+            return Object.prototype.hasOwnProperty.call(TRANSLATIONS, saved) ? saved : "en";
+        }
+
+        function applyLoginTranslations(lang = getPreferredLanguage()) {
+            const dict = TRANSLATIONS[lang] || TRANSLATIONS.en;
+            const loginLanguageSelect = document.getElementById("loginLanguageSelect");
+
+            document.querySelectorAll("[data-i18n-login]").forEach((element) => {
+                const key = element.dataset.i18nLogin;
+                const value = dict[key] || TRANSLATIONS.en[key];
+
+                if (key === "language" && element.querySelector(".fa-language")) {
+                    const icon = element.querySelector(".fa-language");
+                    element.innerHTML = "";
+                    element.appendChild(icon);
+                    return;
+                }
+
+                if (value) {
+                    element.textContent = value;
+                }
+            });
+
+            document.querySelectorAll("[data-i18n-login-placeholder]").forEach((element) => {
+                const key = element.dataset.i18nLoginPlaceholder;
+                const value = dict[key] || TRANSLATIONS.en[key];
+                if (value) {
+                    element.placeholder = value;
+                }
+            });
+
+            const termsLink = document.getElementById("termsLink");
+            if (termsLink) {
+                termsLink.textContent = dict.termsOfServiceText || dict.termsOfService || "Terms of Service";
+            }
+
+            const privacyLink = document.getElementById("privacyLink");
+            if (privacyLink) {
+                privacyLink.textContent = dict.privacyPolicyText || dict.privacyPolicy || "Privacy Policy";
+            }
+
+            if (loginLanguageSelect) {
+                loginLanguageSelect.value = lang;
+            }
+
+            document.documentElement.lang = lang;
+            localStorage.setItem(LANGUAGE_KEY, lang);
+        }
+
+        const loginLanguageSelect = document.getElementById("loginLanguageSelect");
+        if (loginLanguageSelect) {
+            loginLanguageSelect.addEventListener("change", (event) => {
+                applyLoginTranslations(event.target.value);
+            });
+        }
+
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
 
+        applyLoginTranslations(getPreferredLanguage());
+
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                window.location.replace("index.html");
+            }
+        });
+
         const loginBtn = document.getElementById("loginBtn");
+        const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
         const loginMessage = document.getElementById("loginMessage");
+
+        forgotPasswordBtn.addEventListener("click", async () => {
+            const email = document.getElementById("loginEmail").value.trim();
+
+            if (!email) {
+                loginMessage.textContent = "Enter your email to receive a password reset link.";
+                return;
+            }
+
+            try {
+                await auth.sendPasswordResetEmail(email);
+                loginMessage.textContent = "Password reset email sent. Check your inbox.";
+            } catch (err) {
+                switch (err.code) {
+                    case "auth/invalid-email":
+                        loginMessage.textContent = "Invalid email address.";
+                        break;
+                    case "auth/user-not-found":
+                        loginMessage.textContent = "No account found for that email.";
+                        break;
+                    default:
+                        loginMessage.textContent = "Unable to send reset email.";
+                }
+            }
+        });
 
         // Login
         loginBtn.addEventListener("click", () => {
@@ -505,6 +1239,69 @@
             document.getElementById("signupSlides").style.display = "none";
             document.getElementById("signupOverlay").style.display = "none";
         }
+
+        const legalCopy = {
+            terms: `
+                <p><strong>Welcome to CHAT-MINI.</strong> By using this app, you agree to use it responsibly and lawfully.</p>
+                <p>You are responsible for the content you post, the accuracy of your information, and your interactions with other users.</p>
+                <p>We may remove content that violates our rules, including abusive, harmful, or inappropriate material.</p>
+                <p>Content containing nudity, explicit sexual material, or hateful or abusive language is not allowed.</p>
+                <p>Videos or posts that contain offensive, sexually explicit, or discriminatory language may be removed, and repeated violations may lead to account restrictions.</p>
+                <p>We reserve the right to delete your account and remove your content if these rules are violated or if you misuse the platform.</p>
+                <p>We reserve the right to update these terms as needed, and continued use of the app means you accept any updates.</p>
+            `,
+            privacy: `
+                <p><strong>We respect your privacy.</strong> We collect only the information needed to create and manage your account and provide the service.</p>
+                <p>This may include your name, email address, profile picture, and the content or media you upload.</p>
+                <p>We use your information to operate the app, maintain security, and improve your experience.</p>
+                <p>We do not sell personal data. We may share limited data with trusted providers required to run the app.</p>
+                <p>You can request account updates or deletion when supported by the platform.</p>
+                <p><strong>Cookies:</strong> We use cookies to enhance your experience and provide personalized content.</p>
+                <p>You can manage your cookie preferences through your browser settings.</p>
+                <p>By continuing to use the app, you consent to our use of cookies as described above.</p>
+                <p>For more details, please refer to our full Privacy Policy or contact us via email at team@chat-mini.com or join our live chat by clicking at this button 
+                    <button class="contact-btn" type="button" onclick="window.open('https://tawk.to/chat/6a9c86d527a69434428b7d76/1k1pmtctb?layout=modern', '_blank', 'noopener,noreferrer');">Contact us</button>.</p>
+            `
+        };
+
+        function openLegalSheet(type) {
+            const titleMap = {
+                terms: "Terms of Service",
+                privacy: "Privacy Policy"
+            };
+
+            const legalTitle = document.getElementById("legalTitle");
+            const legalContent = document.getElementById("legalContent");
+            const legalSheet = document.getElementById("legalSheet");
+            const legalOverlay = document.getElementById("legalOverlay");
+
+            legalTitle.textContent = titleMap[type] || "Legal";
+            legalContent.innerHTML = legalCopy[type] || legalCopy.terms;
+            legalSheet.classList.add("show");
+            legalOverlay.style.display = "block";
+        }
+
+        function closeLegalSheet() {
+            document.getElementById("legalSheet").classList.remove("show");
+            document.getElementById("legalOverlay").style.display = "none";
+        }
+
+        const legalParam = new URLSearchParams(window.location.search).get("legal");
+        if (legalParam === "terms" || legalParam === "privacy") {
+            openLegalSheet(legalParam);
+        }
+
+        document.getElementById("termsLink").addEventListener("click", (event) => {
+            event.preventDefault();
+            openLegalSheet("terms");
+        });
+
+        document.getElementById("privacyLink").addEventListener("click", (event) => {
+            event.preventDefault();
+            openLegalSheet("privacy");
+        });
+
+        document.getElementById("closeLegalSheetBtn").addEventListener("click", closeLegalSheet);
 
         function previewProfilePic() {
             const file = document.getElementById("profilePicInput").files[0];

@@ -5,24 +5,94 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Homepage</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="script.js" defer></script>
 
     <style>
         body{
-            background-color: white;
-            margin: 0;
-            padding: 0 0 420px;
-            box-sizing: border-box;
-            min-height: 100vh;
+          background-color: white;
+          margin: 0;
+          padding: 0 0 420px;
+          box-sizing: border-box;
+          min-height: 100vh;
         }
+
+        @media (min-width: 980px) {
+          body {
+            background: linear-gradient(180deg, #f8f8f8 0%, #f2f2f2 100%);
+          }
+
+          .header {
+            max-width: 1200px;
+            margin: 0 auto;
+            border-radius: 0 0 18px 18px;
+          }
+
+          .feed-posts {
+            max-width: 560px;
+            margin: 16px auto 0;
+            padding-right: 0;
+          }
+
+          .post-thread {
+            max-width: 540px;
+          }
+
+          .sidemenu {
+            left: auto;
+            right: 0;
+            width: 250px;
+            border-right: none;
+            border-left: 1px solid rgba(177, 151, 252, 0.5);
+            box-shadow: -8px 0 24px rgba(0, 0, 0, 0.2);
+          }
+
+          .closebtn {
+            display: none !important;
+          }
+        }
+            
 
         body::-webkit-scrollbar{
             display: none;
         }
 
+        .announcement{
+          background-color: yellow;
+          color: black;
+          width: 100%;
+          
+          
+         
+          
+        
+          font-weight: 600;
+          display: inline-block;
+        }
+
+        .announcement-text {
+          margin: 10px 6px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          line-height: 1.4;
+          flex-wrap: wrap;
+        }
+
+        .announcement-text-preview {
+          display: inline;
+          white-space: normal;
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+
+
+        
+
         .header{
-           background-color: black;
-            background-repeat: no-repeat;
+           background-color: white;
             background-size: cover;
             background-position: center;
             left: 0;
@@ -32,13 +102,12 @@
             font-size: 12px;
             font-family:'Times New Roman', Times, serif;
             overflow: hidden;
-            height: 52px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-sizing: border-box;
-            border-bottom-left-radius: 12px;
-            border-bottom-right-radius: 12px;
+            
+            
                  
            }
 
@@ -48,13 +117,13 @@
             left: 0;
             right: 0;
             bottom: 0;
-            height: 4px;
-            background-color: turquoise
+            height: 2px;
+            background-color: white;
            
         }
 
         .title-wrap{
-          margin-left: -10px;
+          margin-left: -7px;
             display: flex;
             align-items: center;
             float: left;
@@ -70,14 +139,14 @@
         }
 
         .title{
-            color: white;
+            color: rgb(249, 245, 3);
             letter-spacing: 2px;
             font-weight: 700;
-            font-size: 22px;
+            font-size: 18px;
             
-            font-family: 'Roboto', sans-serif;
-          
-          
+            font-family: comic sans ms, sans-serif;
+            text-shadow: black 1px 1px 2px, black 1px 1px 2px;
+
           
         }
 
@@ -86,7 +155,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            border:1.5px solid rgb(44, 44, 44);
+            
             float: right;
             border-radius: 12px;
             padding: 6px 10px;
@@ -107,10 +176,25 @@
             height: 28px;
             margin: 0;
             background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            border: 1.2px solid rgb(72, 71, 71);
             border-radius: 10px;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 8px rgba(0,0,0,0.18);
+            box-shadow: inset 0 1px 0 rgba(12, 12, 12, 0.12)0 2px 8px rgba(0,0,0,0.18);
             transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+        }
+
+        #searchBtn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            margin: 0;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.2px solid rgb(72, 71, 71);
+            border-radius: 10px;
+            box-shadow: inset 0 1px 0 rgba(12, 12, 12, 0.12), 0 2px 8px rgba(0,0,0,0.18);
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
         }
 
         .header-icons .openbtn {
@@ -121,7 +205,8 @@
         }
 
         .header-icons i:hover,
-        .header-icons .openbtn:hover {
+        .header-icons .openbtn:hover,
+        #searchBtn:hover {
             transform: translateY(-1px) scale(1.04);
             background: rgba(255, 255, 255, 0.14);
             border-color: rgba(255, 255, 255, 0.28);
@@ -168,12 +253,14 @@
   left: 0;
   bottom: -100%;
   width: 100%;
-  height: 98%;
+  height: 100%;
   background: white;
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
   transition: bottom 0.35s ease;
   z-index: 9999;
+  overflow: hidden;
+  border: 2.5px solid #060606;
 }
 
 .sheet.show {
@@ -184,6 +271,9 @@
   display: flex;
   justify-content: space-between;
   padding: 10px;
+  flex-shrink: 0;
+ 
+
 }
 
 .close-btn {
@@ -196,14 +286,24 @@
 .sheet-content {
   padding: 20px;
   margin-top: -60px;
+  height: calc(100% - 54px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sheet-content::-webkit-scrollbar {
+  display: none;
 }
 
 #searchInput {
-  width: 100%;
-  padding: 14px 1px;
+  width: 95%;
+  padding: 14px 12px;
   font-size: 17px;
   border-radius: 14px;
-  border: 2px solid rgb(125, 125, 126);
+  border: 2.5px solid #060606;
   outline: none;
   background: #faf7ff;
   color: #414141;
@@ -212,25 +312,103 @@
 
 #searchInput::placeholder {
   font-size: 16px;
-  color: rgb(45, 45, 46);
+  color: rgb(17, 17, 18);
   opacity: 1;
   font-style: italic;
+
+}
+
+#searchInput:focus {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(#faf7ff, #faf7ff) padding-box,
+    linear-gradient(90deg, #ffeb3b, #ff4d4d, #3b82f6, #22c55e, #f59e0b, #8b5cf6, #ec4899) border-box;
+  background-size: 200% 200%;
+  animation: borderFlow 2.5s linear infinite;
+}
+
+@keyframes borderFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
 }
 
 .search-video-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding: 0 14px 16px;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 0 10px 16px;
+  align-items: start;
 }
 
-.search-video-grid video {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
+.search-post-card {
+  background: rgb(190, 189, 189);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  min-width: 0;
+}
+
+.search-post-card video,
+.search-post-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
   display: block;
   background: #000;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.search-post-card .search-caption-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px 10px;
+}
+
+.search-post-card .search-user-avatar {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(239, 251, 9, 0.984);
+  background: linear-gradient(135deg, rgba(177, 151, 252, 0.18), rgba(255, 255, 255, 0.9));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.search-post-card .search-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.search-post-card .search-user-avatar i {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.search-post-card .search-caption {
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: #000000;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  flex: 1;
+  padding: 0;
+  margin: 0;
 }
 
 
@@ -253,35 +431,33 @@
 
 /* sidemenu css */
 
-.menu-user{
-  margin-top: -60px;
-  padding: 10px 20px;
-  background-color: #dfdfdf;
-  display: flex;
 
-  object-fit: cover;
-  border-bottom: 1.5px solid rgb(15, 15, 15);
- 
-}
-
-.menu-auth-actions {
-  background-color: white;
+.sidemenu-main {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 8px  10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 18px;
+  gap: 3px;
+  overflow: visible;
+  margin-bottom: 10px;
 }
 
+
 .auth-btn {
-  width: 100%;
-  border: none;
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  margin-top: -60px;
+  width: 88%;
+  text-align: center;
+      display: flex;
+    align-items: center;
+    gap: 32px;
+    padding: 14px 20px 14px 24px;
+    margin: 10px 16px;
+    text-decoration: none;
+    font-size: 21px;
+    color: #f0eef7;
+    border-radius: 14px;
+    transition: all 0.25s ease;
+    background: rgba(255, 255, 255, 0.04);
+   
 }
 
 .auth-btn:hover {
@@ -289,21 +465,18 @@
   opacity: 0.96;
 }
 
-.sign-in-btn {
-  background: turquoise;
-  color: white;
-  box-shadow: 0 8px 18px rgba(124, 58, 237, 0.26);
-}
+
 
 .sign-out-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(12, 12, 12, 0.12);
-  color: #111112;
+  text-align: center;
+  background: rgb(246, 226, 8);
+ border: 1.5px solid rgb(197, 196, 196);
+  color: #0a0a0a;
 }
 
 
         .sidemenu {
-    height: 100%;
+    height: 100vh;
     width: 0;
     position: fixed;
     z-index: 1;
@@ -312,13 +485,52 @@
     background: linear-gradient(180deg, rgba(16, 16, 16, 0.98), rgba(32, 32, 32, 0.97));
     box-shadow: 8px 0 24px rgba(0, 0, 0, 0.28);
     overflow-x: hidden;
+    overflow-y: auto;
     transition: 0.45s ease;
+    gap: 38px;
     padding-top: 70px;
     z-index: 9999;
     border-right: 1px solid rgba(177, 151, 252, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+.sidemenu-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 
 .sidemenu a {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    padding: 14px 20px 14px 24px;
+    margin: 10px 16px;
+    text-decoration: none;
+    font-size: 21px;
+    color: #f0eef7;
+    border-radius: 14px;
+    transition: all 0.25s ease;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sidemenu a:hover,
+.menu-settings-btn:hover {
+    background: linear-gradient(90deg, rgba(177, 151, 252, 0.24), rgba(255, 255, 255, 0.06));
+    transform: translateX(4px);
+    box-shadow: 0 8px 18px rgba(177, 151, 252, 0.15);
+}
+
+.sidemenu a i,
+.menu-settings-btn i {
+    width: 22px;
+    text-align: center;
+    color: rgb(177, 151, 252);
+}
+
+.menu-settings-btn {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -330,20 +542,94 @@
     border-radius: 14px;
     transition: all 0.25s ease;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1.5px solid rgb(70, 69, 69);
+    cursor: pointer;
+    font-family: inherit;
+    width: calc(100% - 32px);
+    text-align: left;
 }
 
-.sidemenu a:hover {
-    background: linear-gradient(90deg, rgba(177, 151, 252, 0.24), rgba(255, 255, 255, 0.06));
-    transform: translateX(4px);
-    box-shadow: 0 8px 18px rgba(177, 151, 252, 0.15);
+.sidemenu-profile {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 16px 10px;
+  margin-top: -52px;
 }
 
-.sidemenu a i {
-    width: 22px;
-    text-align: center;
-    color: rgb(177, 151, 252);
+.side-menu-profile-btn {
+  width: 54px;
+  height: 54px;
+  border: 2px solid rgba(246, 226, 8, 0.8);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
 }
+
+.side-menu-profile-avatar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.side-menu-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.side-menu-profile-avatar i {
+  font-size: 28px;
+  color: rgb(177, 151, 252);
+}
+
+.side-menu-user-name-btn {
+  background: transparent;
+  border: none;
+  color: #f4f3f8;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-legal {
+   
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    font-size: 12px;
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    color: rgb(238, 236, 236);
+    
+}
+
+.menu-legal p {
+    margin: 0;
+    white-space: nowrap;
+}
+
+
 
 .closebtn {
     position: absolute;
@@ -373,18 +659,73 @@
     transform: scale(1.15);
 }
 
+/* Repost sheet css*/
+
+.report-sheet {
+  position: fixed;
+  left: 0;
+  bottom: -100%;
+  width: 100%;
+  height: 45%;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+  transition: bottom 0.35s ease;
+  z-index: 9999;
+}
+
+.report-sheet.show {
+  bottom: 0;
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.sheet-drag {
+  width: 45px;
+  height: 6px;
+  background: #d0c2ff;
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
+  animation: dragPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes dragPulse {
+  0% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-4px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.7; }
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.sheet-content {
+  padding: 20px;
+}
+
 
         .ipostcard{
-            width: 96%;
+            width: 350px;
+            max-height: 320px;
+            left:10px;
+            
             box-sizing: border-box;
-            top: 10px;
+            margin-top: 1px;
             background-color: rgb(249, 250, 250); 
             border-radius: 12px;
             text-align: left;
             font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
             color: black;
             font-size: 16px;
-            margin-left: 5px;
+            
             border: 1px solid rgb(178, 171, 171);
             box-shadow: 0px 0px 10px 0px rgb(148, 144, 148);
             padding: 0;
@@ -403,6 +744,7 @@
   transition: max-height 0.4s ease;
   padding-left: 10px;
   padding-right: 10px;
+  
   box-sizing: border-box;
 }
 
@@ -497,9 +839,11 @@
 
 
         #jhonimage{
-          margin-top: 10px;
-width: 40px;               
-  height: 40px;
+          margin-bottom: -10px;
+          
+         
+width: 30px;               
+  height: 30px;
   border-radius: 50%;
   object-fit: cover;         
   box-shadow: 0 4px 10px rgba(0,0,0,0.15);
@@ -510,8 +854,8 @@ width: 40px;
         .actions{
           position: relative;
           box-sizing: border-box;
-          background-color: black;
-          border-top: 1.5px solid #ccc;
+          background-color: rgb(7, 7, 7);
+          border-top: 1.5px solid #dcdbdb;
           border-radius: 0 0 12px 12px;
           display: flex;
           align-items: center;
@@ -535,16 +879,36 @@ width: 40px;
 /*translation css*/
 
 .translate-btn{
-  background-color: white;
+  background-color: rgb(249, 249, 249);
   padding: 1px 8px;
   color: black;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  border:2px solid black;
+  border:2px solid rgb(10, 10, 10);
   border-radius: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
+.translate-btn:focus{
+    border: 2px solid transparent;
+  background:
+    linear-gradient(#faf7ff, #faf7ff) padding-box,
+    linear-gradient(90deg, #ffeb3b, #ff4d4d, #3b82f6, #22c55e, #f59e0b, #8b5cf6, #ec4899) border-box;
+  background-size: 200% 200%;
+  animation: borderFlow 2.5s linear infinite;
+}
+
+@keyframes borderFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+
 
         .lang-wrapper {
   position: relative;
@@ -568,6 +932,7 @@ width: 40px;
   box-shadow: 5px 5px 15px rgba(44, 38, 44, 0.3);
   padding: 8px 0;
   width: 150px;
+  z-index: 99999;
   
 }
 
@@ -583,14 +948,14 @@ width: 40px;
 
         .like-btn{
             background-color: white;
-            border:2.5px solid rgb(238, 219, 133);
+            border:2.5px solid rgb(0, 0, 0);
             border-radius: 12px;
-            padding: 1px 10px;
+            padding: 1px 11px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            min-width: 11px;
+            min-width: 14px;
             margin: 0;
         }
 
@@ -602,54 +967,23 @@ width: 40px;
             justify-content: center;
         }
 
-        #aiBtn {
-            background: transparent;
-            border: none;
-            padding: 0;
-            margin: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            border-radius: 50%;
-            outline: none;
-        }
+        .like-btn:focus{
+             border: 2px solid transparent;
+  background:
+    linear-gradient(#faf7ff, #faf7ff) padding-box,
+    linear-gradient(90deg, #ffeb3b, #ff4d4d, #3b82f6, #22c55e, #f59e0b, #8b5cf6, #ec4899) border-box;
+  background-size: 200% 200%;
+  animation: borderFlow 2.5s linear infinite;
+}
 
-        #aiBtn img {
-            display: block;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            object-fit: cover;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-            border: none;
-            background: transparent;
-        }
-
-        #aiBtn {
-            background: transparent;
-            border: none;
-            padding: 0;
-            margin: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            border-radius: 50%;
-            outline: none;
-        }
-
-        #aiBtn img {
-            display: block;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            object-fit: cover;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-            border: none;
-            background: transparent;
-        }
-
+@keyframes borderFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
     /*add css*/
 /* Write Post Sheet CSS */
 .write-post-sheet {
@@ -657,12 +991,13 @@ width: 40px;
   left: 0;
   bottom: -100%;
   width: 100%;
-  height: 45%;
+  height: 60%;
   background: white;
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
   transition: bottom 0.35s ease;
   z-index: 9999;
+  resize:none;
 }
 
 
@@ -738,142 +1073,6 @@ width: 40px;
   background: rgb(150, 120, 240);
 }
 
-/* AI Sheet CSS */
-
-.ai-sheet {
-  position: fixed;
-  left: 0;
-  bottom: -100%;
-  width: 100%;
-  height: 82%;
-  background: white;
-  border-radius: 20px 20px 0 0;
-
-  transition: bottom 0.35s ease;
-  z-index: 9999;
-}
-
-.ai-sheet.show {
-  bottom: 0;
-}
-
-.ai-sheet-content {
-  padding: 12px 18px 18px;
-}
-
-.ai-summary-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.ai-summary-header h3 {
-  margin: 0;
-  color: #1d1d1d;
-  font-size: 20px;
-}
-
-.ai-summary-badge {
-  background: linear-gradient(135deg, rgb(43, 42, 44), #313033);
-  color: white;
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.ai-input-text {
-  width: 100%;
-  min-height: 120px;
-  max-height: 160px;
-  resize: vertical;
-  border: 1px solid rgba(124, 58, 237, 0.3);
-  border-radius: 14px;
-  padding: 14px;
-  font-size: 14px;
-  line-height: 1.5;
-  background: rgba(255,255,255,0.8);
-  color: #222;
-  box-sizing: border-box;
-}
-
-.ai-summary-result {
-  margin-top: 14px;
-  background: linear-gradient(180deg, rgba(124, 58, 237, 0.08), rgba(236, 235, 235, 0.9));
-  border: 1px solid rgba(44, 44, 44, 0.18);
-  border-radius: 18px;
-  padding: 16px 16px 18px;
-  color: #2a2a2a;
-  font-size: 14px;
-  line-height: 1.7;
-  min-height: 110px;
-  box-shadow: 0 10px 22px rgba(124, 58, 237, 0.08);
-}
-
-.ai-summary-result::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -50%;
-    width: 50%;
-    height: 100%;
-
-    
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.6),
-        transparent
-    );
-
-    animation: glow-move 2s linear infinite;
-}
-
-
-@keyframes glow-move {
-    0% {
-        left: -50%;
-    }
-    100% {
-        left: 100%;
-    }
-}
-
-.ai-summary-result strong {
-  display: block;
-  margin-bottom: 8px;
-  color: #4c1d95;
-  font-size: 15px;
-  letter-spacing: 0.02em;
-}
-
-.ai-summary-loading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #3a2a4a;
-  font-weight: 600;
-  min-height: 32px;
-  padding-top: 2px;
-}
-
-.summary-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(124, 58, 237, 0.25);
-  border-top-color: #7c3aed;
-  border-radius: 50%;
-  animation: summarySpin 0.8s linear infinite;
-  display: inline-block;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.05);
-}
-
-@keyframes summarySpin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 .sheet-header {
   display: flex;
   justify-content: space-between;
@@ -905,6 +1104,130 @@ width: 40px;
 
 .sheet-content {
   padding: 20px;
+}
+
+
+/* Comments CSS */
+.comments-sheet {
+  position: fixed;
+  left: 0;
+  bottom: -100%;
+  width: 100%;
+  height: 92%;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  border-top: 1.5px solid rgba(0, 0, 0, 0.08);
+  transition: bottom 0.35s ease;
+  z-index: 9999;
+}
+
+.comments-sheet.show {
+  bottom: 0;
+}
+
+.comments-sheet-content {
+  padding: 12px 18px 18px;
+  height: calc(100% - 52px);
+  display: flex;
+  flex-direction: column;
+}
+
+.comments-header {
+  left: 50%;
+  top: 50%;
+  
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.comments-header h3 {
+  display: flex;
+  text-align: center;
+  align-items: center;
+  margin: 0;
+  color: #1d1d1d;
+  font-size: 20px;
+}
+
+.comment-input-wrap {
+  margin-bottom: 20px;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: auto;
+  padding: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 16px;
+  background: #fafafa;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.comment-input {
+  width: 100%;
+  box-sizing: border-box;
+  
+  min-height: 62px;
+  max-height: 110px;
+  resize: none;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 6px 1px 1px;
+  font-size: 14px;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background: transparent;
+  color: #1a1a1a;
+  outline: none;
+}
+
+.comment-input::placeholder {
+  color: #6d6d6d;
+}
+
+#submitCommentBtn {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  min-width: 54px;
+  height: 30px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 10px;
+  background: #111111;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.comment-item {
+  background: #f5f3ff;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: #1f1f1f;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.comment-item strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #4c1d95;
+}
+
+.comment-empty {
+  color: #5b5b5b;
+  font-size: 14px;
+  padding: 12px 8px;
 }
 
 /* Upload Media Sheet CSS */
@@ -955,10 +1278,45 @@ width: 40px;
   border: none;
   font-size: 24px;
   cursor: pointer;
+  z-index: 999;
 }
 
 .sheet-content {
   padding: 20px;
+}
+
+.upload-description-group {
+  margin: 0 0 12px;
+ 
+}
+
+.upload-description-label {
+  display: block;
+  font-size: 1px;
+  font-weight: 600;
+  font-style: italic;
+  color: black;
+  margin: 0 0 6px;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background-color:none;
+  resize: auto;
+  
+}
+
+#uploadDescription {
+  width: 90%;
+  border: 1.5px solid rgb(189, 188, 188);
+  min-height: 62px;
+  resize: none;
+  border-radius: 10px;
+ font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background: #ffffff;
+  color: black;
+  padding: 10px 12px;
+  font-size: 15px;  
+  line-height: 1.4;
+ 
+ 
 }
 
 .upload-btn {
@@ -999,7 +1357,7 @@ width: 40px;
   align-items: center;
   justify-content: flex-start;
   gap: 10px;
-  max-height: 32%;
+  max-height: 100%;
   overflow-y: auto;
   margin-top: 10px;
   padding-right: 4px;
@@ -1018,9 +1376,530 @@ width: 40px;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #f3f0ff;
 }
+
+#previewContainer > div,
+#previewContainer > div * {
+  border-radius: 12px;
+}
+
+.feed-posts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  border-radius: 12px;
+  z-index: 1;
+}
+
+.feed-empty-state {
+  width: min(92vw, 560px);
+  margin: 24px auto 0;
+  padding: 22px 18px;
+  border: 2px solid rgba(11, 11, 11, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fffef2, #f4f4f4);
+  color: #171717;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 10px 16px rgba(0, 0, 0, 0.04);
+}
+
+.post-thread {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: start;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto 18px;
+  isolation: isolate;
+}
+
+.post-thread::before {
+  display: none;
+}
+
+.post-thread .feed-post-card {
+  position: relative;
+  z-index: 0;
+  overflow: visible;
+}
+
+.post-thread .feed-post-card::before {
+  content: "";
+  position: absolute;
+  left: -47px;
+  top: 43px;
+  width: 47px;
+  height: 26px;
+  border-left: 1.5px solid rgb(202, 201, 201);
+  border-bottom: 1.5px solid rgb(180, 179, 179);
+  border-bottom-left-radius: 16px;
+  background: transparent;
+  z-index: -1;
+}
+
+.post-avatar-rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+  z-index: 2;
+  margin-left: 15px;
+}
+
+.post-avatar-bubble {
+  position: relative;
+  z-index: 3;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+ 
+ border: 1px solid rgba(231, 241, 41, 0.08);
+  margin-left: -18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.post-avatar-bubble img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.post-avatar-bubble i {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.feed-post-card p {
+  margin: 1px 13px 14px;
+  color: #0d0d0d;
+  line-height: 1.45;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+.feed-post-header {
+  padding: 12px 13px 8px;
+}
+
+.feed-post-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.feed-post-user-name {
+  color: #575757;
+   
+  font-size: 15px;
+  font-weight: 620;
+  font-family: 'Times New Roman', Times, serif;
+ 
+ 
+  letter-spacing: 0.01em;
+}
+
+.feed-caption {
+  margin: 0 13px 10px;
+  color: #0c0c0c;
+  line-height: 1.70;
+  font-weight: 500;
+  font-size: 16px;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+.feed-caption-text {
+  display: inline;
+  white-space: normal;
+  color: #0d0d0d;
+}
+
+.feed-read-more-btn {
+  
+  display: inline;
+  border: none;
+  background: transparent;
+  color: #ebf520;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 0 0 0 6px;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+.media-gallery {
+  position: relative;
+  border-radius: 0;
+  overflow: hidden;
+  background: #f3f3f3;
+
+}
+
+.gallery-slide {
+  display: none;
+  width: 100%;
+}
+
+.gallery-slide.active {
+  display: block;
+}
+
+.gallery-slide img,
+.gallery-slide video {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+ 
+}
+
+.gallery-controls {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.38);
+  color: white;
+  border-radius: 999px;
+  padding: 6px 10px;
+  backdrop-filter: blur(4px);
+}
+
+.gallery-controls button {
+  border: none;
+  background: transparent;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.gallery-counter {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.text-only-post {
+  
+  float: left;
+  background: #fffdf8;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.text-only-post p {
+  margin: 35px 11px 16px;
+  font-size: 16px;
+  line-height: 1.70;
+  color: #1b1b1b;
+ 
+}
+
+.text-post-menu-wrapper,
+.post-menu-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.text-post-menu,
+.post-menu {
+  position: relative;
+}
+
+.text-post-menu-toggle,
+.post-menu-toggle {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  color: #1d1d1d;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  padding: 0;
+}
+
+.text-post-menu-toggle:hover,
+.post-menu-toggle:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.text-post-menu-options,
+.post-menu-options {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  display: none;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  min-width: 110px;
+  z-index: 25;
+  overflow: hidden;
+}
+
+.feed-post-card .post-menu-wrapper {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 30;
+  display: flex;
+}
+
+.feed-post-card .post-menu-toggle {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  width: 28px;
+  height: 28px;
+  font-size: 20px;
+}
+
+.text-post-menu.open .text-post-menu-options,
+.post-menu.open .post-menu-options {
+  display: block;
+}
+
+.text-post-delete-btn,
+.post-delete-btn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #b42318;
+  text-align: left;
+  padding: 9px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.text-post-delete-btn:hover,
+.post-delete-btn:hover {
+  background: rgba(180, 35, 24, 0.06);
+}
+
+.feed-post-card {
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.06);
+  border: 1px solid rgba(15,15,15,0.05);
+  width: 100%;
+  max-width: 760px;
+  box-sizing: border-box;
+  overflow: visible;
+  position: relative;
+}
+
+.feed-post-card .post-menu-wrapper {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 30;
+  display: flex;
+}
+
+.feed-post-card .post-menu {
+  position: relative;
+}
+
+.feed-post-card .post-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 50%;
+  color: #1d1d1d;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.feed-post-card .post-menu-options {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  display: none;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  min-width: 110px;
+  z-index: 25;
+}
+
+.feed-post-card .feed-actions {
+  margin-top: 0;
+  background: rgb(190, 189, 189);
+  border-top: 1.5px solid #dcdcdc;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  padding: 8px 10px 10px;
+  width:100%;
+}
+
+.feed-post-card .comment-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgb(49, 49, 50);
+}
+
+#previewContainer img,
+#previewContainer video {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px
+}
+
+.feed-post-card img,
+.feed-post-card video {
+  width: 100%;
+  display: block;
+  max-height: 320px;
+  object-fit: cover;
+  background: #f1f1f1;
+  
+}
+
+.video-shell {
+  position: relative;
+  display: block;
+  width: 100%;
+  
+  overflow: hidden;
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+.video-shell video {
+  width: 100%;
+  display: block;
+  background: #000;
+  min-height: 150px;
+  max-height: 220px;
+  object-fit: cover;
+ 
+}
+
+.video-toggle {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: 62px;
+  height: 62px;
+  border: 2px solid rgba(255,255,255,0.7);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+  z-index: 2;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.video-toggle:hover {
+  transform: translate(-50%, -50%) scale(1.04);
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.video-meta {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.video-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255,255,255,0.12);
+  overflow: hidden;
+  z-index: 2;
+}
+
+.video-progress-bar {
+  display: block;
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #ffff05 90%, #fffb04 100%);;
+  transition: width 0.12s linear;
+}
+
+.video-timer {
+  background: rgba(0, 0, 0, 0.48);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  padding: 5px 9px;
+  backdrop-filter: blur(2px);
+}
+
+.video-tag {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 7px;
+}
+
 
 /* User Sheet CSS */
 
@@ -1050,8 +1929,10 @@ width: 40px;
 .sheet-drag {
   width: 45px;
   height: 6px;
-  background: #d0c2ff;
+  background: #f7f7f7;
   border-radius: 10px;
+  left:60%;
+  top: 50%;
   display: block;
   margin: 0 auto;
   animation: dragPulse 1.8s infinite ease-in-out;
@@ -1068,47 +1949,401 @@ width: 40px;
   border: none;
   font-size: 24px;
   cursor: pointer;
+  z-index: 9999;
 }
 
 .sheet-content {
-  padding: 20px;
+  padding: 20px 20px 0;
+}
+
+#userSheet .sheet-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
 }
 
 .profile-pic {
+  width: clamp(100px, 12vw, 170px);
+  height: clamp(100px, 12vw, 170px);
+  min-width: 100px;
+  min-height: 100px;
+  max-width: 170px;
+  max-height: 170px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin: 12px auto 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 48px;
-  margin-top: 70px;
+ 
+  border: 2.5px solid #fcef04;
+ 
+
+  box-shadow: 0 8px 22px rgba(177, 151, 252, 0.18);
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.profile-pic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.profile-pic i {
+  font-size: 70px;
+  line-height: 1;
+}
+
+.user-display-name {
+  text-align: center;
+  font-size: clamp(20px, 2.2vw, 30px);
+  font-weight: 700;
+  color: #101010;
+}
+
+.user-sheet-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.message-btn {
+  border: none;
+  background: #060606;
+  color: white;
+  padding: 8px 16px;
+  gap: 10px;
+  border-radius: 12px;
+  border:1.5px solid white;
+  cursor: pointer;
+  font-size: 16px;
+  font-family: 'Times New Roman', Times, serif;
+  transition: background 0.3s ease;
+}
+
+.follow-btn {
+  border: none;
+  background: #f8e80d;
+  color: black;
+  padding: 8px 16px;
+  gap: 10px;
+  border-radius: 12px;
+  border:1.5px solid black;
+  cursor: pointer;
+  font-size: 16px;
+  font-family: 'Times New Roman', Times, serif;
+  transition: background 0.3s ease;
+}
+.follow-btn:hover {
+  background: #81827f;
+}
+
+.message-btn:hover {
+  background: #81827f;
+}
+
+.userpage-header {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+
+.userpage-header .user-media-filter-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.userpage-header .user-media-filter-btn i {
+  width: 22px;
+  height: 22px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  color: #0f0f10;
+  font-size: 22px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.userpage-header .user-media-filter-btn.active i {
+  width: 72px;
+  height: 28px;
+  background: rgba(235, 235, 235, 0.18);
+  border: 1.5px solid black;
+  background-origin: border-box;
+  background-clip: content-box, border-box;
+  background-image: linear-gradient(to right, white, gray);
+  box-shadow: 0 8px 14px rgba(8, 8, 8, 0.14);
+}
+
+.user-sheet-posts {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+  padding-bottom: 16px;
+}
+
+.user-sheet-post-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(17, 17, 17, 0.04);
+}
+
+.user-sheet-post-card .post-menu-wrapper {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+}
+
+.user-sheet-post-card .post-menu-toggle {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  color: #1d1d1d;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+}
+
+.user-sheet-post-card .post-menu-options {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  display: none;
+  min-width: 110px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  z-index: 4;
+}
+
+.user-sheet-post-card .post-menu.open .post-menu-options {
+  display: block;
+}
+
+.user-sheet-post-card .post-delete-btn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #b42318;
+  text-align: left;
+  padding: 9px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.user-sheet-post-card .post-delete-btn:hover {
+  background: rgba(180, 35, 24, 0.06);
+}
+
+.user-sheet-post-card img,
+.user-sheet-post-card video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.user-sheet-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: rgba(17, 17, 17, 0.6);
+  padding: 18px 12px;
+  font-size: 14px;
+}
+
+.user-sheet-settings-btn {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 39px;
+  height: 39px;
+  padding: 0;
+  border-radius: 16px;
+  border: 1.5px solid rgba(18, 18, 18, 0.15);
+  background: linear-gradient(180deg, rgba(17, 17, 17, 0.98), rgba(34, 34, 34, 0.98));
+  color: #f3f0ff;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  box-shadow: 0 8px 18px rgba(17, 17, 17, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.user-sheet-settings-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(17, 17, 17, 0.22);
+}
+
+.user-sheet-settings-btn i {
+  color: rgb(177, 151, 252);
+}
+
+.user-sheet-media-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.user-sheet-media-wrap i {
+  position: absolute;
+  top: 10px;
+  left: -3px;
+  z-index: 2;
+  font-size: 20px;
+  pointer-events: none;
+  
+  padding: 6px 8px;
+  border-radius: 999px;
+}
+
+.user-sheet-media-wrap img,
+.user-sheet-media-wrap video {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.user-sheet-text-card {
+  background: linear-gradient(135deg, #f7f7f7, #e9e9e9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.user-sheet-text-card .user-sheet-text-icon {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  font-size: 18px;
+  color: rgb(17, 17, 17);
+  background: rgba(255, 255, 255, 0.7);
+  padding: 6px 8px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.user-sheet-text-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 14px;
+  box-sizing: border-box;
+  color: #121212;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+/* Settings Sheet CSS */
+
+.settings-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.settings-field-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+}
+
+.settings-field-group input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  background: #f6f6f8;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+.contact-btn {
+    
+  flex: 1;
+  padding: 12px;
+  background: rgb(238, 242, 5);
+  color: rgb(0, 0, 0);
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  cursor: pointer;
 }
 
 
         .footer{
-            
             position: fixed;
             width: 100%;
-            height: 40px;
+            height: 35px;
             left: 0;
             bottom: 0;
             overflow: visible;
             background: black;
-            
-           
-            
             z-index: 999;
         }
 
         .footer::before {
           border-top-right-radius: 12px;
-            border-top-left-radius: 12px;
-    content: "";
-    position: absolute;
-    top: -5px;
-   left: 0px;
-    height: 5px; 
-    width: 100%;
-    
-}
+          border-top-left-radius: 12px;
+          content: "";
+          position: absolute;
+          top: -5px;
+          left: 0px;
+          height: 5px; 
+          width: 100%;
+        }
 
         .plus-btn{
             width: 48px;
@@ -1116,7 +2351,7 @@ width: 40px;
             border: 2px solid transparent;
             border-radius: 50%;
             background: black;
-            border: 1.5px solid turquoise;
+            border: 2.5px solid rgb(254, 254, 254);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1129,6 +2364,8 @@ width: 40px;
             box-shadow: 0 8px 18px rgba(13, 13, 13, 0.5);
             
         }
+
+       
 
         .footer-plus-menu {
   position: relative;
@@ -1151,6 +2388,7 @@ width: 40px;
   z-index: 9999;
 }
 
+ 
 .footer-icon-menu.show {
   opacity: 1;
   pointer-events: auto;
@@ -1162,18 +2400,20 @@ width: 40px;
 .right-icons {
   display: flex;
   gap: 20px;
- 
+ background-color: rgb(163, 170, 169);
   padding: 12px 8px;
   border-radius: 12px;
  
  
 }
 
+
+
 .left-icons {
 
   display: flex;
   gap: 20px;
-
+ background-color: rgb(132, 142, 141);
   padding: 12px 8px;
   border-radius: 12px;
   
@@ -1196,7 +2436,8 @@ width: 40px;
   box-sizing: border-box;
 }
 
-.footer-action-btn {
+.footer-action-btn,
+        .footer-message-link {
   background: none;
   border: none;
   padding: 0;
@@ -1210,9 +2451,11 @@ width: 40px;
   height: 24px;
   margin: 0;
   box-sizing: border-box;
+  text-decoration: none;
 }
 
-.footer-action-btn i {
+.footer-action-btn i,
+.footer-message-link i {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1220,7 +2463,8 @@ width: 40px;
 }
 
 .footer-icon-menu i:active,
-.footer-action-btn:active {
+.footer-action-btn:active,
+.footer-message-link:active {
 
   transform: scale(0.9);
 }
@@ -1228,10 +2472,14 @@ width: 40px;
 </style>
 </head>
 <body>
+  
+ 
+
+
     <div class="header">
         <div class="title-wrap">
             
-         <div class="title">MYSPOT</div>
+         <div class="title">CHAT-MINI</div>
            
         </div>
 
@@ -1240,32 +2488,57 @@ width: 40px;
         <div class="header-icons">
           
            <div class="notification-bell"> 
-            <i id="notifyBell" class="fa-solid fa-bell fa-xl" style="color: rgb(244, 231, 157); display: flex;"></i>
+            <i id="notifyBell" class="fa-solid fa-bell fa-xl" style="color: rgb(246, 224, 30); display: flex;"></i>
             <span id="notifyCount" class="notify-bubble">1</span>
            </div>
           
             <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(104, 93, 104);"></i>
-            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(248, 247, 248);"></i></button>
+            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(0, 0, 0);"></i></button>
         </div>
     </div>
+
+    <div id="feedPosts" class="feed-posts" aria-live="polite"></div>
 
     <div id="mysidemenu" class="sidemenu">
           
     <a href="javascript:void(0)" class="closebtn" onclick="closeNav()" style="background-color: #090909;">&times;</a>
-    <div class="menu-user">
-    <img src="./bookmeassets/b3213a26-b2cd-4b52-a4aa-376ecf9cd365.jpeg" alt="Jhon Michel" style="border-radius: 50%; width: 60px; height: 60px; object-fit: cover;">
-    </div>
-  
-    <a href="#"> <i class="fa-solid fa-bookmark fa-sm" style="color: rgb(249, 249, 250);"></i>Saved</a>
-    <a href="#"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(253, 253, 254);"></i>Friends</a>
-    <a href="#"><i class="fa-solid fa-comment fa-sm" style="color: rgb(246, 245, 247);"></i>Chat</a>
-    <a href="#"><i class="fa-solid fa-cog fa-sm" style="color: rgb(255, 254, 254);"></i>Settings</a>
 
-      <div class="menu-auth-actions">
-      <a href="login.html"><button class="auth-btn sign-in-btn" type="button">Sign in</button></a>
-      <a href="logout.html"><button class="auth-btn sign-out-btn" type="button">Sign out</button></a>
+    <div class="sidemenu-profile">
+      <button id="sideMenuProfileBtn" class="side-menu-profile-btn" type="button" aria-label="Open profile">
+        <span id="sideMenuProfileAvatar" class="side-menu-profile-avatar">
+          <i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>
+        </span>
+      </button>
+      <button id="sideMenuUserNameBtn" class="side-menu-user-name-btn" type="button" aria-label="Open profile">
+        <span id="sideMenuUserName">User</span>
+      </button>
     </div>
+    
+
+    <div class="sidemenu-main">
+     <a href="#" id="reportSheetBtn" data-i18n="report">
+       <i class="fa-solid fa-triangle-exclamation" style="color: rgb(255, 212, 59);"></i> Report
+     </a>
+      <a href="#" data-i18n="friends"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(253, 253, 254);"></i>Friends</a>
+      <a href="message.html" data-i18n="chat"><i class="fa-solid fa-comment fa-sm" style="color: rgb(246, 245, 247);"></i>Chat</a>
+      <button id="settingsBtn" class="menu-settings-btn" type="button" data-i18n="settings"><i class="fa-solid fa-cog fa-sm" style="color: rgb(255, 254, 254);"></i>Settings</button>
+       <div class="menu-auth-actions">
+         <button class="auth-btn sign-out-btn" type="button" data-i18n="signOut"><i class="fa-solid fa-arrow-right-from-bracket fa-sm" style="color: rgb(0, 0, 0);"></i>Sign out</button>
+      </div>
+    </div>
+
+    
+
+
+ 
+
+  <div class="menu-legal">
+    <p data-i18n="privacyPolicy">Privacy Policy</p>
+    <p data-i18n="termsOfService">Terms of Service</p>
+  </div>
 </div>
+
+
 
  
 
@@ -1278,86 +2551,10 @@ width: 40px;
   </div>
 
   <div class="sheet-content">
-    <h3>Search</h3>
-    <input id="searchInput" type="text" placeholder="" />
-  </div>
-<h3 style="color: rgba(17, 16, 16, 0.85); font-size: 16px; margin: 16px 0 8px 14px;font-style: italic;">We think you might like:</h3>
-  <div class="search-video-grid">
-    <video src="./bookmeassets/WhatsApp Video 2026-08-07 at 11.07.30 AM.mp4" autoplay></video>
-    <video src="bookmeassets/WhatsApp Video 2026-08-07 at 11.07.30 AM.mp4" autoplay></video>
-  </div>
-</div>
-
-
-
-
-<div class="ipostcard">
-  <img id="jhonimage" src="./bookmeassets/b3213a26-b2cd-4b52-a4aa-376ecf9cd365.jpeg" alt="Jhon Michel">
-  <p id="adStatusLabel" style="float: right; margin-right: 8px; color: gray;">Contains ads <i class="fa-solid fa-bullhorn fa-sm" style="color: rgb(0, 0, 0);"></i></p>
-    
-  <div class="ipost-text" id="ipostText">
-    <h3>Danger of smoking</h3>
-    <p>Smoking is harmful to your health. It can cause lung cancer, heart disease, and respiratory problems.
-       Quitting smoking can significantly improve your overall well-being.
-       Remember, it's never too late to quit smoking and improve your health.
-    </p>
-
-  </div>
-
-  <button class="readmore-btn" id="readMoreIpost">Read more</button>
-
-  
-
-  <div id="adPopup" class="ad-popup">
-    <div class="ad-video-container">
-      <video id="ad-video" src="./bookmeassets/VID-20260729-WA0067.mp4" autoplay muted playsinline></video>
-
-      <div class="ad-actions">
-        <button class="visit-btn">
-          Visit <i class="fa-solid fa-arrow-up-right-from-square fa-lg" style="color: rgb(255, 255, 255);"></i>
-        </button>
-        <button class="shopnow-btn">
-          Shop
-        </button>
-        <button id="skipAdBtn" style="position:absolute; top: -150px; right:10px; background:rgba(0,0,0,0.6); color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:14px;">
-          Skip in 5
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div class="actions">
-      <div class="lang-wrapper">
-        <button class="translate-btn">Translate<i id="langBtn" class="fa-solid fa-language"></i></button>
-        
-
-      <div id="langDropdown" class="lang-dropdown">
-         <div data-lang="en">English</div>
-         <div data-lang="fr">French</div>
-         <div data-lang="de">German</div>
-         <div data-lang="es">Spanish</div>
-        <div data-lang="pt">Portuguese</div>
-        <div data-lang="zh">Mandarin</div>
-     </div>
- </div>
-
-<button id="aiBtn" aria-label="Open AI assistant">
-  <img src="./bookmeassets/AI logo (1).png" width="38px" height="28px"
-       style="border-radius: 50%; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: none; background: transparent;">
-</button>
-       <i class="fa-solid fa-comment fa-lg" style="color: rgb(251, 251, 251);"></i>
-      <button class="like-btn">
-        <i class="fa-solid fa-thumbs-up fa-lg" style="color: rgb(0, 0, 0);"></i>
-        <i class="fa-solid fa-thumbs-down fa-lg" style="color: rgb(1, 1, 1);"></i>
-      </button>
-  </div>
-</div>
-
-    
-
-
-
-<!-- Create a Post Slide-Up Sheet -->
+    <h3 data-i18n="search">Search</h3>
+    <input id="searchInput" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Search people or posts" />
+    <h3 data-i18n="youMightLike" style="color: rgba(6, 6, 6, 0.85); font-size: 18px; margin: 16px 0 8px 14px;font-style: bold; font-family: comic sans ms, sans-serif;">We think you might like:</h3>
+    <div id="searchResults" class="search-video-grid"></div>
 <div id="writePostSheet" class="write-post-sheet">
   <div class="sheet-header">
     <span class="sheet-drag"></span>
@@ -1365,11 +2562,11 @@ width: 40px;
   </div>
 
   <div class="sheet-content">
-    <h3>Create a Post</h3>
+    <h3 data-i18n="createPost">Create a Post</h3>
 
-    <textarea id="postTextArea" placeholder="Write something..." rows="5"></textarea>
+    <textarea id="postTextArea" data-i18n-placeholder="postPlaceholder" placeholder="Write something..." rows="5"></textarea>
 
-    <button id="postSubmitBtn" class="post-submit-btn">Post</button>
+    <button id="postSubmitBtn" class="post-submit-btn" data-i18n="post">Post</button>
   </div>
 </div>
 
@@ -1384,15 +2581,37 @@ width: 40px;
   <div class="sheet-content">
       <!-- Hidden file input -->
       <input id="mediaInput" type="file" accept="image/*,video/*" multiple style="display:none;">
+
+      <div class="upload-description-group">
+        <label for="uploadDescription" class="upload-description-label"></label>
+        
+       <textarea id="uploadDescription" data-i18n-placeholder="uploadDescription" placeholder='Speak your mind or tag someone...' rows="3"></textarea>
+       
+       
+      </div>
       
       <!-- Preview container (blank for now) -->
       <div id="previewContainer"></div>
 
       <!-- Upload button -->
       <div class="upload-actions">
-        <button id="uploadFilesBtn" class="upload-btn">Upload</button>
-        <button id="submitFilesBtn" class="submit-btn">Submit</button>
+        <button id="uploadFilesBtn" class="upload-btn" data-i18n="upload">Upload
+
+        </button>
+        <button id="submitFilesBtn" class="submit-btn" data-i18n="submit">Submit</button>
       </div>
+  </div>
+</div>
+
+<!-- Report Slide-Up Sheet -->
+ <div id="reportSheet" class="report-sheet">
+  <div class="sheet-header">
+    <span class="sheet-drag"></span>
+    <button id="closeReportSheet" class="close-btn">×</button>
+  </div>
+
+  <div class="sheet-content">
+    
   </div>
 </div>
 
@@ -1404,36 +2623,116 @@ width: 40px;
   </div>
 
   <div class="sheet-content">
-    <div class="profile-pic">
-    <i class="fa-solid fa-circle-user fa-2xl" style="color: rgb(177, 151, 252);"></i>
+    <input id="profilePicInput" type="file" accept="image/*" style="display:none;">
+    <button id="profilePicBtn" class="profile-pic" type="button" aria-label="Upload profile picture">
+      <i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>
+    </button>
+    <div id="profileNameDisplay" class="user-display-name">User</div>
+
+    <div class="user-sheet-actions">
+      <button id="messageUserBtn" class="message-btn" type="button"> <i class="fa-solid fa-paper-plane fa-lg" style="color: rgb(255, 255, 255);"></i> Message</button>
+      <button id="followUserBtn" class="follow-btn" type="button"><i class="fa-solid fa-plus fa-lg" style="color: rgb(0, 0, 0);"></i> Follow</button>
     </div>
 
+    <div class="userpage-header">
+      <button type="button" class="user-media-filter-btn active" data-media-type="all" aria-label="Show all posts">
+        <i class="fa-solid fa-rotate fa-lg" style="color: rgb(0, 0, 0);"></i>
+      </button>
+      <button type="button" class="user-media-filter-btn" data-media-type="video" aria-label="Show video posts">
+       <i class="fa-solid fa-circle-play fa-lg" style="color: rgb(5, 5, 5);"></i>
+      </button>
+      <button type="button" class="user-media-filter-btn" data-media-type="image" aria-label="Show image posts">
+        <i class="fa-solid fa-image fa-lg" style="color: rgb(0, 0, 0);"></i>
+      </button>
+      <button type="button" class="user-media-filter-btn" data-media-type="text" aria-label="Show text posts">
+        <i class="fa-solid fa-pen-clip fa-lg" style="color: rgb(0, 0, 0);"></i>
+      </button>
+    </div>
+
+    <div id="userSheetPosts" class="user-sheet-posts" aria-live="polite"></div>
   </div>
+
+  <button id="userSheetSettingsBtn" class="user-sheet-settings-btn" type="button">
+    <i class="fa-solid fa-cog fa-xl" style="color: rgb(252, 250, 250);"></i>
+    
+  </button>
 </div>
 
-<!-- AI Summarizer Slide-Up Sheet -->
-<div id="aiSheet" class="ai-sheet">
+<div id="settingsSheet" class="user-sheet">
   <div class="sheet-header">
     <span class="sheet-drag"></span>
-    <button id="closeAiSheet" class="close-btn" type="button">×</button>
+    <button id="closeSettingsSheet" class="close-btn" type="button">×</button>
   </div>
 
-  <div class="ai-sheet-content">
-    <div class="ai-summary-header">
-      <h3>AI Summary <i class="fa-solid fa-wand-magic-sparkles fa-lg" style="color: rgb(177, 151, 252);"></i></h3>
-      
+  <div class="sheet-content">
+    <h3 data-i18n="settings">Settings</h3>
+    <form id="profileSettingsForm">
+      <div class="settings-field-group">
+        <label for="firstNameInput" data-i18n="firstName">First name</label>
+        <input id="firstNameInput" name="firstName" type="text" data-i18n-placeholder="firstNamePlaceholder" placeholder="First name" />
+      </div>
+
+      <div class="settings-field-group">
+        <label for="lastNameInput" data-i18n="lastName">Last name</label>
+        <input id="lastNameInput" name="lastName" type="text" data-i18n-placeholder="lastNamePlaceholder" placeholder="Last name" />
+      </div>
+
+      <div class="settings-field-group">
+        <label for="dobInput" data-i18n="dob">Date of birth</label>
+        <input id="dobInput" name="dob" type="date" />
+      </div>
+
+      <div class="settings-field-group">
+        <label for="emailInput" data-i18n="email">Email</label>
+        <input id="emailInput" name="email" type="email" data-i18n-placeholder="emailPlaceholder" placeholder="Email" />
+      </div>
+
+      <div class="settings-field-group">
+        <label for="languageSelect" data-i18n="language">Choose your favorite language</label>
+        <select id="languageSelect" name="language" style="border-radius: 12px; width: 25%; height: 36px;">
+          <option value="en">English</option>
+          <option value="hi">हिन्दी</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="ru">Русский</option>
+          <option value="pt">Português</option>
+          <option value="ar">العربية</option>
+          <option value="zh">中文</option>
+          <option value="bn">বাংলা</option>
+          <option value="ur">اردو</option>
+        </select>
+      </div>
+
+      <button id="saveProfileBtn" class="submit-btn" type="submit" data-i18n="saveProfile">Save profile</button>
+      <button class="contact-btn" type="button" data-i18n="contactUs" onclick="window.open('https://tawk.to/chat/6a9c86d527a69434428b7d76/1k1pmtctb?layout=modern', '_blank', 'noopener,noreferrer');">Contact us</button>
+    </form>
+
+  </div>
+</div>
+
+<!-- Comment Sheet -->
+<div id="commentsSheet" class="comments-sheet">
+  <div class="sheet-header">
+    <span class="sheet-drag"></span>
+    <button id="closeCommentsSheet" class="close-btn" type="button">×</button>
+  </div>
+
+  <div class="comments-sheet-content">
+    <div class="comments-header">
+      <h3>Comments</h3>
     </div>
 
-    <div id="aiSummaryResult" class="ai-summary-result">
-      <strong>Summary</strong>
-      <div class="ai-summary-loading">
-        <span class="summary-spinner"></span>
-        <span>Generating summary...</span>
-      </div>
+    <div id="commentsList" class="comments-list">
+      <div class="comment-empty" data-i18n="noComments">No comments yet.</div>
+    </div>
+
+    <div class="comment-input-wrap">
+      <textarea id="commentInput" class="comment-input" rows="2" data-i18n-placeholder="commentInputPlaceholder" placeholder="Write a comment..."></textarea>
+      <button id="submitCommentBtn" class="submit-btn" type="button" data-i18n="post">Post</button>
     </div>
   </div>
 </div>
-    
+
 <div class="footer">
             <button class="plus-btn" type="button" aria-label="Open quick menu">
             <i class="fa-solid fa-plus fa-xl" style="color: rgb(255, 255, 255);"></i>
@@ -1442,16 +2741,17 @@ width: 40px;
         <div class="footer-plus-menu">
                <div id="footerIconMenu" class="footer-icon-menu">
                   <div class="left-icons">
-                   <i id="userSheetBtn" class="fa-solid fa-user fa-xl" style="color: rgb(0, 0, 0);"></i>
-                    <a href="message.html"><i class="fa-solid fa-envelope fa-xl" style="color: rgb(0, 0, 0);"></i></a>
+                   <i id="userSheetBtn" class="fa-solid fa-user fa-xl" style="color: rgb(11, 11, 11);"></i>
+                    <a href="reels.html" class="footer-message-link" aria-label="Open reels"><i class="fa-brands fa-instagram fa-lg" style="color: rgb(0, 0, 0);"></i></a>
+                   
                 </div>
 
             <div class="right-icons">
               <button id="uploadMediaBtn" class="footer-action-btn" type="button" aria-label="Upload media">
-                <i class="fa-solid fa-image fa-xl" style="color: rgb(0, 0, 0);"></i>
+                <i class="fa-solid fa-image fa-xl" style="color: rgb(7, 7, 7);"></i>
               </button>
               <button id="writePostBtn" class="footer-action-btn" type="button" aria-label="Write post">
-                <i class="fa-solid fa-pen fa-xl" style="color: rgb(0, 0, 0);"></i>
+                <i class="fa-solid fa-pen fa-xl" style="color: rgb(12, 12, 12);"></i>
               </button>
             </div>
          </div>

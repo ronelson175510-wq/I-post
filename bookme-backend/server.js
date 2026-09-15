@@ -8,9 +8,97 @@ const { db, isDbEnabled } = require("./db");
 const app = express();
 const uploadsDir = path.join(__dirname, "uploads");
 const projectRoot = path.join(__dirname, "..");
+const postsFilePath = path.join(__dirname, "posts.json");
 const PORT = process.env.PORT || 10000;
-const frontendUrl = process.env.FRONTEND_URL || "https://i-post.onrender.com";
-const publicBaseUrl = process.env.PUBLIC_BASE_URL || "https://i-post.onrender.com";
+const frontendUrl = process.env.FRONTEND_URL || "http://localhost:10000";
+const publicBaseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:10000";
+
+function loadPostsFromFile() {
+  try {
+    if (!fs.existsSync(postsFilePath)) {
+      fs.writeFileSync(postsFilePath, "[]", "utf8");
+      return [];
+    }
+
+    const raw = fs.readFileSync(postsFilePath, "utf8").trim();
+    if (!raw) {
+      fs.writeFileSync(postsFilePath, "[]", "utf8");
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn("Failed to load posts file, resetting it:", error.message);
+    try {
+      fs.writeFileSync(postsFilePath, "[]", "utf8");
+    } catch (writeError) {
+      console.warn("Unable to reset posts file:", writeError.message);
+    }
+    return [];
+  }
+}
+
+function savePostsToFile() {
+  try {
+    fs.writeFileSync(postsFilePath, JSON.stringify(inMemoryPosts, null, 2), "utf8");
+  } catch (error) {
+    console.error("Failed to save posts file:", error.message);
+  }
+}
+
+const inMemoryPosts = loadPostsFromFile();
+
+function getLocalUploadPathFromMediaUrl(mediaUrl) {
+  if (!mediaUrl) return null;
+
+  if (mediaUrl.startsWith("/uploads/")) {
+    return path.join(uploadsDir, path.basename(mediaUrl));
+  }
+
+  try {
+    const parsed = new URL(mediaUrl);
+    if (parsed.origin === publicBaseUrl && parsed.pathname.startsWith("/uploads/")) {
+      return path.join(uploadsDir, path.basename(parsed.pathname));
+    }
+  } catch (error) {
+    return null;
+  }
+
+  return null;
+}
+
+function removeInMemoryPostById(postId, requestingUserId = null) {
+  const index = inMemoryPosts.findIndex(post => Number(post.id) === Number(postId));
+  if (index < 0) {
+    return null;
+  }
+
+  const existing = inMemoryPosts[index];
+  if (requestingUserId && existing?.user_id && String(existing.user_id) !== String(requestingUserId)) {
+    return { forbidden: true };
+  }
+
+  const removed = inMemoryPosts.splice(index, 1)[0];
+  if (removed?.media_url) {
+    const localUploadPath = getLocalUploadPathFromMediaUrl(removed.media_url);
+    if (localUploadPath && fs.existsSync(localUploadPath)) {
+      fs.unlinkSync(localUploadPath);
+    }
+  }
+  return removed;
+}
+
+function pruneMissingMediaPosts() {
+  for (let index = inMemoryPosts.length - 1; index >= 0; index--) {
+    const post = inMemoryPosts[index];
+    const localUploadPath = getLocalUploadPathFromMediaUrl(post?.media_url);
+
+    if (post?.media_url && localUploadPath && !fs.existsSync(localUploadPath)) {
+      inMemoryPosts.splice(index, 1);
+    }
+  }
+}
 
 fs.mkdirSync(uploadsDir, { recursive: true });
 
@@ -45,6 +133,16 @@ app.options(/.*/, cors());
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+app.use((req, res, next) => {
+  const isStaticAsset = /\.(html|js|css|json)$/i.test(req.path);
+  if (isStaticAsset) {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+  }
+  next();
+});
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -135,105 +233,105 @@ app.post("/api/translate", async (req, res) => {
   });
 });
 
-app.post("/api/summarize", async (req, res) => {
-  const { text } = req.body || {};
+app.post("/api/profile-picture", upload.single("profilePic"), (req, res) => {
+  const userId = req.body.user_id || "anonymous";
+  const file = req.file;
 
-  if (!text || !String(text).trim()) {
-    return res.status(400).json({ error: "Missing text to summarize" });
+  if (!file) {
+    return res.status(400).json({ error: "No profile picture uploaded" });
   }
 
-  const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
-  const model = process.env.OLLAMA_MODEL || "llama3.2";
-  const prompt = `Summarize this in exactly one clear sentence, under 22 words, natural English, no repeated words or phrases, and no bullet points.\n\nText:\n${String(text).slice(0, 5000)}`;
-
-  try {
-    const response = await fetch(`${ollamaUrl}/api/generate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model,
-        prompt,
-        stream: false,
-        options: {
-          temperature: 0.3,
-          top_p: 0.8
-        }
-      })
-    });
-
-    const data = await response.json();
-    const summary = String(data?.response || "").replace(/\s+/g, " ").trim();
-
-    if (summary) {
-      return res.json({ summary });
-    }
-
-    throw new Error("Empty summary from Ollama");
-  } catch (error) {
-    console.warn("OLLAMA SUMMARY ERROR:", error.message);
-
-    const fallback = String(text)
-      .split(/[.!?]+/)
-      .map(sentence => sentence.trim())
-      .filter(Boolean)
-      .slice(0, 3)
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    return res.json({
-      summary: fallback.length > 0 ? fallback : "No content available to summarize."
-    });
+  if (!file.mimetype || !file.mimetype.startsWith("image/")) {
+    return res.status(400).json({ error: "Profile picture must be an image" });
   }
+
+  const imageUrl = `${publicBaseUrl}/uploads/${file.filename}`;
+
+  return res.json({
+    success: true,
+    user_id: userId,
+    url: imageUrl,
+    file: file.filename
+  });
 });
 
-app.post("/api/posts", upload.single("file"), (req, res) => {
-  if (!isDbEnabled()) {
-    return res.status(503).json({
-      error: "Database is not enabled yet. Set DB credentials and DB_ENABLED=true to use posts.",
-      dbDisabled: true
-    });
-  }
-
+app.post("/api/posts", upload.array("file", 20), (req, res) => {
   const user_id = req.body.user_id || "anonymous";
-  const content = req.body.content || "";
-  const media_type = req.body.media_type || "image";
+  const commonContent = (req.body.content || "").trim();
+  const files = Array.isArray(req.files) ? req.files : [];
 
-  if (!req.file) {
+  if (!files.length) {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
-  const media_url = `${publicBaseUrl}/uploads/${req.file.filename}`;
+  const mediaUrls = files.map((file) => `${publicBaseUrl}/uploads/${file.filename}`);
+  const firstOriginalName = files[0]?.originalname || "uploaded file";
+  const cleanOriginalName = path.parse(firstOriginalName).name || firstOriginalName;
+  const media_type = files.some((file) => file.mimetype?.startsWith("video/")) ? "video" : "image";
+  const content = commonContent;
+
+  if (!isDbEnabled()) {
+    const savedPost = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      user_id,
+      content,
+      media_type,
+      media_url: mediaUrls[0] || null,
+      media_urls: mediaUrls,
+      saved_filename: files[0]?.filename || null,
+      original_name: firstOriginalName,
+      created_at: new Date().toISOString(),
+      dbDisabled: true,
+      is_gallery: mediaUrls.length > 1
+    };
+
+    inMemoryPosts.unshift(savedPost);
+    savePostsToFile();
+
+    return res.json({
+      success: true,
+      dbDisabled: true,
+      post: savedPost,
+      posts: [savedPost]
+    });
+  }
 
   const query = `
     INSERT INTO posts (user_id, content, media_type, media_url)
     VALUES (?, ?, ?, ?)
   `;
 
-  db.query(query, [user_id, content, media_type, media_url], (err, results) => {
+  db.query(query, [user_id, content, media_type, mediaUrls[0]], (err, results) => {
     if (err) {
       console.error("DB INSERT ERROR:", err);
       return res.status(500).json({ error: err.message });
     }
 
-    res.json({
+    const savedPost = {
       id: results.insertId,
-      saved_filename: req.file.filename,
-      media_url,
-      success: true
+      user_id,
+      content,
+      media_type,
+      media_url: mediaUrls[0],
+      media_urls: mediaUrls,
+      saved_filename: files[0]?.filename || null,
+      original_name: firstOriginalName,
+      success: true,
+      is_gallery: mediaUrls.length > 1
+    };
+
+    res.json({
+      success: true,
+      post: savedPost,
+      posts: [savedPost]
     });
   });
 });
 
 app.get("/api/posts", (req, res) => {
   if (!isDbEnabled()) {
-    return res.status(503).json({
-      error: "Database is not enabled yet. Set DB credentials and DB_ENABLED=true to use posts.",
-      dbDisabled: true,
-      posts: []
-    });
+    pruneMissingMediaPosts();
+    return res.json(inMemoryPosts.slice(0, 20));
   }
 
   db.query("SELECT * FROM posts ORDER BY created_at DESC", (err, results) => {
@@ -242,29 +340,106 @@ app.get("/api/posts", (req, res) => {
       return res.status(500).json({ error: err.message });
     }
 
-    const fixedResults = results.map(post => ({
-      ...post,
-      media_url: post.media_url && !post.media_url.startsWith("http")
-        ? `${publicBaseUrl}${post.media_url}`
-        : post.media_url
-    }));
+    const fixedResults = results
+      .map(post => ({
+        ...post,
+        media_url: post.media_url && !post.media_url.startsWith("http")
+          ? `${publicBaseUrl}${post.media_url}`
+          : post.media_url
+      }))
+      .filter(post => {
+        if (!post.media_url) return true;
+        const localUploadPath = getLocalUploadPathFromMediaUrl(post.media_url);
+        return !localUploadPath || fs.existsSync(localUploadPath);
+      });
 
     res.json(fixedResults);
   });
 });
 
-app.post("/api/text-post", (req, res) => {
-  if (!isDbEnabled()) {
-    return res.status(503).json({
-      error: "Database is not enabled yet. Set DB credentials and DB_ENABLED=true to use posts.",
-      dbDisabled: true
-    });
+app.delete("/api/posts/:id", (req, res) => {
+  const postId = Number(req.params.id);
+  const requestingUserId = req.body?.user_id || req.query?.user_id || null;
+
+  if (!Number.isFinite(postId)) {
+    return res.status(400).json({ error: "Invalid post id" });
   }
 
-  const { user_id, content } = req.body;
+  if (!isDbEnabled()) {
+    const deleted = removeInMemoryPostById(postId, requestingUserId);
+    if (!deleted) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+    if (deleted.forbidden) {
+      return res.status(403).json({ error: "You can only delete your own posts." });
+    }
 
-  if (!user_id || !content) {
-    return res.status(400).json({ error: "Missing fields" });
+    savePostsToFile();
+    return res.json({ success: true, deletedId: postId });
+  }
+
+  db.query("SELECT user_id, media_url FROM posts WHERE id = ?", [postId], (selectErr, rows) => {
+    if (selectErr) {
+      console.error("DELETE SELECT ERROR:", selectErr);
+      return res.status(500).json({ error: selectErr.message });
+    }
+
+    const existingPost = rows?.[0];
+    if (!existingPost) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    if (requestingUserId && String(existingPost.user_id) !== String(requestingUserId)) {
+      return res.status(403).json({ error: "You can only delete your own posts." });
+    }
+
+    const mediaUrl = existingPost.media_url;
+    const localUploadPath = getLocalUploadPathFromMediaUrl(mediaUrl);
+
+    if (localUploadPath && fs.existsSync(localUploadPath)) {
+      fs.unlinkSync(localUploadPath);
+    }
+
+    db.query("DELETE FROM posts WHERE id = ?", [postId], (deleteErr) => {
+      if (deleteErr) {
+        console.error("DELETE ERROR:", deleteErr);
+        return res.status(500).json({ error: deleteErr.message });
+      }
+
+      res.json({ success: true, deletedId: postId });
+    });
+  });
+});
+
+app.post("/api/text-post", (req, res) => {
+  const { user_id, content } = req.body || {};
+  const safeUserId = user_id || "anonymous";
+  const safeContent = String(content || "").trim();
+
+  if (!safeContent) {
+    return res.status(400).json({ error: "Missing content" });
+  }
+
+  if (!isDbEnabled()) {
+    const savedPost = {
+      id: Date.now(),
+      user_id: safeUserId,
+      content: safeContent,
+      media_type: "text",
+      media_url: null,
+      original_name: null,
+      created_at: new Date().toISOString(),
+      dbDisabled: true
+    };
+
+    inMemoryPosts.unshift(savedPost);
+    savePostsToFile();
+
+    return res.json({
+      ...savedPost,
+      success: true,
+      dbDisabled: true
+    });
   }
 
   const query = `
@@ -272,7 +447,7 @@ app.post("/api/text-post", (req, res) => {
     VALUES (?, ?, 'text')
   `;
 
-  db.query(query, [user_id, content], (err, results) => {
+  db.query(query, [safeUserId, safeContent], (err, results) => {
     if (err) {
       console.error("TEXT POST ERROR:", err);
       return res.status(500).json({ error: err.message });
