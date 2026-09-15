@@ -1669,6 +1669,17 @@ if (document.readyState === "loading") {
   initializeMessagePage();
 }
 
+function setSheetVisibility(sheet, shouldShow) {
+  if (!sheet) return;
+  sheet.classList.toggle("show", Boolean(shouldShow));
+  sheet.style.pointerEvents = shouldShow ? "auto" : "none";
+}
+
+function setExclusiveSheetState({ userSheetOpen = false, settingsSheetOpen = false } = {}) {
+  setSheetVisibility(userSheet, userSheetOpen);
+  setSheetVisibility(settingsSheet, settingsSheetOpen);
+}
+
 if (userSheetBtn && userSheet) {
   userSheetBtn.addEventListener("click", () => {
     openUserProfileSheet(getCurrentUserId());
@@ -1677,7 +1688,7 @@ if (userSheetBtn && userSheet) {
 
 if (closeUserSheet && userSheet) {
   closeUserSheet.addEventListener("click", () => {
-    userSheet.classList.remove("show");
+    setSheetVisibility(userSheet, false);
   });
 }
 
@@ -1702,10 +1713,12 @@ function openSettingsSheet() {
 
   if (userSheet) {
     userSheet.classList.remove("show");
+    userSheet.style.pointerEvents = "none";
   }
 
-  populateProfileSettingsForm();
   settingsSheet.classList.add("show");
+  settingsSheet.style.pointerEvents = "auto";
+  populateProfileSettingsForm();
 }
 
 if (settingsBtn && settingsSheet) {
@@ -1713,14 +1726,19 @@ if (settingsBtn && settingsSheet) {
 }
 
 if (userSheetSettingsBtn && settingsSheet) {
-  userSheetSettingsBtn.addEventListener("click", () => {
+  const handleUserSheetSettingsClick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     openSettingsSheet();
-  });
+  };
+
+  userSheetSettingsBtn.addEventListener("click", handleUserSheetSettingsClick);
+  userSheetSettingsBtn.onclick = handleUserSheetSettingsClick;
 }
 
 if (closeSettingsSheet && settingsSheet) {
   closeSettingsSheet.addEventListener("click", () => {
-    settingsSheet.classList.remove("show");
+    setSheetVisibility(settingsSheet, false);
   });
 }
 
@@ -1763,18 +1781,6 @@ if (profileSettingsForm) {
   });
 }
 
-if (userSheet) {
-  document.addEventListener("click", (e) => {
-    const clickedAvatarTrigger = e.target.closest(".profile-avatar-trigger");
-    if (clickedAvatarTrigger) {
-      return;
-    }
-
-    if (!e.target.closest("#userSheet") && !e.target.closest("#userSheetBtn")) {
-      userSheet.classList.remove("show");
-    }
-  });
-}
 
 let userStartY = 0, userCurrentY = 0, userIsDragging = false;
 
@@ -2811,6 +2817,8 @@ function openUserProfileSheet(userId = getCurrentUserId()) {
   const targetUserId = userId || getCurrentUserId();
   const profileImage = getProfilePicForUser(targetUserId) || (auth?.currentUser?.uid === targetUserId ? auth.currentUser.photoURL : null);
 
+  setExclusiveSheetState({ userSheetOpen: true, settingsSheetOpen: false });
+
   if (profilePicBtn) {
     if (profileImage) {
       setProfilePicPreview(profileImage, targetUserId);
@@ -2826,7 +2834,6 @@ function openUserProfileSheet(userId = getCurrentUserId()) {
 
   updateProfileNameDisplay(targetUserId);
   renderUserSheetMedia(targetUserId, activeUserSheetFilter);
-  userSheet?.classList.add("show");
 }
 
 function bindProfileAvatarButtons(root = document) {

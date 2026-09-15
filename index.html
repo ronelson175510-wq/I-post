@@ -271,17 +271,27 @@
 .sheet-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 10px;
   flex-shrink: 0;
- 
-
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .close-btn {
-  background: none;
+  background: transparent;
   border: none;
   font-size: 24px;
   cursor: pointer;
+  color: #111;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .sheet-content {
@@ -1908,36 +1918,58 @@ margin-left: -10px;
 
 /* User Sheet CSS */
 
-.user-sheet {
+#userSheet,
+#settingsSheet {
   position: fixed;
   left: 0;
+  top: 0;
   bottom: -100%;
   width: 100%;
-  height: 98%;
-  background: white;
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
-  transition: bottom 0.35s ease;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0 12px, #ffffff 12px 100%);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.18);
+  transition: bottom 0.35s ease, opacity 0.2s ease;
   z-index: 9999;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.user-sheet.show {
+#userSheet.show,
+#settingsSheet.show {
   bottom: 0;
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.sheet-header {
+#userSheet .sheet-header {
+  position: relative;
+  z-index: 6;
   display: flex;
-  justify-content: space-between;
-  padding: 10px;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 2px 58px 0;
+  background: transparent !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+#settingsSheet .sheet-header,
+#reportSheet .sheet-header,
+#uploadSheet .sheet-header,
+#writePostSheet .sheet-header,
+#searchSheet .sheet-header {
+  background: transparent;
+  border-bottom: none;
 }
 
 .sheet-drag {
-  width: 45px;
-  height: 6px;
-  background: #f7f7f7;
-  border-radius: 10px;
-  left:60%;
-  top: 50%;
+  width: 52px;
+  height: 5px;
+  background: rgba(17, 17, 17, 0.18);
+  border-radius: 99px;
   display: block;
   margin: 0 auto;
   animation: dragPulse 1.8s infinite ease-in-out;
@@ -1945,27 +1977,48 @@ margin-left: -10px;
 
 @keyframes dragPulse {
   0% { transform: translateY(0); opacity: 0.7; }
-  50% { transform: translateY(-4px); opacity: 1; }
+  50% { transform: translateY(-3px); opacity: 1; }
   100% { transform: translateY(0); opacity: 0.7; }
 }
 
-.close-btn {
-  background: none;
-  border: none;
+#userSheet .close-btn {
+  position: absolute;
+  right: 14px;
+  top: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  color: #111;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   font-size: 24px;
+  line-height: 1;
   cursor: pointer;
-  z-index: 9999;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(17, 17, 17, 0.08);
+}
+
+#userSheet .close-btn:hover {
+  transform: scale(1.06);
+  opacity: 1;
 }
 
 .sheet-content {
-  padding: 20px 20px 0;
+  padding: 18px 18px 0;
 }
 
 #userSheet .sheet-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+  padding-top: 0;
+  margin-top: -8px;
 }
 
 .profile-pic {
@@ -1977,19 +2030,23 @@ margin-left: -10px;
   max-height: 170px;
   border-radius: 50%;
   overflow: hidden;
-  margin: 12px auto 0;
+  margin: 4px auto 0;
   display: flex;
   align-items: center;
   justify-content: center;
- 
-  border: 2.5px solid #fcef04;
- 
-
-  box-shadow: 0 8px 22px rgba(177, 151, 252, 0.18);
+  border: 3px solid #fcef04;
+  background: linear-gradient(135deg, #fafafa, #f0f0f0);
+  box-shadow: 0 10px 22px rgba(177, 151, 252, 0.18);
   cursor: pointer;
   padding: 0;
   position: relative;
   flex-shrink: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.profile-pic:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(177, 151, 252, 0.2);
 }
 
 .profile-pic img {
@@ -2010,92 +2067,118 @@ margin-left: -10px;
   font-size: clamp(20px, 2.2vw, 30px);
   font-weight: 700;
   color: #101010;
+  letter-spacing: 0.02em;
 }
 
 .user-sheet-actions {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 12px;
+  margin-top: 8px;
+  width: 100%;
   font-family: 'Times New Roman', Times, serif;
+}
+
+.message-btn,
+.follow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Times New Roman', Times, serif;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  box-shadow: 0 8px 18px rgba(15, 15, 15, 0.10);
 }
 
 .message-btn {
-  border: none;
-  background: #060606;
-  color: white;
-  padding: 8px 16px;
-  gap: 10px;
-  border-radius: 12px;
-  border:1.5px solid white;
-  cursor: pointer;
-  font-size: 16px;
-  font-family: 'Times New Roman', Times, serif;
-  transition: background 0.3s ease;
+  background: linear-gradient(180deg, #111111 0%, #2e2e2e 100%);
+  color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .follow-btn {
-  border: none;
-  background: #f8e80d;
-  color: black;
-  padding: 8px 16px;
-  gap: 10px;
-  border-radius: 12px;
-  border:1.5px solid black;
-  cursor: pointer;
-  font-size: 16px;
-  font-family: 'Times New Roman', Times, serif;
-  transition: background 0.3s ease;
+  background: linear-gradient(180deg, #f5eb2b 0%, #e9d80b 100%);
+  color: #0f0f10;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
+
+.message-btn:hover,
 .follow-btn:hover {
-  background: #81827f;
+  transform: translateY(-1px);
+  filter: brightness(0.97);
 }
 
 .message-btn:hover {
-  background: #81827f;
+  box-shadow: 0 10px 22px rgba(17, 17, 17, 0.16);
+}
+
+.follow-btn:hover {
+  box-shadow: 0 10px 22px rgba(245, 235, 43, 0.22);
 }
 
 .userpage-header {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
   width: 100%;
+  margin-top: 12px;
+  padding: 6px;
+  
+  
+ 
+  
 }
 
 .userpage-header .user-media-filter-btn {
   border: none;
   background: transparent;
-  padding: 0;
+  padding: 8px 0;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  border-radius: 12px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.userpage-header .user-media-filter-btn:hover {
+  background: rgba(17, 17, 17, 0.04);
 }
 
 .userpage-header .user-media-filter-btn i {
-  width: 22px;
-  height: 22px;
+  width: 100%;
+  height: 20px;
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(17, 17, 17, 0.08);
+  
+ 
+  
   color: #0f0f10;
-  font-size: 22px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  font-size: 18px;
+
+}
+
+.userpage-header .user-media-filter-btn.active {
+  background: rgba(230, 228, 228, 0.96);
+  box-shadow: 0 6px 16px rgba(17, 17, 17, 0.14);
 }
 
 .userpage-header .user-media-filter-btn.active i {
-  width: 72px;
-  height: 28px;
-  background: rgba(235, 235, 235, 0.18);
-  border: 1.5px solid black;
-  background-origin: border-box;
-  background-clip: content-box, border-box;
-  background-image: linear-gradient(to right, white, gray);
-  box-shadow: 0 8px 14px rgba(8, 8, 8, 0.14);
+  width: 100%;
+  max-width: 70px;
+  height: 32px;
+  border: none;
+ 
+  box-shadow: none;
+
 }
 
 .user-sheet-posts {
@@ -2127,7 +2210,7 @@ margin-left: -10px;
   width: 28px;
   height: 28px;
   border: 1px solid rgba(17, 17, 17, 0.12);
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 254, 254, 0.96);
   color: #1d1d1d;
   border-radius: 50%;
   display: flex;
@@ -2145,7 +2228,7 @@ margin-left: -10px;
   top: calc(100% + 6px);
   display: none;
   min-width: 110px;
-  background: #fff;
+  background: #972121;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
@@ -2190,35 +2273,36 @@ margin-left: -10px;
 
 .user-sheet-settings-btn {
   position: absolute;
-  top: 14px;
-  left: 16px;
-  z-index: 3;
+  top: 10px;
+  left: 14px;
+  z-index: 30;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  width: 39px;
-  height: 39px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  border-radius: 16px;
-  border: 1.5px solid rgba(18, 18, 18, 0.15);
-  background: linear-gradient(180deg, rgba(17, 17, 17, 0.98), rgba(34, 34, 34, 0.98));
-  color: #f3f0ff;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #8e4c4c;
   cursor: pointer;
   font-size: 15px;
   font-weight: 700;
   font-family: inherit;
-  box-shadow: 0 8px 18px rgba(17, 17, 17, 0.18);
+  box-shadow: 0 4px 12px rgba(17, 17, 17, 0.08);
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  pointer-events: auto;
+  backdrop-filter: blur(6px);
 }
 
 .user-sheet-settings-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(17, 17, 17, 0.22);
+  box-shadow: 0 8px 18px rgba(17, 17, 17, 0.12);
 }
 
 .user-sheet-settings-btn i {
-  color: rgb(177, 151, 252);
+  color: #111;
 }
 
 .user-sheet-media-wrap {
@@ -2657,9 +2741,8 @@ margin-left: -10px;
     <div id="userSheetPosts" class="user-sheet-posts" aria-live="polite"></div>
   </div>
 
-  <button id="userSheetSettingsBtn" class="user-sheet-settings-btn" type="button">
+  <button id="userSheetSettingsBtn" class="user-sheet-settings-btn" type="button" onclick="event.preventDefault(); event.stopPropagation(); openSettingsSheet(); return false;">
     <i class="fa-solid fa-cog fa-xl" style="color: rgb(252, 250, 250);"></i>
-    
   </button>
 </div>
 
