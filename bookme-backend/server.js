@@ -10,8 +10,26 @@ const uploadsDir = path.join(__dirname, "uploads");
 const projectRoot = path.join(__dirname, "..");
 const postsFilePath = path.join(__dirname, "posts.json");
 const PORT = process.env.PORT || 10000;
-const frontendUrl = process.env.FRONTEND_URL || "http://localhost:10000";
-const publicBaseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:10000";
+const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:10000").replace(/\/$/, "");
+const publicBaseUrl = (process.env.PUBLIC_BASE_URL || process.env.FRONTEND_URL || "http://localhost:10000").replace(/\/$/, "");
+
+function normalizeMediaUrlForPublic(mediaUrl) {
+  if (!mediaUrl) return mediaUrl;
+
+  const normalizedBase = publicBaseUrl.replace(/\/$/, "");
+  const localPatterns = [
+    /^https?:\/\/localhost(?::\d+)?/i,
+    /^https?:\/\/127\.0\.0\.1(?::\d+)?/i,
+    /^https?:\/\/0\.0\.0\.0(?::\d+)?/i
+  ];
+
+  let normalized = mediaUrl;
+  for (const pattern of localPatterns) {
+    normalized = normalized.replace(pattern, normalizedBase);
+  }
+
+  return normalized;
+}
 
 function loadPostsFromFile() {
   try {
@@ -27,7 +45,17 @@ function loadPostsFromFile() {
     }
 
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.map((post) => ({
+      ...post,
+      media_url: normalizeMediaUrlForPublic(post?.media_url),
+      media_urls: Array.isArray(post?.media_urls)
+        ? post.media_urls.map(normalizeMediaUrlForPublic)
+        : post?.media_urls
+    }));
   } catch (error) {
     console.warn("Failed to load posts file, resetting it:", error.message);
     try {
@@ -41,7 +69,15 @@ function loadPostsFromFile() {
 
 function savePostsToFile() {
   try {
-    fs.writeFileSync(postsFilePath, JSON.stringify(inMemoryPosts, null, 2), "utf8");
+    const normalizedPosts = inMemoryPosts.map((post) => ({
+      ...post,
+      media_url: normalizeMediaUrlForPublic(post?.media_url),
+      media_urls: Array.isArray(post?.media_urls)
+        ? post.media_urls.map(normalizeMediaUrlForPublic)
+        : post?.media_urls
+    }));
+
+    fs.writeFileSync(postsFilePath, JSON.stringify(normalizedPosts, null, 2), "utf8");
   } catch (error) {
     console.error("Failed to save posts file:", error.message);
   }
@@ -92,15 +128,27 @@ function removeInMemoryPostById(postId, requestingUserId = null) {
 function pruneMissingMediaPosts() {
   for (let index = inMemoryPosts.length - 1; index >= 0; index--) {
     const post = inMemoryPosts[index];
+
+    if (post?.media_url) {
+      post.media_url = normalizeMediaUrlForPublic(post.media_url);
+    }
+
+    if (Array.isArray(post?.media_urls)) {
+      post.media_urls = post.media_urls.map(normalizeMediaUrlForPublic);
+    }
+
     const localUploadPath = getLocalUploadPathFromMediaUrl(post?.media_url);
 
     if (post?.media_url && localUploadPath && !fs.existsSync(localUploadPath)) {
       inMemoryPosts.splice(index, 1);
     }
   }
+
+  savePostsToFile();
 }
 
 fs.mkdirSync(uploadsDir, { recursive: true });
+pruneMissingMediaPosts();
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -264,7 +312,7 @@ app.post("/api/posts", upload.array("file", 20), (req, res) => {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
-  const mediaUrls = files.map((file) => `${publicBaseUrl}/uploads/${file.filename}`);
+  const mediaUrls = files.map((file) => normalizeMediaUrlForPublic(`${publicBaseUrl}/uploads/${file.filename}`));
   const firstOriginalName = files[0]?.originalname || "uploaded file";
   const cleanOriginalName = path.parse(firstOriginalName).name || firstOriginalName;
   const media_type = files.some((file) => file.mimetype?.startsWith("video/")) ? "video" : "image";
