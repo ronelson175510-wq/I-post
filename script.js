@@ -1908,18 +1908,14 @@ if (searchInputs.length) {
   function openNav() {
         const sideMenu = document.getElementById("mysidemenu");
         if (!sideMenu) return;
+        sideMenu.dataset.state = "open";
         sideMenu.style.width = "250px";
     }
 
     function closeNav() {
         const sideMenu = document.getElementById("mysidemenu");
         if (!sideMenu) return;
-
-        if (window.innerWidth >= 980) {
-          sideMenu.style.width = "250px";
-          return;
-        }
-
+        sideMenu.dataset.state = "closed";
         sideMenu.style.width = "0";
     }
 
@@ -1928,11 +1924,15 @@ if (searchInputs.length) {
         if (!sideMenu) return;
 
         if (window.innerWidth >= 980) {
-          sideMenu.style.width = "250px";
+          if (sideMenu.dataset.state !== "closed") {
+            sideMenu.style.width = "250px";
+          } else {
+            sideMenu.style.width = "0";
+          }
           return;
         }
 
-        if (sideMenu.style.width && sideMenu.style.width !== "0px") {
+        if (sideMenu.dataset.state === "open") {
           sideMenu.style.width = "250px";
           return;
         }
@@ -1941,7 +1941,11 @@ if (searchInputs.length) {
     }
 
     window.addEventListener("resize", syncDesktopSideMenuState);
-    window.addEventListener("load", syncDesktopSideMenuState);
+    window.addEventListener("load", () => {
+      const sideMenu = document.getElementById("mysidemenu");
+      if (sideMenu) sideMenu.dataset.state = window.innerWidth >= 980 ? "open" : "closed";
+      syncDesktopSideMenuState();
+    });
 
 // read more js
 const readMoreBtn = document.getElementById("readMoreIpost");
