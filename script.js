@@ -2948,14 +2948,11 @@ function renderFeedPost(post) {
 
   return `
     <div class="post-thread">
-      <div class="post-avatar-rail" aria-label="Profile picture">
-        <button type="button" class="post-avatar-bubble profile-avatar-trigger" data-user-id="${ownerUserId}" aria-label="View profile">
-          ${getCurrentUserAvatarMarkup(ownerUserId)}
-        </button>
-      </div>
-
       <div class="feed-post-card ${isTextOnly ? "text-only-post" : ""}" data-post-id="${post?.id || ""}">
         <div class="feed-post-header">
+          <button type="button" class="post-avatar-bubble profile-avatar-trigger feed-header-avatar" data-user-id="${ownerUserId}" aria-label="View profile">
+            ${getCurrentUserAvatarMarkup(ownerUserId)}
+          </button>
           <button type="button" class="feed-post-user profile-avatar-trigger" data-user-id="${ownerUserId}" aria-label="View ${displayName}'s profile">
             <span class="feed-post-user-name">${displayName}</span>
           </button>
