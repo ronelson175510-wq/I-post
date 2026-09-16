@@ -2817,6 +2817,30 @@ function getCurrentUserAvatarMarkup(userId = getCurrentUserId()) {
   return '<i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>';
 }
 
+function formatPostDateLabel(dateValue) {
+  if (!dateValue) return "";
+
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+  if (diffHours < 24) {
+    return "Today";
+  }
+
+  if (diffHours < 48) {
+    return "Yesterday";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric"
+  }).format(date);
+}
+
 function openUserProfileSheet(userId = getCurrentUserId()) {
   const targetUserId = userId || getCurrentUserId();
   const profileImage = getProfilePicForUser(targetUserId) || (auth?.currentUser?.uid === targetUserId ? auth.currentUser.photoURL : null);
@@ -2876,6 +2900,7 @@ function renderFeedPost(post) {
   const isTextOnly = !mediaUrl && !!caption;
   const ownerUserId = post?.user_id || getCurrentUserId();
   const displayName = getDisplayNameForUser(ownerUserId) || "User";
+  const postDateLabel = formatPostDateLabel(post?.created_at);
   const isOwner = Boolean(post?.user_id) && String(post.user_id) === String(getCurrentUserId());
   const captionPreviewLimit = 80;
 
@@ -2949,17 +2974,31 @@ function renderFeedPost(post) {
   const openReelLabel = dict.openReels || "Open reels";
   const hasVideoMedia = Array.isArray(mediaList) ? mediaList.some((item) => isVideoMediaUrl(item)) : isVideoMediaUrl(mediaUrl);
   const mediaWrap = hasVideoMedia && post?.id ? `<a href="${openReelUrl}" class="video-open-link" aria-label="${openReelLabel}" data-post-id="${post?.id || ""}">${mediaMarkup}</a>` : mediaMarkup;
+  const menuMarkup = isOwner ? `
+    <div class="post-menu-wrapper">
+      <div class="post-menu">
+        <button class="post-menu-toggle" type="button" aria-label="More options">⋮</button>
+        <div class="post-menu-options">
+          <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}">Delete</button>
+        </div>
+      </div>
+    </div>
+  ` : "";
 
   return `
     <div class="post-thread">
       <div class="feed-post-card ${isTextOnly ? "text-only-post" : ""}" data-post-id="${post?.id || ""}">
+        ${menuMarkup}
         <div class="feed-post-header">
           <button type="button" class="post-avatar-bubble profile-avatar-trigger feed-header-avatar" data-user-id="${ownerUserId}" aria-label="View profile">
             ${getCurrentUserAvatarMarkup(ownerUserId)}
           </button>
-          <button type="button" class="feed-post-user profile-avatar-trigger" data-user-id="${ownerUserId}" aria-label="View ${displayName}'s profile">
-            <span class="feed-post-user-name">${displayName}</span>
-          </button>
+          <div class="feed-post-user-block">
+            <button type="button" class="feed-post-user profile-avatar-trigger" data-user-id="${ownerUserId}" aria-label="View ${displayName}'s profile">
+              <span class="feed-post-user-name">${displayName}</span>
+            </button>
+            ${postDateLabel ? `<span class="feed-post-date">${postDateLabel}</span>` : ""}
+          </div>
         </div>
         ${renderCaptionMarkup(caption)}
         ${mediaWrap}
@@ -2971,15 +3010,15 @@ function renderFeedPost(post) {
             </button>
           </div>
 
-         <i class="fa-solid fa-bookmark fa-lg" style="color: rgb(0, 0, 0);"></i>
+         <i class="fa-solid fa-bookmark fa-lg" style="color: rgb(252, 252, 252);"></i>
 
           <button class="comment-btn" type="button" aria-label="Open comments" data-post-id="${post?.id || ""}">
-            <i class="fa-regular fa-comments fa-xl" style="color: rgb(49, 49, 50);"></i>
+            <i class="fa-regular fa-comments fa-xl" style="color: rgb(246, 246, 249);"></i>
           </button>
 
           <button class="like-btn" type="button">
-            <i class="fa-solid fa-thumbs-up fa-lg" style="color: rgb(0, 0, 0);"></i>
-            <i class="fa-solid fa-thumbs-down fa-lg" style="color: rgb(1, 1, 1);"></i>
+            <i class="fa-solid fa-thumbs-up fa-lg" style="color: rgb(9, 9, 9);"></i>
+            <i class="fa-solid fa-thumbs-down fa-lg" style="color: rgb(12, 12, 12);"></i>
           </button>
         </div>
       </div>

@@ -1526,10 +1526,18 @@ width: 30px;
   font: inherit;
 }
 
+.feed-post-user-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
 .feed-post-user-name {
   color: #050505;
   font-size: 15px;
-  font-weight: 700;
+  
+  font-weight: bold;
   font-family: "Times New Roman", Times, serif;
   letter-spacing: 0.02em;
   line-height: 1.2;
@@ -1537,12 +1545,22 @@ width: 30px;
   display: inline-block;
 }
 
+.feed-post-date {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  margin: -3px 23px 0 10px;
+  margin-left: -1px;
+}
+
 .feed-caption {
  margin: 0 13px 14px;
   color: #0c0c0c;
   line-height: 1.70;
-  font-weight: 500;
-  font-size: 16px;
+  font-weight: 590;
+  font-size: 15px;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -1654,9 +1672,9 @@ width: 30px;
 .post-menu-toggle {
   width: 28px;
   height: 28px;
-  border: 1px solid rgba(17, 17, 17, 0.12);
+  border: 1px solid rgba(249, 247, 247, 0.08);
   background: rgba(255, 255, 255, 0.96);
-  color: #1d1d1d;
+  color: #101010;
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
@@ -1664,7 +1682,7 @@ width: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 3px 10px rgba(249, 247, 247, 0.08);
   padding: 0;
 }
 
@@ -1679,7 +1697,7 @@ width: 30px;
   right: 0;
   top: calc(100% + 6px);
   display: none;
-  background: #fff;
+  background: #fbfafa;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
@@ -1698,7 +1716,7 @@ width: 30px;
 
 .feed-post-card .post-menu-toggle {
   background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(17, 17, 17, 0.12);
+  border: 1px solid rgba(40, 39, 39, 0.12);
   width: 28px;
   height: 28px;
   font-size: 20px;
@@ -1782,9 +1800,9 @@ width: 30px;
 
 .feed-post-card .feed-actions {
   margin-top: 0;
-  background: rgb(255, 255, 255);
+  background: rgb(3, 3, 3);
   border-top: 1.5px solid rgba(0,0,0,0.08);
-  border-bottom: 1.5px solid rgba(0,0,0,0.08);
+  border-bottom: 1.5px solid rgba(247, 244, 244, 0.08);
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
   padding: 8px 10px 10px;
@@ -1832,8 +1850,8 @@ width: 30px;
   width: 100%;
   display: block;
   background: #000;
-  min-height: 150px;
-  max-height: 220px;
+  min-height: 180px;
+  max-height: 260px;
   object-fit: cover;
  
 }
