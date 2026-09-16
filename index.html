@@ -102,7 +102,7 @@
             font-size: 12px;
             font-family:'Times New Roman', Times, serif;
             overflow: hidden;
-            height: 40px;
+            height: 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -127,11 +127,13 @@
         }
 
         .title-wrap{
-          margin-left: -7px;
+          
             display: flex;
             align-items: center;
-            float: left;
-            margin-top: 0;
+            position: absolute;
+            left: 44%;
+            
+            margin-top: -10px;
             
         }
 
@@ -154,7 +156,23 @@
             display: inline-block;
         }
 
+        .header-brand-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            margin-right: auto;
+            margin-left: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.2px solid rgb(123, 122, 122);
+            border-radius: 10px;
+            box-shadow: inset 0 1px 0 rgba(120, 119, 119, 0.12), 0 2px 8px rgba(0,0,0,0.18);
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+        }
+
         .header-icons{
+          margin-left: auto;
           margin-right: -7px;
             display: flex;
             align-items: center;
@@ -169,6 +187,8 @@
             height: 30px;
             cursor: pointer;
             transition: 0.3s ease;
+            position: relative;
+            z-index: 2;
         }
 
         .header-icons i,
@@ -182,7 +202,7 @@
             background: rgba(255, 255, 255, 0.08);
             border: 1.2px solid rgb(72, 71, 71);
             border-radius: 10px;
-            box-shadow: inset 0 1px 0 rgba(12, 12, 12, 0.12)0 2px 8px rgba(0,0,0,0.18);
+            box-shadow: inset 0 1px 0 rgba(12, 12, 12, 0.12), 0 2px 8px rgba(0,0,0,0.18);
             transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
         }
 
@@ -1405,7 +1425,6 @@ width: 30px;
   gap: 10px;
   width: 100%;
   margin: 0 auto;
-
   
   
   border-radius: 12px;
@@ -1474,7 +1493,7 @@ width: 30px;
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid rgba(231, 241, 41, 0.08);
-  margin-left: -12px;
+  margin-left: -14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1495,7 +1514,7 @@ width: 30px;
 }
 
 .feed-post-card p {
-  margin: 21px 13px 14px;
+  margin: -10px 12px 12px;
   color: #0d0d0d;
   line-height: 1.45;
   font-size: 16px;
@@ -1556,7 +1575,7 @@ width: 30px;
 }
 
 .feed-caption {
- margin: 0 13px 14px;
+ margin: 3px 1px 6px;
   color: #0c0c0c;
   line-height: 1.70;
   font-weight: 590;
@@ -1649,7 +1668,7 @@ width: 30px;
 }
 
 .text-only-post p {
-   margin: 35px 13px 6px;
+   margin: 35px 1px 6px;
   font-size: 16px;
   line-height: 1.70;
   color: #1b1b1b;
@@ -1732,10 +1751,11 @@ width: 30px;
   width: 100%;
   border: none;
   background: transparent;
-  color: #b42318;
+  color: #090909;
   text-align: left;
   padding: 9px 12px;
   font-size: 13px;
+  gap: 10px;
   cursor: pointer;
   border-radius: 8px;
 }
@@ -1773,12 +1793,13 @@ width: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  margin-right: -8px;
   width: 32px;
   height: 32px;
   background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(17, 17, 17, 0.12);
+  border: none;
   border-radius: 50%;
-  color: #1d1d1d;
+  color: #060606;
   font-size: 24px;
   line-height: 1;
   cursor: pointer;
@@ -1800,9 +1821,9 @@ width: 30px;
 
 .feed-post-card .feed-actions {
   margin-top: 0;
-  background: rgb(3, 3, 3);
+  background-color: white;
   border-top: 1.5px solid rgba(0,0,0,0.08);
-  border-bottom: 1.5px solid rgba(247, 244, 244, 0.08);
+  border-bottom: 1.5px solid rgba(13, 13, 13, 0.08);
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
   padding: 8px 10px 10px;
@@ -1834,6 +1855,7 @@ width: 30px;
   max-height: 320px;
   object-fit: cover;
   background: #f3f3f3;
+  
 }
 
 .video-shell {
@@ -2585,22 +2607,17 @@ width: 30px;
 
 
     <div class="header">
+        <div class="header-brand-icon">
+          <i class="fa-brands fa-discourse fa-lg" style="color: rgb(109, 108, 111);"></i>
+        </div>
+
         <div class="title-wrap">
             
-         <div class="title">CHAT-MINI</div>
+        <img src="./bookmeassets/1789557292457.png" alt="CHAT-MINI" style="width: 65px; height: auto;" />
            
         </div>
 
-     
-       
         <div class="header-icons">
-          <i class="fa-brands fa-discourse fa-lg" style="color: rgb(109, 108, 111);"></i>
-           <div class="notification-bell"> 
-            <i id="notifyBell" class="fa-solid fa-bell fa-xl" style="color: rgb(246, 224, 30); display: flex;"></i>
-            <span id="notifyCount" class="notify-bubble">1</span>
-           </div>
-          
-            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(104, 93, 104);"></i>
             <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars fa-xl" style="color: rgb(0, 0, 0);"></i></button>
         </div>
     </div>

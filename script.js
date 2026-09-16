@@ -2242,7 +2242,7 @@ function renderUserSheetCard(post) {
         <div class="post-menu">
           <button class="post-menu-toggle" type="button" aria-label="More options">⋮</button>
           <div class="post-menu-options">
-            <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}">Delete</button>
+            <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}"><i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i> Report</button>
           </div>
         </div>
       </div>
@@ -2268,7 +2268,7 @@ function renderUserSheetCard(post) {
       <div class="post-menu">
         <button class="post-menu-toggle" type="button" aria-label="More options">⋮</button>
         <div class="post-menu-options">
-          <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}">Delete</button>
+          <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}"><i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i>Report</button>
         </div>
       </div>
     </div>
@@ -2979,7 +2979,7 @@ function renderFeedPost(post) {
       <div class="post-menu">
         <button class="post-menu-toggle" type="button" aria-label="More options">⋮</button>
         <div class="post-menu-options">
-          <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}">Delete</button>
+          <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}"><i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i> Report</button>
         </div>
       </div>
     </div>
@@ -3010,10 +3010,10 @@ function renderFeedPost(post) {
             </button>
           </div>
 
-         <i class="fa-solid fa-bookmark fa-lg" style="color: rgb(252, 252, 252);"></i>
+         <i class="fa-solid fa-bookmark fa-lg" style="color: rgb(109, 106, 106);"></i>
 
           <button class="comment-btn" type="button" aria-label="Open comments" data-post-id="${post?.id || ""}">
-            <i class="fa-regular fa-comments fa-xl" style="color: rgb(246, 246, 249);"></i>
+            <i class="fa-regular fa-comments fa-xl" style="color: rgb(76, 76, 76);"></i>
           </button>
 
           <button class="like-btn" type="button">
@@ -3082,37 +3082,11 @@ function bindTextPostMenus() {
   });
 
   document.querySelectorAll(".text-post-delete-btn, .post-delete-btn").forEach(button => {
-    button.addEventListener("click", async (event) => {
+    button.addEventListener("click", (event) => {
       event.stopPropagation();
-      const postId = button.dataset.postId;
-      if (!postId) return;
-
-      const shouldDelete = window.confirm("Delete this post?");
-      if (!shouldDelete) return;
-
-      try {
-        const response = await fetch(`/api/posts/${postId}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ user_id: getCurrentUserId() })
-        });
-        const result = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(result?.error || "Unable to delete this post.");
-        }
-
-        const card = button.closest(".feed-post-card");
-        if (card) {
-          card.remove();
-        } else {
-          await loadPosts();
-        }
-      } catch (error) {
-        console.error("Delete post error:", error);
-        alert(error.message || "Unable to delete this post.");
+      const reportSheet = document.getElementById("reportSheet");
+      if (reportSheet) {
+        reportSheet.classList.add("show");
       }
     });
   });
