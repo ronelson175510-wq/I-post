@@ -315,6 +315,15 @@ if (bell || bubble || notification) {
 const searchBtn = document.getElementById("searchBtn");
 const searchSheet = document.getElementById("searchSheet");
 const closeSearchSheet = document.getElementById("closeSearchSheet");
+const headerBrandLink = document.getElementById("headerBrandLink");
+
+if (headerBrandLink) {
+  headerBrandLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.location.href = "message.html";
+  });
+}
 
 if (searchBtn && searchSheet) {
   searchBtn.addEventListener("click", () => {
@@ -1549,7 +1558,6 @@ function initializeMessagePage() {
             ${getConversationAvatarMarkup(user)}
             <span>${label}</span>
           </span>
-          <span>›</span>
         </button>
       `;
     }).join("");
@@ -2195,6 +2203,59 @@ if (footerPlusBtn && footerIconMenu) {
 const commentsSheet = document.getElementById("commentsSheet");
 const closeCommentsSheet = document.getElementById("closeCommentsSheet");
 const commentsList = document.getElementById("commentsList");
+const commentInput = document.getElementById("commentInput");
+const submitCommentBtn = document.getElementById("submitCommentBtn");
+let activeCommentsPostId = "";
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+async function loadCommentsForCurrentPost() {
+  if (!commentsList) return;
+
+  if (!activeCommentsPostId) {
+    commentsList.innerHTML = '<div class="comment-empty">No comments yet.</div>';
+    return;
+  }
+
+  try {
+    commentsList.innerHTML = '<div class="comment-empty">Loading comments...</div>';
+    const response = await fetch(`/api/comments/${encodeURIComponent(activeCommentsPostId)}`);
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data?.error || "Unable to load comments.");
+    }
+
+    const comments = Array.isArray(data.comments) ? data.comments : [];
+    if (!comments.length) {
+      commentsList.innerHTML = '<div class="comment-empty">No comments yet.</div>';
+      return;
+    }
+
+    commentsList.innerHTML = comments
+      .map((comment) => {
+        const author = comment?.user_name || "User";
+        const text = comment?.comment || "";
+        return `
+          <div class="comment-item">
+            <strong>${escapeHtml(author)}</strong>
+            <div>${escapeHtml(text)}</div>
+          </div>
+        `;
+      })
+      .join("");
+  } catch (error) {
+    console.error("Comment load error:", error);
+    commentsList.innerHTML = '<div class="comment-empty">Unable to load comments.</div>';
+  }
+}
 const feedPosts = document.getElementById("feedPosts");
 const searchResults = document.getElementById("searchResults");
 const userSheetPosts = document.getElementById("userSheetPosts");
@@ -2242,14 +2303,14 @@ function renderUserSheetCard(post) {
         <div class="post-menu">
           <button class="post-menu-toggle" type="button" aria-label="More options">⋮</button>
           <div class="post-menu-options">
-            <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}"><i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i> Report</button>
+            <button class="post-delete-btn delete-post-btn" type="button" data-post-id="${post?.id || ""}" data-action="delete"><i class="fa-solid fa-trash fa-lg" style="color: rgb(109, 108, 111);"></i> Delete</button>
           </div>
         </div>
       </div>
     ` : "";
 
     return `
-      <div class="user-sheet-post-card user-sheet-text-card">
+      <div class="user-sheet-post-card user-sheet-text-card" data-post-id="${post?.id || ""}">
         ${menuMarkup}
         <i class="fa-solid fa-pen-clip user-sheet-text-icon" style="color: rgb(0, 0, 0);"></i>
         <div class="user-sheet-text-content">${textContent || "Text post"}</div>
@@ -2268,14 +2329,14 @@ function renderUserSheetCard(post) {
       <div class="post-menu">
         <button class="post-menu-toggle" type="button" aria-label="More options">⋮</button>
         <div class="post-menu-options">
-          <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}"><i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i>Report</button>
+          <button class="post-delete-btn delete-post-btn" type="button" data-post-id="${post?.id || ""}" data-action="delete"><i class="fa-solid fa-trash fa-lg" style="color: rgb(109, 108, 111);"></i> Delete</button>
         </div>
       </div>
     </div>
   ` : "";
 
   return `
-    <div class="user-sheet-post-card">
+    <div class="user-sheet-post-card" data-post-id="${post?.id || ""}">
       ${menuMarkup}
       ${isVideo ? `
         <div class="user-sheet-media-wrap">
@@ -2290,6 +2351,55 @@ function renderUserSheetCard(post) {
       `}
     </div>
   `;
+}
+
+async function deletePostById(postId) {
+  if (!postId) return;
+
+  const currentUserId = getCurrentUserId();
+  if (!currentUserId) {
+    alert("Please sign in to delete a post.");
+    return;
+  }
+
+  const confirmed = window.confirm("Delete this post?");
+  if (!confirmed) return;
+
+  try {
+    const response = await fetch(`/api/posts/${postId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ user_id: currentUserId })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error || "Failed to delete post");
+    }
+
+    const card = document.querySelector(`.user-sheet-post-card[data-post-id="${String(postId)}"]`);
+    if (card) {
+      card.remove();
+    }
+
+    const feedCard = document.querySelector(`.feed-post-card[data-post-id="${String(postId)}"]`);
+    if (feedCard) {
+      feedCard.remove();
+    }
+
+    if (userSheetPosts && activeUserId) {
+      renderUserSheetMedia(activeUserId, activeUserSheetFilter);
+    }
+
+    if (feedPosts) {
+      loadPosts();
+    }
+  } catch (error) {
+    console.error("Delete post error:", error);
+    alert(error.message || "Could not delete the post.");
+  }
 }
 
 async function renderUserSheetMedia(userId, filterType = "all") {
@@ -2324,6 +2434,7 @@ async function renderUserSheetMedia(userId, filterType = "all") {
     }
 
     userSheetPosts.innerHTML = filteredPosts.map(renderUserSheetCard).join("");
+    bindTextPostMenus();
     userSheetPosts.querySelectorAll("video").forEach((video) => {
       video.muted = true;
       video.autoplay = true;
@@ -2428,6 +2539,22 @@ async function loadReels() {
               <span class="video-timer">0:00 / 0:00</span>
             </div>
           </div>
+
+          <div class="reel-actions" aria-label="Reel actions">
+            <button class="reel-action-btn like-btn" type="button" aria-label="Like reel">
+              <i class="fa-solid fa-thumbs-up" style="color: rgba(242, 224, 22, 0.9);"></i>
+            </button>
+            <button class="reel-action-btn comment-btn" type="button" aria-label="Open comments" data-post-id="${postId}">
+              <i class="fa-regular fa-comment" style="color: rgba(242, 224, 22, 0.9)"></i>
+            </button>
+            <button class="reel-action-btn comment-btn" type="button" aria-label="Open comments" data-post-id="${postId}">
+             <i class="fa-regular fa-bookmark" style="color: rgba(242, 224, 22, 0.9);"></i>
+            </button>
+            <button class="reel-action-btn menu-btn post-menu-toggle" type="button" aria-label="More options">
+              <i class="fa-solid fa-ellipsis" style="color: rgba(242, 224, 22, 0.9);"></i>
+            </button>
+          </div>
+
           <div class="reel-overlay">
             <div class="reel-user-row">
               <div class="reel-user-avatar">
@@ -2664,8 +2791,8 @@ function bindVideoControls(videoShell) {
 
   if (!video || !toggleBtn) return;
 
-  video.muted = false;
-  video.volume = 1;
+  video.muted = true;
+  video.volume = 0;
   video.autoplay = true;
   video.loop = true;
   video.playsInline = true;
@@ -2723,6 +2850,9 @@ function bindVideoControls(videoShell) {
   toggleBtn.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+
+    video.muted = false;
+    video.volume = 1;
 
     if (video.paused) {
       video.play().catch(() => {});
@@ -2906,16 +3036,25 @@ function renderFeedPost(post) {
 
   const renderCaptionMarkup = (text) => {
     if (!text) return "";
-    const safeText = text.replace(/"/g, "&quot;");
+
+    const encodeHtml = (value) => value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/\n/g, "<br>");
+
+    const safeText = encodeHtml(text);
     const shouldTruncate = text.length > captionPreviewLimit || text.includes("\n");
     if (!shouldTruncate) {
       return `<p class="feed-caption-text">${safeText}</p>`;
     }
 
     const previewText = `${text.slice(0, captionPreviewLimit).trim()}...`;
+    const safePreview = encodeHtml(previewText).replace(/<br>/g, " ");
     return `
-      <div class="feed-caption" data-full-text="${safeText}">
-        <span class="feed-caption-text">${previewText}</span>
+      <div class="feed-caption" data-full-text="${encodeHtml(text).replace(/<br>/g, "\n")}">
+        <span class="feed-caption-text">${safePreview}</span>
         <button class="feed-read-more-btn" type="button">${readMoreText}</button>
       </div>
     `;
@@ -3084,6 +3223,15 @@ function bindTextPostMenus() {
   document.querySelectorAll(".text-post-delete-btn, .post-delete-btn").forEach(button => {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
+
+      const action = button.dataset.action || "report";
+      const postId = button.dataset.postId;
+
+      if (action === "delete") {
+        deletePostById(postId);
+        return;
+      }
+
       const reportSheet = document.getElementById("reportSheet");
       if (reportSheet) {
         reportSheet.classList.add("show");
@@ -3152,13 +3300,70 @@ function getCurrentPostText() {
 function openCommentsSheet(postId = "") {
   if (!commentsSheet || !commentsList) return;
 
-  commentsList.innerHTML = '<div class="comment-empty">No comments yet.</div>';
+  activeCommentsPostId = String(postId || "");
   commentsSheet.classList.add("show");
+  commentsSheet.style.pointerEvents = "auto";
+  commentsList.innerHTML = '<div class="comment-empty">Loading comments...</div>';
+
+  if (activeCommentsPostId) {
+    loadCommentsForCurrentPost();
+  } else {
+    commentsList.innerHTML = '<div class="comment-empty">No comments yet.</div>';
+  }
 }
 
 if (closeCommentsSheet && commentsSheet) {
   closeCommentsSheet.addEventListener("click", () => {
     commentsSheet.classList.remove("show");
+    commentsSheet.style.pointerEvents = "none";
+    if (commentInput) commentInput.value = "";
+  });
+}
+
+if (submitCommentBtn && commentInput && commentsSheet) {
+  submitCommentBtn.addEventListener("click", async () => {
+    if (!commentsSheet.classList.contains("show")) {
+      return;
+    }
+
+    const commentText = commentInput.value.trim();
+    if (!commentText) {
+      return;
+    }
+
+    const postId = activeCommentsPostId;
+    if (!postId) {
+      return;
+    }
+
+    try {
+      submitCommentBtn.disabled = true;
+      submitCommentBtn.textContent = "Posting...";
+
+      const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          post_id: Number(postId),
+          user_id: getCurrentUserId(),
+          content: commentText
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Unable to add comment.");
+      }
+
+      commentInput.value = "";
+      await loadCommentsForCurrentPost();
+    } catch (error) {
+      console.error("Comment submit error:", error);
+      alert(error.message || "Unable to add comment.");
+    } finally {
+      submitCommentBtn.disabled = false;
+      submitCommentBtn.textContent = "Post";
+    }
   });
 }
 
@@ -3190,41 +3395,44 @@ const reportSheetBtn = document.getElementById("reportSheetBtn");
 const reportSheet = document.getElementById("reportSheet");
 const closeReportSheet = document.getElementById("closeReportSheet");
 
-// Open sheet
-reportSheetBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  reportSheet.classList.add("show");
-});
+if (reportSheetBtn && reportSheet) {
+  reportSheetBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    reportSheet.classList.add("show");
+  });
+}
 
-// Close sheet
-closeReportSheet.addEventListener("click", () => {
-  reportSheet.classList.remove("show");
-});
+if (closeReportSheet && reportSheet) {
+  closeReportSheet.addEventListener("click", () => {
+    reportSheet.classList.remove("show");
+  });
+}
 
-// Drag-to-close
-let startY = 0, currentY = 0, isDragging = false;
+if (reportSheet) {
+  let startY = 0, currentY = 0, isDragging = false;
 
-reportSheet.addEventListener("touchstart", (e) => {
-  if (e.target.closest(".close-btn")) return;
-  startY = e.touches[0].clientY;
-  isDragging = true;
-});
+  reportSheet.addEventListener("touchstart", (e) => {
+    if (e.target.closest(".close-btn")) return;
+    startY = e.touches[0].clientY;
+    isDragging = true;
+  });
 
-reportSheet.addEventListener("touchmove", (e) => {
-  if (!isDragging) return;
+  reportSheet.addEventListener("touchmove", (e) => {
+    if (!isDragging) return;
 
-  currentY = e.touches[0].clientY;
-  const diff = currentY - startY;
+    currentY = e.touches[0].clientY;
+    const diff = currentY - startY;
 
-  if (diff > 0) reportSheet.style.bottom = `-${diff}px`;
-});
+    if (diff > 0) reportSheet.style.bottom = `-${diff}px`;
+  });
 
-reportSheet.addEventListener("touchend", () => {
-  isDragging = false;
+  reportSheet.addEventListener("touchend", () => {
+    isDragging = false;
 
-  const diff = currentY - startY;
-  if (diff > 120) reportSheet.classList.remove("show");
+    const diff = currentY - startY;
+    if (diff > 120) reportSheet.classList.remove("show");
 
-  reportSheet.style.bottom = "0";
-});
+    reportSheet.style.bottom = "0";
+  });
+}
 
