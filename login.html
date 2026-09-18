@@ -1318,7 +1318,7 @@
         function finishSignup() {
             const email = document.getElementById("emailInput").value;
             const password = document.getElementById("passwordInput").value;
-            const name = document.getElementById("nameInput").value;
+            const name = document.getElementById("nameInput").value.trim();
 
             if (!email || !password || !name) {
                 alert("Please fill in all required fields!");
@@ -1326,7 +1326,28 @@
             }
 
             auth.createUserWithEmailAndPassword(email, password)
-                .then(() => {
+                .then(async (userCredential) => {
+                    const createdUser = userCredential.user;
+                    const nameParts = name.split(/\s+/);
+                    const firstName = nameParts[0] || "";
+                    const lastName = nameParts.slice(1).join(" ");
+
+                    if (createdUser) {
+                        await createdUser.updateProfile({ displayName: name });
+                        await fetch("/api/profile", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                user_id: createdUser.uid,
+                                firstName,
+                                lastName,
+                                dob: "",
+                                email: createdUser.email || email,
+                                profile_pic: createdUser.photoURL || null
+                            })
+                        });
+                    }
+
                     alert("Account created! You can now log in.");
                     closeSignupSlides();
                     document.getElementById("loginEmail").value = email;

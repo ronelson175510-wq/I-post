@@ -112,6 +112,7 @@ if (auth) {
     updateSideMenuProfileAvatar();
     updateSideMenuUserName();
     updateProfileNameDisplay(user.uid);
+    ensureUserProfileRecordOnServer(user);
     loadCurrentUserProfileDataFromServer(user.uid).then(() => populateProfileSettingsForm(user.uid));
     populateProfileSettingsForm(user.uid);
 
@@ -174,6 +175,60 @@ function saveCurrentUserProfileData(data, userId = getCurrentUserId()) {
   });
 
   return merged;
+}
+
+function splitDisplayName(displayName = "") {
+  const fullName = String(displayName || "").trim();
+  if (!fullName) {
+    return { firstName: "", lastName: "" };
+  }
+
+  const parts = fullName.split(/\s+/);
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: "" };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" ")
+  };
+}
+
+async function ensureUserProfileRecordOnServer(user = auth?.currentUser) {
+  if (!user || !user.uid) {
+    return null;
+  }
+
+  const localProfile = getCurrentUserProfileData(user.uid);
+  const fallbackName = splitDisplayName(user.displayName || "");
+  const payload = {
+    user_id: user.uid,
+    firstName: localProfile.firstName || fallbackName.firstName || "",
+    lastName: localProfile.lastName || fallbackName.lastName || "",
+    dob: localProfile.dob || "",
+    email: localProfile.email || user.email || "",
+    profile_pic: getProfilePicForUser(user.uid) || user.photoURL || null
+  };
+
+  try {
+    const response = await fetch("/api/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      const savedProfile = result?.profile || payload;
+      localStorage.setItem(getUserProfileKey(user.uid), JSON.stringify(savedProfile));
+      return savedProfile;
+    }
+  } catch (error) {
+    console.warn("Failed to ensure backend profile record:", error);
+  }
+
+  localStorage.setItem(getUserProfileKey(user.uid), JSON.stringify(payload));
+  return payload;
 }
 
 async function loadCurrentUserProfileDataFromServer(userId = getCurrentUserId()) {
