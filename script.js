@@ -231,15 +231,17 @@ async function ensureUserProfileRecordOnServer(user = auth?.currentUser) {
   return payload;
 }
 
-async function loadCurrentUserProfileDataFromServer(userId = getCurrentUserId()) {
+async function loadUserProfileDataFromServer(userId = getCurrentUserId()) {
   if (!userId || userId === "guest") {
     return getCurrentUserProfileData(userId);
   }
 
+  const existingProfile = getCurrentUserProfileData(userId);
+
   try {
     const response = await fetch(`/api/profile/${encodeURIComponent(userId)}`);
     if (!response.ok) {
-      return getCurrentUserProfileData(userId);
+      return existingProfile;
     }
 
     const data = await response.json();
@@ -251,11 +253,20 @@ async function loadCurrentUserProfileDataFromServer(userId = getCurrentUserId())
     };
 
     localStorage.setItem(getUserProfileKey(userId), JSON.stringify(profile));
+
+    if (data?.profile_pic) {
+      localStorage.setItem(getProfilePicKeyForUser(userId), data.profile_pic);
+    }
+
     return profile;
   } catch (error) {
     console.warn("Failed to load profile from backend:", error);
-    return getCurrentUserProfileData(userId);
+    return existingProfile;
   }
+}
+
+async function loadCurrentUserProfileDataFromServer(userId = getCurrentUserId()) {
+  return loadUserProfileDataFromServer(userId);
 }
 
 function getDisplayNameForUser(userId = getCurrentUserId()) {
@@ -3083,8 +3094,13 @@ function formatPostDateLabel(dateValue) {
   }).format(date);
 }
 
-function openUserProfileSheet(userId = getCurrentUserId()) {
+async function openUserProfileSheet(userId = getCurrentUserId()) {
   const targetUserId = userId || getCurrentUserId();
+
+  if (targetUserId && targetUserId !== "guest" && targetUserId !== getCurrentUserId()) {
+    await loadUserProfileDataFromServer(targetUserId);
+  }
+
   const profileImage = getProfilePicForUser(targetUserId) || (auth?.currentUser?.uid === targetUserId ? auth.currentUser.photoURL : null);
 
   setExclusiveSheetState({ userSheetOpen: true, settingsSheetOpen: false });
