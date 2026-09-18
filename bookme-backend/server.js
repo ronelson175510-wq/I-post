@@ -11,13 +11,29 @@ const projectRoot = path.join(__dirname, "..");
 const postsFilePath = path.join(__dirname, "posts.json");
 const commentsFilePath = path.join(__dirname, "comments.json");
 const PORT = process.env.PORT || 10000;
-const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:10000").replace(/\/$/, "");
-const publicBaseUrl = (process.env.PUBLIC_BASE_URL || process.env.FRONTEND_URL || "http://localhost:10000").replace(/\/$/, "");
+const frontendUrl = getPublicBaseUrl();
 
-function normalizeMediaUrlForPublic(mediaUrl) {
+function getPublicBaseUrl(req = null) {
+  const configuredBase = process.env.PUBLIC_BASE_URL || process.env.FRONTEND_URL || process.env.APP_URL;
+  if (configuredBase) {
+    return configuredBase.replace(/\/$/, "");
+  }
+
+  if (req) {
+    const forwardedProto = (req.headers["x-forwarded-proto"] || req.protocol || "http").split(",")[0].trim();
+    const forwardedHost = req.headers["x-forwarded-host"] || req.headers.host;
+    if (forwardedHost) {
+      return `${forwardedProto}://${forwardedHost}`.replace(/\/$/, "");
+    }
+  }
+
+  return "http://localhost:10000";
+}
+
+function normalizeMediaUrlForPublic(mediaUrl, req = null) {
   if (!mediaUrl) return mediaUrl;
 
-  const normalizedBase = publicBaseUrl.replace(/\/$/, "");
+  const normalizedBase = getPublicBaseUrl(req).replace(/\/$/, "");
   const localPatterns = [
     /^https?:\/\/localhost(?::\d+)?/i,
     /^https?:\/\/127\.0\.0\.1(?::\d+)?/i,
@@ -175,26 +191,29 @@ function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic
     return callback ? callback(null) : Promise.resolve();
   }
 
-  const safeFirstName = firstName ? String(firstName).trim() : null;
-  const safeLastName = lastName ? String(lastName).trim() : null;
-  const safeDob = dob ? String(dob).trim() : null;
-  const safeEmail = email ? String(email).trim() : null;
-  const safeProfilePic = profilePic ? String(profilePic).trim() : null;
+  const safeFirstName = firstName && String(firstName).trim() ? String(firstName).trim() : null;
+  const safeLastName = lastName && String(lastName).trim() ? String(lastName).trim() : null;
+  const safeDob = dob && String(dob).trim() ? String(dob).trim() : null;
+  const safeEmail = email && String(email).trim() ? String(email).trim() : null;
+  const safeProfilePic = profilePic && String(profilePic).trim() ? String(profilePic).trim() : null;
   const fullName = [safeFirstName, safeLastName].filter(Boolean).join(" ") || null;
 
+  const columns = ["id", "name", "email", "profile_pic", "first_name", "last_name", "dob"];
+  const values = [safeUserId, fullName, safeEmail, safeProfilePic, safeFirstName, safeLastName, safeDob];
+
+  const placeholders = columns.map(() => "?").join(", ");
+  const updates = columns
+    .filter((column) => column !== "id")
+    .map((column) => `${column} = VALUES(${column})`)
+    .join(", ");
+
   const query = `
-    INSERT INTO users (id, name, email, profile_pic, first_name, last_name, dob)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-      name = IFNULL(NULLIF(VALUES(name), ''), name),
-      email = IFNULL(NULLIF(VALUES(email), ''), email),
-      profile_pic = IFNULL(NULLIF(VALUES(profile_pic), ''), profile_pic),
-      first_name = IFNULL(NULLIF(VALUES(first_name), ''), first_name),
-      last_name = IFNULL(NULLIF(VALUES(last_name), ''), last_name),
-      dob = IFNULL(NULLIF(VALUES(dob), ''), dob)
+    INSERT INTO users (${columns.join(", ")})
+    VALUES (${placeholders})
+    ON DUPLICATE KEY UPDATE ${updates}
   `;
 
-  db.query(query, [safeUserId, fullName, safeEmail, safeProfilePic, safeFirstName, safeLastName, safeDob], (err) => {
+  db.query(query, values, (err) => {
     if (callback) {
       callback(err);
       return;
@@ -216,7 +235,8 @@ function getLocalUploadPathFromMediaUrl(mediaUrl) {
 
   try {
     const parsed = new URL(mediaUrl);
-    if (parsed.origin === publicBaseUrl && parsed.pathname.startsWith("/uploads/")) {
+    const expectedOrigin = getPublicBaseUrl();
+    if (parsed.origin === expectedOrigin && parsed.pathname.startsWith("/uploads/")) {
       return path.join(uploadsDir, path.basename(parsed.pathname));
     }
   } catch (error) {
@@ -345,6 +365,7 @@ app.get("/message", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
+  const publicBaseUrl = getPublicBaseUrl(req);
   res.json({ ok: true, message: "Backend healthy", publicBaseUrl });
 });
 
@@ -406,6 +427,7 @@ app.post("/api/translate", async (req, res) => {
 app.post("/api/profile-picture", upload.single("profilePic"), (req, res) => {
   const userId = req.body.user_id || "anonymous";
   const file = req.file;
+  const publicBaseUrl = getPublicBaseUrl(req);
 
   if (!file) {
     return res.status(400).json({ error: "No profile picture uploaded" });
@@ -523,12 +545,13 @@ app.post("/api/posts", upload.array("file", 20), (req, res) => {
   const user_id = req.body.user_id || "anonymous";
   const commonContent = (req.body.content || "").trim();
   const files = Array.isArray(req.files) ? req.files : [];
+  const publicBaseUrl = getPublicBaseUrl(req);
 
   if (!files.length) {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
-  const mediaUrls = files.map((file) => normalizeMediaUrlForPublic(`${publicBaseUrl}/uploads/${file.filename}`));
+  const mediaUrls = files.map((file) => normalizeMediaUrlForPublic(`${publicBaseUrl}/uploads/${file.filename}`, req));
   const firstOriginalName = files[0]?.originalname || "uploaded file";
   const cleanOriginalName = path.parse(firstOriginalName).name || firstOriginalName;
   const media_type = files.some((file) => file.mimetype?.startsWith("video/")) ? "video" : "photo";
@@ -604,6 +627,8 @@ app.post("/api/posts", upload.array("file", 20), (req, res) => {
 });
 
 app.get("/api/posts", (req, res) => {
+  const publicBaseUrl = getPublicBaseUrl(req);
+
   if (!isDbEnabled()) {
     pruneMissingMediaPosts();
     return res.json(inMemoryPosts.slice(0, 20));
@@ -620,7 +645,7 @@ app.get("/api/posts", (req, res) => {
         ...post,
         media_url: post.media_url && !post.media_url.startsWith("http")
           ? `${publicBaseUrl}${post.media_url}`
-          : post.media_url
+          : normalizeMediaUrlForPublic(post.media_url, req)
       }))
       .filter(post => {
         if (!post.media_url) return true;

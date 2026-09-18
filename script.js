@@ -158,10 +158,10 @@ function saveCurrentUserProfileData(data, userId = getCurrentUserId()) {
 
   const profilePayload = {
     user_id: userId,
-    firstName: merged.firstName || "",
-    lastName: merged.lastName || "",
-    dob: merged.dob || "",
-    email: merged.email || "",
+    firstName: merged.firstName && merged.firstName.trim() ? merged.firstName.trim() : null,
+    lastName: merged.lastName && merged.lastName.trim() ? merged.lastName.trim() : null,
+    dob: merged.dob && merged.dob.trim() ? merged.dob.trim() : null,
+    email: merged.email && merged.email.trim() ? merged.email.trim() : null,
     profile_pic: getProfilePicForUser(userId) || auth?.currentUser?.photoURL || null
   };
 
