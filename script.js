@@ -3011,8 +3011,6 @@ function renderFeedPost(post) {
   const mediaUrl = mediaList[0] || post?.media_url;
   const currentLang = getPreferredLanguage();
   const dict = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
-  const readMoreText = dict.readMore || "Read more";
-  const readLessText = dict.readLess || "Read less";
   const translateText = dict.translate || "Translate";
   const videoText = dict.video || "Video";
   const originalName = (post?.original_name || post?.saved_filename || "Uploaded file").replace(/\.[^/.]+$/, "");
@@ -3037,6 +3035,10 @@ function renderFeedPost(post) {
   const renderCaptionMarkup = (text) => {
     if (!text) return "";
 
+    const normalizedText = String(text)
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n");
+
     const encodeHtml = (value) => value
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -3044,18 +3046,11 @@ function renderFeedPost(post) {
       .replace(/\"/g, "&quot;")
       .replace(/\n/g, "<br>");
 
-    const safeText = encodeHtml(text);
-    const shouldTruncate = text.length > captionPreviewLimit || text.includes("\n");
-    if (!shouldTruncate) {
-      return `<p class="feed-caption-text">${safeText}</p>`;
-    }
+    const safeText = encodeHtml(normalizedText);
 
-    const previewText = `${text.slice(0, captionPreviewLimit).trim()}...`;
-    const safePreview = encodeHtml(previewText).replace(/<br>/g, " ");
     return `
-      <div class="feed-caption" data-full-text="${encodeHtml(text).replace(/<br>/g, "\n")}">
-        <span class="feed-caption-text">${safePreview}</span>
-        <button class="feed-read-more-btn" type="button">${readMoreText}</button>
+      <div class="feed-caption">
+        <span class="feed-caption-text">${safeText}</span>
       </div>
     `;
   };
@@ -3155,9 +3150,10 @@ function renderFeedPost(post) {
             <i class="fa-regular fa-comments fa-xl" style="color: rgb(76, 76, 76);"></i>
           </button>
 
+          <i class="fa-solid fa-retweet fa-xl" style="color: rgb(249, 228, 88);"></i>
+
           <button class="like-btn" type="button">
-            <i class="fa-solid fa-thumbs-up fa-lg" style="color: rgb(9, 9, 9);"></i>
-            <i class="fa-solid fa-thumbs-down fa-lg" style="color: rgb(12, 12, 12);"></i>
+           <i class="fa-regular fa-heart fa-xl" style="color: rgb(101, 101, 100);"></i>
           </button>
         </div>
       </div>
@@ -3166,28 +3162,7 @@ function renderFeedPost(post) {
 }
 
 function bindReadMoreButtons() {
-  document.querySelectorAll(".feed-read-more-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      const caption = button.closest(".feed-caption");
-      const text = caption?.querySelector(".feed-caption-text");
-      if (!caption || !text) return;
-
-      const langDict = TRANSLATIONS[getPreferredLanguage()] || TRANSLATIONS.en;
-      const fullText = caption.dataset.fullText || text.textContent || "";
-      const isExpanded = caption.classList.contains("expanded");
-      const previewLimit = 80;
-
-      if (isExpanded) {
-        text.textContent = `${fullText.slice(0, previewLimit).trim()}...`;
-        button.textContent = langDict.readMore || "Read more";
-        caption.classList.remove("expanded");
-      } else {
-        text.textContent = fullText;
-        button.textContent = langDict.readLess || "Read less";
-        caption.classList.add("expanded");
-      }
-    });
-  });
+  // Feed captions are intentionally displayed in full without a read-more toggle.
 }
 
 function bindTextPostMenus() {
