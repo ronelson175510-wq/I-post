@@ -2156,6 +2156,11 @@ if (writePostBtn && writePostSheet) {
       footerIconMenu.classList.remove("show");
     }
 
+    if (searchSheet) {
+      searchSheet.classList.remove("show");
+      searchSheet.style.bottom = "0";
+    }
+
     writePostSheet.classList.add("show");
   });
 }
@@ -2789,6 +2794,11 @@ if (uploadMediaBtn && uploadSheet) {
 
     if (footerIconMenu) {
       footerIconMenu.classList.remove("show");
+    }
+
+    if (searchSheet) {
+      searchSheet.classList.remove("show");
+      searchSheet.style.bottom = "0";
     }
 
     uploadSheet.classList.add("show");

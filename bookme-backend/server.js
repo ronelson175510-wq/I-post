@@ -137,6 +137,39 @@ function saveCommentsToFile() {
 const inMemoryPosts = loadPostsFromFile();
 const inMemoryComments = loadCommentsFromFile();
 
+function normalizeStoredMediaUrls(value) {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean);
+  }
+
+  if (!value) {
+    return [];
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(Boolean);
+      }
+    } catch (error) {
+      // Ignore invalid JSON and fall back to a simple split below.
+    }
+
+    return trimmed
+      .split(/\s*[,;]\s*/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
 function normalizeCommentRows(comments) {
   return (Array.isArray(comments) ? comments : []).map((comment) => ({
     ...comment,
@@ -584,8 +617,8 @@ app.post("/api/posts", upload.array("file", 20), (req, res) => {
   }
 
   const query = `
-    INSERT INTO posts (user_id, content, media_type, media_url)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO posts (user_id, content, media_type, media_url, media_urls)
+    VALUES (?, ?, ?, ?, ?)
   `;
 
   ensureUserRecord(user_id, {
@@ -598,7 +631,7 @@ app.post("/api/posts", upload.array("file", 20), (req, res) => {
       return res.status(500).json({ error: userErr.message });
     }
 
-    db.query(query, [String(user_id), content, media_type, mediaUrls[0]], (err, results) => {
+    db.query(query, [String(user_id), content, media_type, mediaUrls[0] || null, JSON.stringify(mediaUrls)], (err, results) => {
       if (err) {
         console.error("DB INSERT ERROR:", err);
         return res.status(500).json({ error: err.message });
@@ -609,7 +642,7 @@ app.post("/api/posts", upload.array("file", 20), (req, res) => {
         user_id,
         content,
         media_type,
-        media_url: mediaUrls[0],
+        media_url: mediaUrls[0] || null,
         media_urls: mediaUrls,
         saved_filename: files[0]?.filename || null,
         original_name: firstOriginalName,
@@ -641,12 +674,18 @@ app.get("/api/posts", (req, res) => {
     }
 
     const fixedResults = results
-      .map(post => ({
-        ...post,
-        media_url: post.media_url && !post.media_url.startsWith("http")
-          ? `${publicBaseUrl}${post.media_url}`
-          : normalizeMediaUrlForPublic(post.media_url, req)
-      }))
+      .map(post => {
+        const storedMediaUrls = normalizeStoredMediaUrls(post.media_urls || post.media_url);
+        const resolvedMediaUrls = storedMediaUrls.length
+          ? storedMediaUrls.map((url) => normalizeMediaUrlForPublic(url, req))
+          : (post.media_url ? [normalizeMediaUrlForPublic(post.media_url, req)] : []);
+
+        return {
+          ...post,
+          media_urls: resolvedMediaUrls,
+          media_url: resolvedMediaUrls[0] || null
+        };
+      })
       .filter(post => {
         if (!post.media_url) return true;
         const localUploadPath = getLocalUploadPathFromMediaUrl(post.media_url);
