@@ -2837,8 +2837,8 @@ function bindVideoControls(videoShell) {
 
   if (!video || !toggleBtn) return;
 
-  video.muted = true;
-  video.volume = 0;
+  video.muted = false;
+  video.volume = 1;
   video.autoplay = true;
   video.loop = true;
   video.playsInline = true;
@@ -2897,12 +2897,13 @@ function bindVideoControls(videoShell) {
     event.preventDefault();
     event.stopPropagation();
 
-    video.muted = false;
-    video.volume = 1;
+    const isNowMuted = !video.muted;
+    video.muted = isNowMuted;
+    video.volume = isNowMuted ? 0 : 1;
 
     if (video.paused) {
       video.play().catch(() => {});
-    } else {
+    } else if (isNowMuted) {
       video.pause();
     }
   });
