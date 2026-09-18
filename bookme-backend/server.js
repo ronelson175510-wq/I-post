@@ -165,6 +165,48 @@ function ensureUserRecord(userId, fields = {}, callback) {
   });
 }
 
+function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic }, callback) {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId) {
+    return callback ? callback(null) : Promise.resolve();
+  }
+
+  if (!db) {
+    return callback ? callback(null) : Promise.resolve();
+  }
+
+  const safeFirstName = firstName ? String(firstName).trim() : null;
+  const safeLastName = lastName ? String(lastName).trim() : null;
+  const safeDob = dob ? String(dob).trim() : null;
+  const safeEmail = email ? String(email).trim() : null;
+  const safeProfilePic = profilePic ? String(profilePic).trim() : null;
+  const fullName = [safeFirstName, safeLastName].filter(Boolean).join(" ") || null;
+
+  const query = `
+    INSERT INTO users (id, name, email, profile_pic, first_name, last_name, dob)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      name = IFNULL(NULLIF(VALUES(name), ''), name),
+      email = IFNULL(NULLIF(VALUES(email), ''), email),
+      profile_pic = IFNULL(NULLIF(VALUES(profile_pic), ''), profile_pic),
+      first_name = IFNULL(NULLIF(VALUES(first_name), ''), first_name),
+      last_name = IFNULL(NULLIF(VALUES(last_name), ''), last_name),
+      dob = IFNULL(NULLIF(VALUES(dob), ''), dob)
+  `;
+
+  db.query(query, [safeUserId, fullName, safeEmail, safeProfilePic, safeFirstName, safeLastName, safeDob], (err) => {
+    if (callback) {
+      callback(err);
+      return;
+    }
+
+    if (err) {
+      return Promise.reject(err);
+    }
+    return Promise.resolve();
+  });
+}
+
 function getLocalUploadPathFromMediaUrl(mediaUrl) {
   if (!mediaUrl) return null;
 
@@ -380,6 +422,100 @@ app.post("/api/profile-picture", upload.single("profilePic"), (req, res) => {
     user_id: userId,
     url: imageUrl,
     file: file.filename
+  });
+});
+
+app.get("/api/profile/:userId", (req, res) => {
+  const userId = String(req.params.userId || "").trim();
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({
+      user_id: userId,
+      firstName: "",
+      lastName: "",
+      dob: "",
+      email: ""
+    });
+  }
+
+  db.query(
+    "SELECT id, name, email, first_name, last_name, dob, profile_pic FROM users WHERE id = ? LIMIT 1",
+    [userId],
+    (err, rows) => {
+      if (err) {
+        console.error("PROFILE LOAD ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      const row = rows?.[0] || null;
+      if (!row) {
+        return res.json({
+          user_id: userId,
+          firstName: "",
+          lastName: "",
+          dob: "",
+          email: "",
+          profile_pic: null
+        });
+      }
+
+      return res.json({
+        user_id: row.id,
+        firstName: row.first_name || "",
+        lastName: row.last_name || "",
+        dob: row.dob || "",
+        email: row.email || "",
+        profile_pic: row.profile_pic || null
+      });
+    }
+  );
+});
+
+app.post("/api/profile", (req, res) => {
+  const userId = req.body?.user_id || req.body?.userId || "";
+  const firstName = String(req.body?.firstName || "").trim();
+  const lastName = String(req.body?.lastName || "").trim();
+  const dob = String(req.body?.dob || "").trim();
+  const email = String(req.body?.email || "").trim();
+  const profilePic = String(req.body?.profile_pic || "").trim();
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    const profile = {
+      user_id: userId,
+      firstName,
+      lastName,
+      dob,
+      email,
+      profile_pic: profilePic || null
+    };
+
+    return res.json({ success: true, profile });
+  }
+
+  upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic }, (err) => {
+    if (err) {
+      console.error("PROFILE SAVE ERROR:", err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    return res.json({
+      success: true,
+      profile: {
+        user_id: userId,
+        firstName,
+        lastName,
+        dob,
+        email,
+        profile_pic: profilePic || null
+      }
+    });
   });
 });
 
@@ -645,7 +781,10 @@ app.delete("/api/posts/:id", (req, res) => {
 app.post("/api/text-post", (req, res) => {
   const { user_id, content } = req.body || {};
   const safeUserId = user_id || "anonymous";
-  const safeContent = String(content || "").trim();
+  const safeContent = String(content || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim();
 
   if (!safeContent) {
     return res.status(400).json({ error: "Missing content" });

@@ -112,6 +112,7 @@ if (auth) {
     updateSideMenuProfileAvatar();
     updateSideMenuUserName();
     updateProfileNameDisplay(user.uid);
+    loadCurrentUserProfileDataFromServer(user.uid).then(() => populateProfileSettingsForm(user.uid));
     populateProfileSettingsForm(user.uid);
 
     if (feedPosts || searchResults) {
@@ -154,7 +155,52 @@ function saveCurrentUserProfileData(data, userId = getCurrentUserId()) {
   const currentData = getCurrentUserProfileData(userId);
   const merged = { ...currentData, ...data };
   localStorage.setItem(getUserProfileKey(userId), JSON.stringify(merged));
+
+  const profilePayload = {
+    user_id: userId,
+    firstName: merged.firstName || "",
+    lastName: merged.lastName || "",
+    dob: merged.dob || "",
+    email: merged.email || "",
+    profile_pic: getProfilePicForUser(userId) || auth?.currentUser?.photoURL || null
+  };
+
+  fetch("/api/profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(profilePayload)
+  }).catch((error) => {
+    console.warn("Backend profile save failed, using local storage only:", error);
+  });
+
   return merged;
+}
+
+async function loadCurrentUserProfileDataFromServer(userId = getCurrentUserId()) {
+  if (!userId || userId === "guest") {
+    return getCurrentUserProfileData(userId);
+  }
+
+  try {
+    const response = await fetch(`/api/profile/${encodeURIComponent(userId)}`);
+    if (!response.ok) {
+      return getCurrentUserProfileData(userId);
+    }
+
+    const data = await response.json();
+    const profile = {
+      firstName: data?.firstName || "",
+      lastName: data?.lastName || "",
+      dob: data?.dob || "",
+      email: data?.email || ""
+    };
+
+    localStorage.setItem(getUserProfileKey(userId), JSON.stringify(profile));
+    return profile;
+  } catch (error) {
+    console.warn("Failed to load profile from backend:", error);
+    return getCurrentUserProfileData(userId);
+  }
 }
 
 function getDisplayNameForUser(userId = getCurrentUserId()) {

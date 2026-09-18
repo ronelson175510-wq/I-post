@@ -2,6 +2,8 @@
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(255) PRIMARY KEY,
   name VARCHAR(100),
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
   email VARCHAR(100) UNIQUE,
   password VARCHAR(255),
   sex VARCHAR(20),
