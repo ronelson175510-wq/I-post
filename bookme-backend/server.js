@@ -9,6 +9,7 @@ const app = express();
 const uploadsDir = path.join(__dirname, "uploads");
 const projectRoot = path.join(__dirname, "..");
 const postsFilePath = path.join(__dirname, "posts.json");
+const commentsFilePath = path.join(__dirname, "comments.json");
 const PORT = process.env.PORT || 10000;
 const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:10000").replace(/\/$/, "");
 const publicBaseUrl = (process.env.PUBLIC_BASE_URL || process.env.FRONTEND_URL || "http://localhost:10000").replace(/\/$/, "");
@@ -83,7 +84,86 @@ function savePostsToFile() {
   }
 }
 
+function loadCommentsFromFile() {
+  try {
+    if (!fs.existsSync(commentsFilePath)) {
+      fs.writeFileSync(commentsFilePath, "[]", "utf8");
+      return [];
+    }
+
+    const raw = fs.readFileSync(commentsFilePath, "utf8").trim();
+    if (!raw) {
+      fs.writeFileSync(commentsFilePath, "[]", "utf8");
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn("Failed to load comments file, resetting it:", error.message);
+    try {
+      fs.writeFileSync(commentsFilePath, "[]", "utf8");
+    } catch (writeError) {
+      console.warn("Unable to reset comments file:", writeError.message);
+    }
+    return [];
+  }
+}
+
+function saveCommentsToFile() {
+  try {
+    fs.writeFileSync(commentsFilePath, JSON.stringify(inMemoryComments, null, 2), "utf8");
+  } catch (error) {
+    console.error("Failed to save comments file:", error.message);
+  }
+}
+
 const inMemoryPosts = loadPostsFromFile();
+const inMemoryComments = loadCommentsFromFile();
+
+function normalizeCommentRows(comments) {
+  return (Array.isArray(comments) ? comments : []).map((comment) => ({
+    ...comment,
+    user_id: comment?.user_id != null ? String(comment.user_id) : comment?.user_id,
+    post_id: Number(comment?.post_id)
+  }));
+}
+
+function ensureUserRecord(userId, fields = {}, callback) {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId) {
+    return callback ? callback(null) : Promise.resolve();
+  }
+
+  const name = fields?.name ? String(fields.name).trim() : null;
+  const email = fields?.email ? String(fields.email).trim() : null;
+  const profilePic = fields?.profile_pic ? String(fields.profile_pic).trim() : null;
+
+  if (!db) {
+    return callback ? callback(null) : Promise.resolve();
+  }
+
+  const query = `
+    INSERT INTO users (id, name, email, profile_pic)
+    VALUES (?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      name = VALUES(name),
+      email = VALUES(email),
+      profile_pic = IFNULL(VALUES(profile_pic), profile_pic)
+  `;
+
+  db.query(query, [safeUserId, name, email, profilePic], (err) => {
+    if (callback) {
+      callback(err);
+      return;
+    }
+
+    if (err) {
+      return Promise.reject(err);
+    }
+    return Promise.resolve();
+  });
+}
 
 function getLocalUploadPathFromMediaUrl(mediaUrl) {
   if (!mediaUrl) return null;
@@ -315,7 +395,7 @@ app.post("/api/posts", upload.array("file", 20), (req, res) => {
   const mediaUrls = files.map((file) => normalizeMediaUrlForPublic(`${publicBaseUrl}/uploads/${file.filename}`));
   const firstOriginalName = files[0]?.originalname || "uploaded file";
   const cleanOriginalName = path.parse(firstOriginalName).name || firstOriginalName;
-  const media_type = files.some((file) => file.mimetype?.startsWith("video/")) ? "video" : "image";
+  const media_type = files.some((file) => file.mimetype?.startsWith("video/")) ? "video" : "photo";
   const content = commonContent;
 
   if (!isDbEnabled()) {
@@ -349,29 +429,40 @@ app.post("/api/posts", upload.array("file", 20), (req, res) => {
     VALUES (?, ?, ?, ?)
   `;
 
-  db.query(query, [user_id, content, media_type, mediaUrls[0]], (err, results) => {
-    if (err) {
-      console.error("DB INSERT ERROR:", err);
-      return res.status(500).json({ error: err.message });
+  ensureUserRecord(user_id, {
+    name: req.body?.name,
+    email: req.body?.email,
+    profile_pic: req.body?.profile_pic
+  }, (userErr) => {
+    if (userErr) {
+      console.error("USER ENSURE ERROR:", userErr);
+      return res.status(500).json({ error: userErr.message });
     }
 
-    const savedPost = {
-      id: results.insertId,
-      user_id,
-      content,
-      media_type,
-      media_url: mediaUrls[0],
-      media_urls: mediaUrls,
-      saved_filename: files[0]?.filename || null,
-      original_name: firstOriginalName,
-      success: true,
-      is_gallery: mediaUrls.length > 1
-    };
+    db.query(query, [String(user_id), content, media_type, mediaUrls[0]], (err, results) => {
+      if (err) {
+        console.error("DB INSERT ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
 
-    res.json({
-      success: true,
-      post: savedPost,
-      posts: [savedPost]
+      const savedPost = {
+        id: results.insertId,
+        user_id,
+        content,
+        media_type,
+        media_url: mediaUrls[0],
+        media_urls: mediaUrls,
+        saved_filename: files[0]?.filename || null,
+        original_name: firstOriginalName,
+        success: true,
+        is_gallery: mediaUrls.length > 1
+      };
+
+      res.json({
+        success: true,
+        post: savedPost,
+        posts: [savedPost]
+      });
     });
   });
 });
@@ -402,6 +493,98 @@ app.get("/api/posts", (req, res) => {
       });
 
     res.json(fixedResults);
+  });
+});
+
+app.get("/api/comments/:postId", (req, res) => {
+  const postId = Number(req.params.postId);
+
+  if (!Number.isFinite(postId)) {
+    return res.status(400).json({ error: "Invalid post id" });
+  }
+
+  if (!isDbEnabled()) {
+    const comments = normalizeCommentRows(inMemoryComments)
+      .filter((comment) => Number(comment.post_id) === postId)
+      .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+
+    return res.json(comments);
+  }
+
+  db.query(
+    "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at ASC",
+    [postId],
+    (err, results) => {
+      if (err) {
+        console.error("DB COMMENT SELECT ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      return res.json(normalizeCommentRows(results));
+    }
+  );
+});
+
+app.post("/api/comments", (req, res) => {
+  const { post_id, user_id, content } = req.body || {};
+  const safePostId = Number(post_id);
+  const safeUserId = user_id ? String(user_id) : "anonymous";
+  const safeContent = String(content || "").trim();
+
+  if (!Number.isFinite(safePostId)) {
+    return res.status(400).json({ error: "Invalid post id" });
+  }
+
+  if (!safeContent) {
+    return res.status(400).json({ error: "Missing comment text" });
+  }
+
+  if (!isDbEnabled()) {
+    const comment = {
+      id: Date.now(),
+      user_id: safeUserId,
+      post_id: safePostId,
+      comment: safeContent,
+      created_at: new Date().toISOString()
+    };
+
+    inMemoryComments.unshift(comment);
+    saveCommentsToFile();
+
+    return res.json({ success: true, comment });
+  }
+
+  ensureUserRecord(safeUserId, {
+    name: req.body?.name,
+    email: req.body?.email,
+    profile_pic: req.body?.profile_pic
+  }, (userErr) => {
+    if (userErr) {
+      console.error("COMMENT USER ENSURE ERROR:", userErr);
+      return res.status(500).json({ error: userErr.message });
+    }
+
+    db.query(
+      "INSERT INTO comments (user_id, post_id, comment) VALUES (?, ?, ?)",
+      [safeUserId, safePostId, safeContent],
+      (err, results) => {
+        if (err) {
+          console.error("DB COMMENT INSERT ERROR:", err);
+          return res.status(500).json({ error: err.message });
+        }
+
+        return res.json({
+          success: true,
+          comment: {
+            id: results.insertId,
+            user_id: safeUserId,
+            post_id: safePostId,
+            comment: safeContent,
+            created_at: new Date().toISOString()
+          }
+        });
+      }
+    );
   });
 });
 
@@ -495,15 +678,26 @@ app.post("/api/text-post", (req, res) => {
     VALUES (?, ?, 'text')
   `;
 
-  db.query(query, [safeUserId, safeContent], (err, results) => {
-    if (err) {
-      console.error("TEXT POST ERROR:", err);
-      return res.status(500).json({ error: err.message });
+  ensureUserRecord(safeUserId, {
+    name: req.body?.name,
+    email: req.body?.email,
+    profile_pic: req.body?.profile_pic
+  }, (userErr) => {
+    if (userErr) {
+      console.error("TEXT USER ENSURE ERROR:", userErr);
+      return res.status(500).json({ error: userErr.message });
     }
 
-    res.json({
-      id: results.insertId,
-      success: true
+    db.query(query, [String(safeUserId), safeContent], (err, results) => {
+      if (err) {
+        console.error("TEXT POST ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      res.json({
+        id: results.insertId,
+        success: true
+      });
     });
   });
 });
