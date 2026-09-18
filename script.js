@@ -287,13 +287,6 @@ function getDisplayNameForUser(userId = getCurrentUserId()) {
     return auth.currentUser.email.split("@")[0];
   }
 
-  if (userId && userId !== "guest") {
-    const storedName = localStorage.getItem(`bookme_display_name_${userId}`);
-    if (storedName) {
-      return storedName;
-    }
-  }
-
   return "User";
 }
 
@@ -311,12 +304,12 @@ function updateProfileNameDisplay(userId = getCurrentUserId()) {
     return;
   }
 
-  if (auth?.currentUser?.displayName) {
+  if (auth?.currentUser?.uid === userId && auth.currentUser.displayName) {
     profileNameDisplay.textContent = auth.currentUser.displayName;
     return;
   }
 
-  if (auth?.currentUser?.email) {
+  if (auth?.currentUser?.uid === userId && auth.currentUser.email) {
     profileNameDisplay.textContent = auth.currentUser.email.split("@")[0];
     return;
   }
@@ -438,20 +431,34 @@ if (headerBrandLink) {
 }
 
 if (searchBtn && searchSheet) {
-  searchBtn.addEventListener("click", () => {
+  searchBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (footerIconMenu) {
+      footerIconMenu.classList.remove("show");
+    }
     searchSheet.classList.add("show");
   });
 }
 
 if (closeSearchSheet && searchSheet) {
-  closeSearchSheet.addEventListener("click", () => {
+  closeSearchSheet.addEventListener("click", (event) => {
+    event.stopPropagation();
     searchSheet.classList.remove("show");
   });
 }
 
 if (searchSheet) {
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest("#searchSheet") && !e.target.closest("#searchBtn")) {
+  document.addEventListener("click", (event) => {
+    const clickedSearchAction = event.target.closest("#searchSheet") ||
+      event.target.closest("#searchBtn") ||
+      event.target.closest("#uploadMediaBtn") ||
+      event.target.closest("#writePostBtn") ||
+      event.target.closest("#footerIconMenu") ||
+      event.target.closest(".plus-btn") ||
+      event.target.closest("#uploadSheet") ||
+      event.target.closest("#writePostSheet");
+
+    if (!clickedSearchAction) {
       searchSheet.classList.remove("show");
     }
   });
@@ -3278,7 +3285,7 @@ function renderFeedPost(post) {
             <i class="fa-regular fa-comments fa-xl" style="color: rgb(76, 76, 76);"></i>
           </button>
 
-          <i class="fa-solid fa-retweet fa-xl" style="color: rgb(249, 228, 88);"></i>
+          <i class="fa-solid fa-retweet fa-xl" style="color: rgb(252, 218, 0);"></i>
 
           <button class="like-btn" type="button">
            <i class="fa-regular fa-heart fa-xl" style="color: rgb(101, 101, 100);"></i>

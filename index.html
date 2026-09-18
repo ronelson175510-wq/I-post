@@ -131,8 +131,8 @@
             display: flex;
             align-items: center;
             position: absolute;
-            left: 40%;
-            
+            left: 50%;
+            transform: translateX(-50%);
             margin-top: -10px;
             
         }
@@ -146,15 +146,15 @@
 
         .title{
             color: rgb(249, 245, 3);
-            letter-spacing: 5px;
-            font-weight: 900;
-            font-size: 22px;
+            letter-spacing: 2px;
+            font-weight: 700;
+            font-size: 24px;
+           
             font-family: comic sans ms, sans-serif;
-            
-            text-shadow: 2px 2px 0 #000, 4px 4px 0 rgba(0, 0, 0, 0.35);
-            transform: skewX(-6deg);
-            display: inline-block;
+            text-shadow: black 1px 1px 2px, black 1px 1px 2px;
         }
+        
+
 
         .header-brand-icon {
             display: flex;
@@ -1582,7 +1582,7 @@ font-weight: 590;
   margin-left: 12px;
   color: #0c0c0c;
   line-height: 1.70;
-  font-weight: 590;
+ 
   font-size: 17px;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   display: block;
@@ -1666,14 +1666,14 @@ margin-top: -42px;
 .text-only-post .feed-caption,
 .text-only-post .feed-caption-text,
 .text-only-post p {
-  margin: -20px 10px 6px;
+  margin: -20px 19px 0px;
   margin-left: 10px !important;
   padding-left: 0 !important;
   text-indent: 0 !important;
   font-size: 16px;
   line-height: 1.30;
   color: #1b1b1b;
-  font-weight: 590;
+  
   white-space: pre-wrap;
   word-break: break-word;
   display: block;
@@ -1826,7 +1826,7 @@ margin-top: -42px;
 
 .feed-post-card .feed-actions {
   margin-top: 0;
-  background-color: rgb(228, 227, 227);
+  background: white;
   border-top: 1.5px solid rgba(0,0,0,0.08);
   border-bottom: 1.5px solid rgba(13, 13, 13, 0.08);
   border-bottom-left-radius: 12px;
@@ -1859,7 +1859,7 @@ margin-top: -42px;
   display: block;
   max-height: 340px;
   object-fit: cover;
-  background: #f3f3f3;
+  
   
 }
 
@@ -1869,9 +1869,9 @@ margin-top: -42px;
   width: 100%;
   margin-top: -42px; 
   overflow: hidden;
-  background: #f3f3f3;
+ 
   
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+ 
 }
 
 .video-shell video {
@@ -2621,8 +2621,9 @@ margin-top: -42px;
 
         <div class="title-wrap">
             
-        <img src="/bookmeassets/logo.jpeg" alt="CHAT-MINI" style="width: 85px; height: auto;" />
-           
+        <div class="title">
+            Chat-Mini
+        </div>
         </div>
 
         <div class="header-icons">
@@ -2690,6 +2691,9 @@ margin-top: -42px;
     <input id="searchInput" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Search people or posts" />
     <h3 data-i18n="youMightLike" style="color: rgba(6, 6, 6, 0.85); font-size: 18px; margin: 16px 0 8px 14px;font-style: bold; font-family: comic sans ms, sans-serif;">We think you might like:</h3>
     <div id="searchResults" class="search-video-grid"></div>
+  </div>
+</div>
+
 <div id="writePostSheet" class="write-post-sheet">
   <div class="sheet-header">
     <span class="sheet-drag"></span>
@@ -2895,4 +2899,3 @@ margin-top: -42px;
 </body>
 </html>
 
-o
