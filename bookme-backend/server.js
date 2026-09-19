@@ -214,6 +214,41 @@ function ensureUserRecord(userId, fields = {}, callback) {
   });
 }
 
+function initializeDatabaseSchema() {
+  if (!db) return;
+
+  const schemaSql = `
+    CREATE TABLE IF NOT EXISTS reported_contents (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      post_id INT NOT NULL,
+      reporter_user_id VARCHAR(255) NOT NULL,
+      reason VARCHAR(100) DEFAULT 'spam',
+      details TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_report (post_id, reporter_user_id),
+      FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+      FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    ALTER TABLE posts
+      ADD COLUMN IF NOT EXISTS report_count INT DEFAULT 0;
+
+    ALTER TABLE posts
+      ADD COLUMN IF NOT EXISTS is_flagged TINYINT(1) DEFAULT 0;
+
+    ALTER TABLE posts
+      ADD COLUMN IF NOT EXISTS report_status ENUM('active', 'taken_down') DEFAULT 'active';
+  `;
+
+  db.query(schemaSql, (err) => {
+    if (err) {
+      console.error("SCHEMA INIT ERROR:", err.message);
+    } else {
+      console.log("Database schema initialized.");
+    }
+  });
+}
+
 function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic }, callback) {
   const safeUserId = String(userId || "").trim();
   if (!safeUserId) {
@@ -664,7 +699,9 @@ app.get("/api/posts", (req, res) => {
 
   if (!isDbEnabled()) {
     pruneMissingMediaPosts();
-    return res.json(inMemoryPosts.slice(0, 20));
+    return res.json(inMemoryPosts
+      .filter((post) => !(post.is_flagged || Number(post.report_count || 0) >= 10))
+      .slice(0, 20));
   }
 
   db.query("SELECT * FROM posts ORDER BY created_at DESC", (err, results) => {
@@ -683,16 +720,91 @@ app.get("/api/posts", (req, res) => {
         return {
           ...post,
           media_urls: resolvedMediaUrls,
-          media_url: resolvedMediaUrls[0] || null
+          media_url: resolvedMediaUrls[0] || null,
+          is_flagged: Boolean(post.is_flagged),
+          report_count: Number(post.report_count || 0)
         };
       })
       .filter(post => {
+        if (post.is_flagged || Number(post.report_count || 0) >= 10) {
+          return false;
+        }
         if (!post.media_url) return true;
         const localUploadPath = getLocalUploadPathFromMediaUrl(post.media_url);
         return !localUploadPath || fs.existsSync(localUploadPath);
       });
 
     res.json(fixedResults);
+  });
+});
+
+app.post("/api/posts/:id/report", (req, res) => {
+  const postId = Number(req.params.id);
+  const userId = req.body?.user_id ? String(req.body.user_id).trim() : "";
+  const reason = String(req.body?.reason || "spam").trim() || "spam";
+  const details = String(req.body?.details || "").trim();
+
+  if (!Number.isFinite(postId)) {
+    return res.status(400).json({ error: "Invalid post id" });
+  }
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.status(503).json({ error: "Database is not enabled for reports." });
+  }
+
+  db.query("SELECT id, report_count, is_flagged FROM posts WHERE id = ?", [postId], (selectErr, rows) => {
+    if (selectErr) {
+      console.error("REPORT SELECT ERROR:", selectErr);
+      return res.status(500).json({ error: selectErr.message });
+    }
+
+    const existingPost = rows?.[0];
+    if (!existingPost) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    db.query(
+      "INSERT INTO reported_contents (post_id, reporter_user_id, reason, details) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE reason = VALUES(reason), details = VALUES(details), created_at = CURRENT_TIMESTAMP",
+      [postId, userId, reason, details],
+      (insertErr) => {
+        if (insertErr) {
+          console.error("REPORT INSERT ERROR:", insertErr);
+          return res.status(500).json({ error: insertErr.message });
+        }
+
+        db.query("SELECT COUNT(*) AS total_reports FROM reported_contents WHERE post_id = ?", [postId], (countErr, countRows) => {
+          if (countErr) {
+            console.error("REPORT COUNT ERROR:", countErr);
+            return res.status(500).json({ error: countErr.message });
+          }
+
+          const reportCount = Number(countRows?.[0]?.total_reports || 0);
+          const shouldFlag = reportCount >= 10;
+
+          db.query(
+            "UPDATE posts SET report_count = ?, is_flagged = ?, report_status = ? WHERE id = ?",
+            [reportCount, shouldFlag ? 1 : 0, shouldFlag ? "taken_down" : "active", postId],
+            (updateErr) => {
+              if (updateErr) {
+                console.error("REPORT UPDATE ERROR:", updateErr);
+                return res.status(500).json({ error: updateErr.message });
+              }
+
+              return res.json({
+                success: true,
+                reportCount,
+                flagged: shouldFlag,
+                status: shouldFlag ? "taken_down" : "active"
+              });
+            }
+          );
+        });
+      }
+    );
   });
 });
 
@@ -904,6 +1016,8 @@ app.post("/api/text-post", (req, res) => {
     });
   });
 });
+
+initializeDatabaseSchema();
 
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);

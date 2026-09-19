@@ -557,8 +557,37 @@
 .sidemenu a i,
 .menu-settings-btn i {
     width: 22px;
+    min-width: 22px;
     text-align: center;
     color: rgb(177, 151, 252);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.report-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.report-menu-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    min-width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+.report-menu-icon i {
+    color: rgb(255, 212, 59) !important;
+    font-size: 1.1rem;
+    display: block;
+    line-height: 1;
 }
 
 .menu-settings-btn {
@@ -697,7 +726,7 @@
   left: 0;
   bottom: -100%;
   width: 100%;
-  height: 45%;
+  height: 100%;
   background: white;
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
@@ -734,12 +763,86 @@
 .close-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  margin-right: 12px;
+  font-size: 44px;
+  float: right;
   cursor: pointer;
 }
 
 .sheet-content {
-  padding: 20px;
+  padding: 16px 20px 28px;
+}
+
+.report-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: #111;
+}
+
+.report-form-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.report-form-subtitle {
+  margin-top: 42px;
+  font-size: 0.92rem;
+  color: #4d4d52;
+}
+
+.report-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.report-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e4dfff;
+  border-radius: 12px;
+  background: #fbfbfb;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.report-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: #090909;
+}
+
+.report-details {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  box-sizing: border-box;
+  background: #fff;
+  resize: none;
+}
+
+.report-submit-btn {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #121212, #131313);
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.report-submit-btn:active {
+  transform: translateY(1px);
 }
 
 
@@ -1579,7 +1682,7 @@ font-weight: 590;
 
 .feed-caption {
   margin: -55px 10px 6px;
-  margin-left: 12px;
+  margin-left: 19px;
   color: #0c0c0c;
   line-height: 1.70;
  
@@ -2633,6 +2736,9 @@ margin-top: -42px;
         </div>
     </div>
 
+    
+
+
     <div id="feedPosts" class="feed-posts" aria-live="polite"></div>
 
     <div id="mysidemenu" class="sidemenu">
@@ -2652,8 +2758,9 @@ margin-top: -42px;
     
 
     <div class="sidemenu-main">
-     <a href="#" id="reportSheetBtn" data-i18n="report">
-       <i class="fa-solid fa-triangle-exclamation" style="color: rgb(255, 212, 59);"></i> Report
+     <a href="#" id="reportSheetBtn" class="report-menu-item">
+       <span class="report-menu-icon"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></span>
+       <span class="report-menu-label" data-i18n="report">Report</span>
      </a>
       <a href="#" data-i18n="friends"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(253, 253, 254);"></i>Friends</a>
       <a href="message.html" data-i18n="chat"><i class="fa-solid fa-comment fa-sm" style="color: rgb(246, 245, 247);"></i>Chat</a>
@@ -2693,6 +2800,8 @@ margin-top: -42px;
     <div id="searchResults" class="search-video-grid"></div>
   </div>
 </div>
+
+
 
 <div id="writePostSheet" class="write-post-sheet">
   <div class="sheet-header">
@@ -2744,13 +2853,34 @@ margin-top: -42px;
 
 <!-- Report Slide-Up Sheet -->
  <div id="reportSheet" class="report-sheet">
+  
+     <button id="closeReportSheet" class="close-btn" type="button" aria-label="Close report sheet">×</button>
   <div class="sheet-header">
-    <span class="sheet-drag"></span>
-    <button id="closeReportSheet" class="close-btn">×</button>
+     
+    <div class="sheet-header-text">
+      <h2 style="margin-top: 10px;">Report this content</h2>
+      
+    </div>
+    
   </div>
+ 
 
   <div class="sheet-content">
-    
+    <form class="report-form" id="reportForm">
+      
+      <p class="report-form-subtitle">Choose the closest reason and add any extra details.</p>
+
+      <div class="report-options">
+        <label class="report-option"><input type="radio" name="reportReason" value="spam" checked> Spam</label>
+        <label class="report-option"><input type="radio" name="reportReason" value="harassment"> Harassment</label>
+        <label class="report-option"><input type="radio" name="reportReason" value="hate"> Hate speech</label>
+        <label class="report-option"><input type="radio" name="reportReason" value="misinformation"> Misinformation</label>
+        <label class="report-option"><input type="radio" name="reportReason" value="nudity"> Nudity or sexual content</label>
+      </div>
+
+      <textarea class="report-details" placeholder="Add more details (optional)"></textarea>
+      <button type="submit" class="report-submit-btn">Submit report</button>
+    </form>
   </div>
 </div>
 
@@ -2786,6 +2916,8 @@ margin-top: -42px;
       <button type="button" class="user-media-filter-btn" data-media-type="text" aria-label="Show text posts">
         <i class="fa-solid fa-pen-clip fa-lg" style="color: rgb(0, 0, 0);"></i>
       </button>
+
+      
     </div>
 
     <div id="userSheetPosts" class="user-sheet-posts" aria-live="polite"></div>

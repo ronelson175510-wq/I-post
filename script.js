@@ -1260,9 +1260,27 @@ function applyTranslations(lang = getPreferredLanguage()) {
   document.querySelectorAll("[data-i18n]").forEach((element) => {
     const key = element.dataset.i18n;
     const value = dict[key] || TRANSLATIONS.en[key];
-    if (value) {
-      element.textContent = value;
+    if (!value) return;
+
+    const explicitLabel = element.querySelector(".report-menu-label, .menu-label, .text-label");
+    if (explicitLabel) {
+      explicitLabel.textContent = value;
+      return;
     }
+
+    const textTarget = Array.from(element.childNodes).find((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== "");
+    if (textTarget) {
+      textTarget.textContent = value;
+      return;
+    }
+
+    const childTarget = Array.from(element.children).find((child) => child.textContent.trim() && !child.querySelector("i, svg, img"));
+    if (childTarget) {
+      childTarget.textContent = value;
+      return;
+    }
+
+    element.textContent = value;
   });
 
   document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
@@ -2419,23 +2437,22 @@ function renderUserSheetCard(post) {
   const mediaUrl = mediaList[0] || post?.media_url || "";
   const mediaType = getMediaTypeForPost(post);
   const textContent = (post?.content || "").trim();
+  const isFlagged = Boolean(post?.is_flagged || Number(post?.report_count || 0) >= 10);
+
+  const warningBadge = isFlagged ? `
+    <div class="flagged-post-badge" title="Content flagged for review">
+      <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+    </div>
+  ` : "";
 
   if (mediaType === "text") {
     const isOwner = String(post?.user_id || "") === String(getCurrentUserId());
-    const menuMarkup = isOwner ? `
-      <div class="post-menu-wrapper user-sheet-post-menu-wrapper">
-        <div class="post-menu">
-          <button class="post-menu-toggle" type="button" aria-label="More options">⋮</button>
-          <div class="post-menu-options">
-            <button class="post-delete-btn delete-post-btn" type="button" data-post-id="${post?.id || ""}" data-action="delete"><i class="fa-solid fa-trash fa-lg" style="color: rgb(109, 108, 111);"></i> Delete</button>
-          </div>
-        </div>
-      </div>
-    ` : "";
+    const menuMarkup = "";
 
     return `
       <div class="user-sheet-post-card user-sheet-text-card" data-post-id="${post?.id || ""}">
         ${menuMarkup}
+        ${warningBadge}
         <i class="fa-solid fa-pen-clip user-sheet-text-icon" style="color: rgb(0, 0, 0);"></i>
         <div class="user-sheet-text-content">${textContent || "Text post"}</div>
       </div>
@@ -2447,21 +2464,12 @@ function renderUserSheetCard(post) {
   }
 
   const isVideo = mediaType === "video";
-  const isOwner = String(post?.user_id || "") === String(getCurrentUserId());
-  const menuMarkup = isOwner ? `
-    <div class="post-menu-wrapper user-sheet-post-menu-wrapper">
-      <div class="post-menu">
-        <button class="post-menu-toggle" type="button" aria-label="More options">⋮</button>
-        <div class="post-menu-options">
-          <button class="post-delete-btn delete-post-btn" type="button" data-post-id="${post?.id || ""}" data-action="delete"><i class="fa-solid fa-trash fa-lg" style="color: rgb(109, 108, 111);"></i> Delete</button>
-        </div>
-      </div>
-    </div>
-  ` : "";
+  const menuMarkup = "";
 
   return `
     <div class="user-sheet-post-card" data-post-id="${post?.id || ""}">
       ${menuMarkup}
+      ${warningBadge}
       ${isVideo ? `
         <div class="user-sheet-media-wrap">
           <i class="fa-solid fa-circle-play fa-sm" style="color: rgb(255, 255, 255);"></i>
@@ -2542,7 +2550,7 @@ async function renderUserSheetMedia(userId, filterType = "all") {
 
     const posts = await response.json();
     const userPosts = Array.isArray(posts)
-      ? posts.filter((post) => String(post.user_id) === String(userId))
+      ? posts.filter((post) => String(post.user_id) === String(userId) || Boolean(post.is_flagged))
       : [];
 
     const filteredPosts = userPosts.filter((post) => {
@@ -3243,12 +3251,25 @@ function renderFeedPost(post) {
   const openReelLabel = dict.openReels || "Open reels";
   const hasVideoMedia = Array.isArray(mediaList) ? mediaList.some((item) => isVideoMediaUrl(item)) : isVideoMediaUrl(mediaUrl);
   const mediaWrap = hasVideoMedia && post?.id ? `<a href="${openReelUrl}" class="video-open-link" aria-label="${openReelLabel}" data-post-id="${post?.id || ""}">${mediaMarkup}</a>` : mediaMarkup;
-  const menuMarkup = isOwner ? `
+  const isOwnPost = Boolean(post?.user_id) && String(post.user_id) === String(getCurrentUserId());
+  const reportButtonMarkup = !isOwnPost ? `
+    <button class="post-report-btn" type="button" data-post-id="${post?.id || ""}" data-action="report">
+      <i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i> Report
+    </button>
+  ` : "";
+  const deleteButtonMarkup = isOwner ? `
+    <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}" data-action="delete">
+      <i class="fa-solid fa-trash fa-lg" style="color: rgb(109, 108, 111);"></i> Delete
+    </button>
+  ` : "";
+
+  const menuMarkup = !isOwnPost ? `
     <div class="post-menu-wrapper">
       <div class="post-menu">
         <button class="post-menu-toggle" type="button" aria-label="More options">⋮</button>
         <div class="post-menu-options">
-          <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}"><i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i> Report</button>
+          ${reportButtonMarkup}
+          ${deleteButtonMarkup}
         </div>
       </div>
     </div>
@@ -3330,7 +3351,7 @@ function bindTextPostMenus() {
     });
   });
 
-  document.querySelectorAll(".text-post-delete-btn, .post-delete-btn").forEach(button => {
+  document.querySelectorAll(".text-post-delete-btn, .post-delete-btn, .post-report-btn").forEach(button => {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
 
@@ -3344,6 +3365,7 @@ function bindTextPostMenus() {
 
       const reportSheet = document.getElementById("reportSheet");
       if (reportSheet) {
+        reportSheet.dataset.postId = postId || "";
         reportSheet.classList.add("show");
       }
     });
@@ -3359,16 +3381,19 @@ async function loadPosts() {
 
     const posts = await response.json();
     const validPosts = Array.isArray(posts) ? posts : [];
+    window.__feedPostsCache = validPosts;
 
     if (feedPosts) {
-      if (!validPosts.length) {
+      const visiblePosts = validPosts.filter((post) => !Boolean(post.is_flagged) && Number(post.report_count || 0) < 10);
+
+      if (!visiblePosts.length) {
         feedPosts.innerHTML = '<div class="feed-empty-state">No posts yet. Start the first post to get the conversation going.</div>';
         renderSearchSheet([]);
         applyTranslations(getPreferredLanguage());
         return;
       }
 
-      feedPosts.innerHTML = validPosts.map(renderFeedPost).join("");
+      feedPosts.innerHTML = visiblePosts.map(renderFeedPost).join("");
       bindReadMoreButtons();
       bindProfileAvatarButtons(feedPosts);
       feedPosts.querySelectorAll(".video-shell video").forEach((video) => {
@@ -3503,15 +3528,119 @@ if (feedPosts) {
 
 const reportSheetBtn = document.getElementById("reportSheetBtn");
 const reportSheet = document.getElementById("reportSheet");
-const closeReportSheet = document.getElementById("closeReportSheet");
+
+function ensureReportSheetContent() {
+  if (!reportSheet || reportSheet.querySelector("#reportForm")) return;
+
+  reportSheet.innerHTML = `
+    <div class="sheet-header">
+      <div class="sheet-header-text">
+        <h2>Report this content</h2>
+        <h3>Let us know what needs attention.</h3>
+      </div>
+      <button id="closeReportSheet" class="close-btn" type="button" aria-label="Close report sheet">×</button>
+    </div>
+    <span class="sheet-drag"></span>
+
+    <div class="sheet-content">
+      <form class="report-form" id="reportForm">
+        <p class="report-form-title">Why are you reporting this?</p>
+        <p class="report-form-subtitle">Choose the closest reason and add any extra details.</p>
+
+        <div class="report-options">
+          <label class="report-option"><input type="radio" name="reportReason" value="spam" checked> Spam</label>
+          <label class="report-option"><input type="radio" name="reportReason" value="harassment"> Harassment</label>
+          <label class="report-option"><input type="radio" name="reportReason" value="hate"> Hate speech</label>
+          <label class="report-option"><input type="radio" name="reportReason" value="misinformation"> Misinformation</label>
+          <label class="report-option"><input type="radio" name="reportReason" value="nudity"> Nudity or sexual content</label>
+        </div>
+
+        <textarea class="report-details" placeholder="Add more details (optional)"></textarea>
+        <button type="submit" class="report-submit-btn">Submit report</button>
+      </form>
+    </div>
+  `;
+
+  const refreshedCloseReportSheet = document.getElementById("closeReportSheet");
+  if (refreshedCloseReportSheet) {
+    refreshedCloseReportSheet.addEventListener("click", () => {
+      reportSheet.classList.remove("show");
+    });
+  }
+
+  const reportForm = document.getElementById("reportForm");
+  if (reportForm) {
+    reportForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const postId = reportSheet.dataset.postId;
+      const currentUserId = getCurrentUserId();
+      const reasonInput = reportForm.querySelector('input[name="reportReason"]:checked');
+      const detailsInput = reportForm.querySelector(".report-details");
+      const targetPost = postId ? (Array.isArray(window.__feedPostsCache) ? window.__feedPostsCache.find((post) => String(post.id) === String(postId)) : null) : null;
+      const isOwnPost = Boolean(targetPost?.user_id) && String(targetPost.user_id) === String(currentUserId);
+
+      if (!postId) {
+        alert("No content selected to report.");
+        return;
+      }
+
+      if (!currentUserId) {
+        alert("Please sign in before reporting content.");
+        return;
+      }
+
+      if (isOwnPost) {
+        reportSheet.classList.remove("show");
+        alert("You cannot report your own content.");
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/posts/${encodeURIComponent(postId)}/report`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: currentUserId,
+            reason: reasonInput ? reasonInput.value : "spam",
+            details: detailsInput ? detailsInput.value : ""
+          })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to submit report.");
+        }
+
+        reportSheet.classList.remove("show");
+        if (data.flagged) {
+          alert("This content has reached 10 reports and has been taken down.");
+        } else {
+          alert(`Thanks for reporting this content. Report count: ${data.reportCount || 0}`);
+        }
+
+        if (feedPosts) {
+          loadPosts();
+        }
+      } catch (error) {
+        console.error("Report submit error:", error);
+        alert(error.message || "Unable to submit report.");
+      }
+    });
+  }
+}
+
+ensureReportSheetContent();
 
 if (reportSheetBtn && reportSheet) {
   reportSheetBtn.addEventListener("click", (e) => {
     e.preventDefault();
+    ensureReportSheetContent();
     reportSheet.classList.add("show");
   });
 }
 
+const closeReportSheet = document.getElementById("closeReportSheet");
 if (closeReportSheet && reportSheet) {
   closeReportSheet.addEventListener("click", () => {
     reportSheet.classList.remove("show");
