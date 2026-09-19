@@ -217,7 +217,39 @@ function ensureUserRecord(userId, fields = {}, callback) {
 function initializeDatabaseSchema() {
   if (!db) return;
 
-  const schemaSql = `
+  const runSchemaQuery = (query, next) => {
+    db.query(query, (err) => {
+      if (err) {
+        console.error("SCHEMA INIT ERROR:", err.message);
+        return next ? next(err) : null;
+      }
+      return next ? next() : null;
+    });
+  };
+
+  const ensureColumn = (tableName, columnName, columnDefinition, callback) => {
+    db.query("SHOW COLUMNS FROM ?? LIKE ?", [tableName, columnName], (err, rows) => {
+      if (err) {
+        console.error("SCHEMA CHECK ERROR:", err.message);
+        return callback(err);
+      }
+
+      if (rows && rows.length) {
+        return callback();
+      }
+
+      db.query(`ALTER TABLE ?? ADD COLUMN ?? ${columnDefinition}`, [tableName, columnName], (alterErr) => {
+        if (alterErr) {
+          console.error("SCHEMA ALTER ERROR:", alterErr.message);
+          return callback(alterErr);
+        }
+
+        callback();
+      });
+    });
+  };
+
+  runSchemaQuery(`
     CREATE TABLE IF NOT EXISTS reported_contents (
       id INT PRIMARY KEY AUTO_INCREMENT,
       post_id INT NOT NULL,
@@ -228,24 +260,56 @@ function initializeDatabaseSchema() {
       UNIQUE KEY unique_report (post_id, reporter_user_id),
       FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
       FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
+    )
+  `, () => {
+    ensureColumn("posts", "report_count", "INT DEFAULT 0", (err1) => {
+      if (err1) return;
 
-    ALTER TABLE posts
-      ADD COLUMN IF NOT EXISTS report_count INT DEFAULT 0;
+      ensureColumn("posts", "is_flagged", "TINYINT(1) DEFAULT 0", (err2) => {
+        if (err2) return;
 
-    ALTER TABLE posts
-      ADD COLUMN IF NOT EXISTS is_flagged TINYINT(1) DEFAULT 0;
+        ensureColumn("posts", "report_status", "ENUM('active', 'taken_down') DEFAULT 'active'", (err3) => {
+          if (err3) return;
 
-    ALTER TABLE posts
-      ADD COLUMN IF NOT EXISTS report_status ENUM('active', 'taken_down') DEFAULT 'active';
-  `;
+          runSchemaQuery(`
+            CREATE TABLE IF NOT EXISTS comments (
+              id INT PRIMARY KEY AUTO_INCREMENT,
+              user_id VARCHAR(255) NOT NULL,
+              post_id INT NOT NULL,
+              reply_to INT NULL,
+              comment TEXT NOT NULL,
+              like_count INT DEFAULT 0,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+              FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+              FOREIGN KEY (reply_to) REFERENCES comments(id) ON DELETE CASCADE
+            )
+          `, () => {
+            ensureColumn("comments", "reply_to", "INT NULL", (err4) => {
+              if (err4) return;
 
-  db.query(schemaSql, (err) => {
-    if (err) {
-      console.error("SCHEMA INIT ERROR:", err.message);
-    } else {
-      console.log("Database schema initialized.");
-    }
+              ensureColumn("comments", "like_count", "INT DEFAULT 0", (err5) => {
+                if (err5) return;
+
+                runSchemaQuery(`
+                  CREATE TABLE IF NOT EXISTS comment_likes (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    user_id VARCHAR(255) NOT NULL,
+                    comment_id INT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_comment_like (user_id, comment_id),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
+                  )
+                `, () => {
+                  console.log("Database schema initialized.");
+                });
+              });
+            });
+          });
+        });
+      });
+    });
   });
 }
 
@@ -959,6 +1023,55 @@ app.post("/api/posts/:id/report", (req, res) => {
   });
 });
 
+function buildNestedCommentTree(comments) {
+  const safeComments = Array.isArray(comments) ? comments : [];
+  const commentsById = new Map();
+  const roots = [];
+
+  safeComments.forEach((comment) => {
+    const normalized = {
+      ...comment,
+      id: Number(comment.id),
+      post_id: Number(comment.post_id),
+      reply_to: comment.reply_to != null ? Number(comment.reply_to) : null,
+      like_count: Number(comment.like_count || comment.likes_count || 0),
+      reply_count: Number(comment.reply_count || 0),
+      replies: []
+    };
+
+    commentsById.set(String(normalized.id), normalized);
+  });
+
+  safeComments.forEach((comment) => {
+    const normalized = commentsById.get(String(comment.id));
+    if (!normalized) {
+      return;
+    }
+
+    const parentId = normalized.reply_to != null ? String(normalized.reply_to) : null;
+    if (parentId && commentsById.has(parentId)) {
+      const parent = commentsById.get(parentId);
+      if (parent) {
+        parent.replies.push(normalized);
+      }
+    } else {
+      roots.push(normalized);
+    }
+  });
+
+  const sortReplies = (list) =>
+    [...list].sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0))
+      .map((item) => ({
+        ...item,
+        replies: sortReplies(item.replies || [])
+      }));
+
+  return sortReplies(roots).map((comment) => ({
+    ...comment,
+    reply_count: Number(comment.reply_count || comment.replies.length || 0)
+  }));
+}
+
 app.get("/api/comments/:postId", (req, res) => {
   const postId = Number(req.params.postId);
 
@@ -967,9 +1080,18 @@ app.get("/api/comments/:postId", (req, res) => {
   }
 
   if (!isDbEnabled()) {
-    const comments = normalizeCommentRows(inMemoryComments)
-      .filter((comment) => Number(comment.post_id) === postId)
-      .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+    const comments = buildNestedCommentTree(
+      normalizeCommentRows(inMemoryComments)
+        .filter((comment) => Number(comment.post_id) === postId)
+        .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0))
+        .map((comment) => ({
+          ...comment,
+          reply_count: Number(comment.reply_count || 0),
+          like_count: Number(comment.like_count || 0),
+          reply_to: comment.reply_to ?? null,
+          replies: Array.isArray(comment.replies) ? comment.replies : []
+        }))
+    );
 
     return res.json(comments);
   }
@@ -981,7 +1103,9 @@ app.get("/api/comments/:postId", (req, res) => {
         u.first_name,
         u.last_name,
         u.profile_pic,
-        CONCAT(COALESCE(u.first_name, ''), IF(COALESCE(u.last_name, '') = '', '', CONCAT(' ', u.last_name))) AS user_name
+        CONCAT(COALESCE(u.first_name, ''), IF(COALESCE(u.last_name, '') = '', '', CONCAT(' ', u.last_name))) AS user_name,
+        COALESCE((SELECT COUNT(*) FROM comments reply WHERE reply.reply_to = c.id), 0) AS reply_count,
+        COALESCE((SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id), 0) AS like_count
       FROM comments c
       LEFT JOIN users u ON u.id = c.user_id
       WHERE c.post_id = ?
@@ -994,12 +1118,16 @@ app.get("/api/comments/:postId", (req, res) => {
         return res.status(500).json({ error: err.message });
       }
 
-      const comments = (results || []).map((comment) => ({
+      const comments = buildNestedCommentTree((results || []).map((comment) => ({
         ...comment,
         user_name: comment.user_name || comment.name || comment.first_name || "User",
         profile_pic: comment.profile_pic || null,
-        created_at: comment.created_at || new Date().toISOString()
-      }));
+        created_at: comment.created_at || new Date().toISOString(),
+        reply_count: Number(comment.reply_count || 0),
+        like_count: Number(comment.like_count || 0),
+        reply_to: comment.reply_to ?? null,
+        replies: []
+      })));
 
       return res.json(comments);
     }
@@ -1007,10 +1135,11 @@ app.get("/api/comments/:postId", (req, res) => {
 });
 
 app.post("/api/comments", (req, res) => {
-  const { post_id, user_id, content } = req.body || {};
+  const { post_id, user_id, content, reply_to } = req.body || {};
   const safePostId = Number(post_id);
   const safeUserId = user_id ? String(user_id) : "anonymous";
   const safeContent = String(content || "").trim();
+  const safeReplyTo = reply_to !== undefined && reply_to !== null && reply_to !== "" ? Number(reply_to) : null;
 
   if (!Number.isFinite(safePostId)) {
     return res.status(400).json({ error: "Invalid post id" });
@@ -1020,12 +1149,19 @@ app.post("/api/comments", (req, res) => {
     return res.status(400).json({ error: "Missing comment text" });
   }
 
+  if (safeReplyTo !== null && !Number.isFinite(safeReplyTo)) {
+    return res.status(400).json({ error: "Invalid reply target" });
+  }
+
   if (!isDbEnabled()) {
     const comment = {
       id: Date.now(),
       user_id: safeUserId,
       post_id: safePostId,
       comment: safeContent,
+      reply_to: safeReplyTo,
+      like_count: 0,
+      reply_count: 0,
       created_at: new Date().toISOString()
     };
 
@@ -1046,8 +1182,8 @@ app.post("/api/comments", (req, res) => {
     }
 
     db.query(
-      "INSERT INTO comments (user_id, post_id, comment) VALUES (?, ?, ?)",
-      [safeUserId, safePostId, safeContent],
+      "INSERT INTO comments (user_id, post_id, comment, reply_to) VALUES (?, ?, ?, ?)",
+      [safeUserId, safePostId, safeContent, safeReplyTo],
       (err, results) => {
         if (err) {
           console.error("DB COMMENT INSERT ERROR:", err);
@@ -1061,11 +1197,72 @@ app.post("/api/comments", (req, res) => {
             user_id: safeUserId,
             post_id: safePostId,
             comment: safeContent,
+            reply_to: safeReplyTo,
+            like_count: 0,
+            reply_count: 0,
             created_at: new Date().toISOString()
           }
         });
       }
     );
+  });
+});
+
+app.post("/api/comments/:id/like", (req, res) => {
+  const commentId = Number(req.params.id);
+  const userId = req.body?.user_id || req.query?.user_id;
+
+  if (!Number.isFinite(commentId)) {
+    return res.status(400).json({ error: "Invalid comment id" });
+  }
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.status(503).json({ error: "Database is not enabled for comment likes." });
+  }
+
+  db.query("SELECT id FROM comment_likes WHERE comment_id = ? AND user_id = ? LIMIT 1", [commentId, String(userId)], (selectErr, likeRows) => {
+    if (selectErr) {
+      console.error("COMMENT LIKE SELECT ERROR:", selectErr);
+      return res.status(500).json({ error: selectErr.message });
+    }
+
+    const alreadyLiked = Boolean(likeRows?.length);
+    const operation = alreadyLiked
+      ? "DELETE FROM comment_likes WHERE comment_id = ? AND user_id = ?"
+      : "INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)";
+
+    db.query(operation, [commentId, String(userId)], (opErr) => {
+      if (opErr) {
+        console.error("COMMENT LIKE TOGGLE ERROR:", opErr);
+        return res.status(500).json({ error: opErr.message });
+      }
+
+      db.query("SELECT COUNT(*) AS total_likes FROM comment_likes WHERE comment_id = ?", [commentId], (countErr, countRows) => {
+        if (countErr) {
+          console.error("COMMENT LIKE COUNT ERROR:", countErr);
+          return res.status(500).json({ error: countErr.message });
+        }
+
+        const likeCount = Number(countRows?.[0]?.total_likes || 0);
+        db.query("UPDATE comments SET like_count = ? WHERE id = ?", [likeCount, commentId], (updateErr) => {
+          if (updateErr) {
+            console.error("COMMENT LIKE UPDATE ERROR:", updateErr);
+            return res.status(500).json({ error: updateErr.message });
+          }
+
+          return res.json({
+            success: true,
+            liked: !alreadyLiked,
+            likeCount,
+            status: alreadyLiked ? "unliked" : "liked"
+          });
+        });
+      });
+    });
   });
 });
 

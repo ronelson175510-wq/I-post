@@ -756,10 +756,10 @@ const TRANSLATIONS = {
   },
   fr: {
     settings: "Paramètres",
-    report: "Signaler",
+    report: "Attention",
     friends: "Amis",
     chat: "Chat",
-    signOut: "Se déconnecter",
+    signOut: "Déconnecter",
     privacyPolicy: "Confidentialitées",
     termsOfService: "Conditions d'utilisation",
     firstName: "Prénom",
@@ -2351,6 +2351,8 @@ const commentsList = document.getElementById("commentsList");
 const commentInput = document.getElementById("commentInput");
 const submitCommentBtn = document.getElementById("submitCommentBtn");
 let activeCommentsPostId = "";
+let activeReplyCommentId = null;
+let activeReplyCommentName = "";
 
 function escapeHtml(value = "") {
   return String(value)
@@ -2361,17 +2363,152 @@ function escapeHtml(value = "") {
     .replace(/'/g, "&#039;");
 }
 
+function getCommentLocalState(commentId) {
+  if (!commentId) {
+    return { liked: false, likeCount: 0, replyCount: 0 };
+  }
+
+  try {
+    const raw = localStorage.getItem(`bookme_comment_state_${commentId}`);
+    if (!raw) {
+      return { liked: false, likeCount: 0, replyCount: 0 };
+    }
+
+    const parsed = JSON.parse(raw);
+    return {
+      liked: Boolean(parsed?.liked),
+      likeCount: Number(parsed?.likeCount || 0),
+      replyCount: Number(parsed?.replyCount || 0)
+    };
+  } catch (error) {
+    return { liked: false, likeCount: 0, replyCount: 0 };
+  }
+}
+
+function setCommentLocalState(commentId, nextState = {}) {
+  if (!commentId) return;
+
+  const current = getCommentLocalState(commentId);
+  const merged = {
+    liked: Boolean(nextState.liked ?? current.liked),
+    likeCount: Number(nextState.likeCount ?? current.likeCount ?? 0),
+    replyCount: Number(nextState.replyCount ?? current.replyCount ?? 0)
+  };
+
+  localStorage.setItem(`bookme_comment_state_${commentId}`, JSON.stringify(merged));
+  return merged;
+}
+
+function syncCommentReplyInputState() {
+  if (!commentInput) return;
+
+  if (activeReplyCommentId && activeReplyCommentName) {
+    commentInput.placeholder = `Replying to ${activeReplyCommentName}...`;
+    submitCommentBtn.textContent = "Reply";
+    commentInput.setAttribute("aria-label", `Reply to ${activeReplyCommentName}`);
+  } else {
+    commentInput.placeholder = "Write a comment...";
+    submitCommentBtn.textContent = "Post";
+    commentInput.setAttribute("aria-label", "Write a comment");
+  }
+}
+
+function syncCommentReplyUiState() {
+  const items = document.querySelectorAll(".comment-item");
+  items.forEach((item) => {
+    const isActive = activeReplyCommentId && String(item.dataset.commentId) === String(activeReplyCommentId);
+    item.classList.toggle("replying", Boolean(isActive));
+  });
+}
+
+function clearCommentReplyMode() {
+  activeReplyCommentId = null;
+  activeReplyCommentName = "";
+  syncCommentReplyInputState();
+  syncCommentReplyUiState();
+}
+
+function setCommentReplyMode(commentId, authorName = "") {
+  activeReplyCommentId = commentId || null;
+  activeReplyCommentName = authorName || "this user";
+  syncCommentReplyInputState();
+  syncCommentReplyUiState();
+  if (commentInput) {
+    commentInput.focus();
+  }
+}
+
+function renderCommentNode(comment, depth = 0) {
+  const commentId = String(comment?.id ?? "");
+  const authorId = comment?.user_id || "";
+  const author = comment?.user_name || comment?.first_name || comment?.name || getDisplayNameForUser(authorId) || "User";
+  const text = comment?.comment || "";
+  const profilePic = comment?.profile_pic || getProfilePicForUser(authorId) || "";
+  const formattedDate = comment?.created_at ? formatRelativeDateLabel(comment.created_at) : "Just now";
+  const existingState = getCommentLocalState(commentId);
+  const baseLikeCount = Number(comment?.like_count ?? comment?.likes_count ?? comment?.likeCount ?? existingState.likeCount ?? 0);
+  const renderedReplyCount = Math.max(
+    Number(comment?.reply_count ?? comment?.replies_count ?? comment?.replyCount ?? 0),
+    Number(existingState.replyCount ?? 0)
+  );
+  const baseReplyCount = Number(
+    Array.isArray(comment?.replies)
+      ? Math.max(renderedReplyCount, comment.replies.length)
+      : renderedReplyCount
+  );
+  const isLiked = Boolean(existingState.liked);
+  const repliedToThisComment = activeReplyCommentId === String(commentId);
+  const indentStyle = depth > 0 ? `style="margin-left: ${Math.min(depth * 18, 36)}px;"` : "";
+
+  const avatarMarkup = profilePic
+    ? `<img src="${escapeHtml(profilePic)}" alt="${escapeHtml(author)} profile" class="comment-avatar-img" />`
+    : `<span class="comment-avatar-fallback"><i class="fa-solid fa-circle-user"></i></span>`;
+
+  const childReplies = Array.isArray(comment?.replies) && comment.replies.length
+    ? `<div class="comment-replies">${comment.replies.map((child) => renderCommentNode(child, depth + 1)).join("")}</div>`
+    : "";
+
+  return `
+    <div class="comment-thread ${depth > 0 ? "is-reply" : ""}" ${indentStyle}>
+      <div class="comment-item ${repliedToThisComment ? "replying" : ""} ${depth > 0 ? "is-reply-item" : ""}" data-comment-id="${escapeHtml(commentId)}" data-author-name="${escapeHtml(author)}">
+        <div class="comment-user-row">
+          <div class="comment-avatar profile-avatar-trigger" data-user-id="${escapeHtml(authorId || getCurrentUserId())}">${avatarMarkup}</div>
+          <div class="comment-user-meta profile-avatar-trigger" data-user-id="${escapeHtml(authorId || getCurrentUserId())}">
+            <strong>${escapeHtml(author)}</strong>
+            <span class="comment-date">${escapeHtml(formattedDate)}</span>
+          </div>
+        </div>
+        <div class="comment-text">${escapeHtml(text)}</div>
+        <div class="comment-action-row">
+          <button type="button" class="comment-action-btn comment-like-btn ${isLiked ? "liked" : ""}" data-comment-id="${escapeHtml(commentId)}" data-like-count="${Number(baseLikeCount)}" aria-label="Like comment">
+            <i class="${isLiked ? "fa-solid fa-heart" : "fa-regular fa-heart"}"></i>
+            <span>${baseLikeCount}</span>
+          </button>
+          <button type="button" class="comment-action-btn comment-reply-btn" data-comment-id="${escapeHtml(commentId)}" data-author-name="${escapeHtml(author)}" aria-label="Reply to comment">
+            <i class="fa-regular fa-comment"></i>
+            <span>${baseReplyCount}</span>
+          </button>
+        </div>
+      </div>
+      ${childReplies}
+    </div>
+  `;
+}
+
 async function loadCommentsForCurrentPost() {
   if (!commentsList) return;
 
   if (!activeCommentsPostId) {
     commentsList.innerHTML = '<div class="comment-empty">No comments yet.</div>';
+    clearCommentReplyMode();
     return;
   }
 
   try {
     commentsList.innerHTML = '<div class="comment-empty">Loading comments...</div>';
-    const response = await fetch(`/api/comments/${encodeURIComponent(activeCommentsPostId)}`);
+    const response = await fetch(`/api/comments/${encodeURIComponent(activeCommentsPostId)}?_t=${Date.now()}`, {
+      cache: "no-store"
+    });
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
@@ -2381,38 +2518,76 @@ async function loadCommentsForCurrentPost() {
     const comments = Array.isArray(data) ? data : (Array.isArray(data.comments) ? data.comments : []);
     if (!comments.length) {
       commentsList.innerHTML = '<div class="comment-empty">No comments yet.</div>';
+      clearCommentReplyMode();
       return;
     }
 
-    commentsList.innerHTML = comments
-      .map((comment) => {
-        const authorId = comment?.user_id || "";
-        const author = comment?.user_name || comment?.first_name || comment?.name || getDisplayNameForUser(authorId) || "User";
-        const text = comment?.comment || "";
-        const profilePic = comment?.profile_pic || getProfilePicForUser(authorId) || "";
-        const createdAt = comment?.created_at ? new Date(comment.created_at) : null;
-        const formattedDate = createdAt && !Number.isNaN(createdAt.getTime())
-          ? createdAt.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
-          : "Just now";
+    commentsList.innerHTML = comments.map((comment) => renderCommentNode(comment, 0)).join("");
+    syncCommentReplyUiState();
 
-        const avatarMarkup = profilePic
-          ? `<img src="${escapeHtml(profilePic)}" alt="${escapeHtml(author)} profile" class="comment-avatar-img" />`
-          : `<span class="comment-avatar-fallback"><i class="fa-solid fa-circle-user"></i></span>`;
+    bindProfileAvatarButtons(commentsList);
 
-        return `
-          <div class="comment-item">
-            <div class="comment-user-row">
-              <div class="comment-avatar">${avatarMarkup}</div>
-              <div class="comment-user-meta">
-                <strong>${escapeHtml(author)}</strong>
-                <span class="comment-date">${escapeHtml(formattedDate)}</span>
-              </div>
-            </div>
-            <div class="comment-text">${escapeHtml(text)}</div>
-          </div>
-        `;
-      })
-      .join("");
+    commentsList.querySelectorAll(".comment-item").forEach((commentItem) => {
+      commentItem.addEventListener("click", (event) => {
+        if (event.target.closest("button")) return;
+        const commentId = commentItem.dataset.commentId;
+        const authorName = commentItem.dataset.authorName || "this user";
+        if (!commentId) return;
+
+        if (activeReplyCommentId === String(commentId)) {
+          clearCommentReplyMode();
+          return;
+        }
+
+        setCommentReplyMode(commentId, authorName);
+      });
+    });
+
+    commentsList.querySelectorAll(".comment-like-btn").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const commentId = button.dataset.commentId;
+        if (!commentId) return;
+
+        const currentState = getCommentLocalState(commentId);
+        const currentLikeCount = Number(button.dataset.likeCount || currentState.likeCount || 0);
+        const nextLiked = !currentState.liked;
+        const nextLikeCount = Math.max(0, nextLiked ? currentLikeCount + 1 : currentLikeCount - 1);
+
+        setCommentLocalState(commentId, {
+          liked: nextLiked,
+          likeCount: nextLikeCount,
+          replyCount: currentState.replyCount || 0
+        });
+
+        const icon = button.querySelector("i");
+        const count = button.querySelector("span");
+        if (icon) {
+          icon.className = nextLiked ? "fa-solid fa-heart" : "fa-regular fa-heart";
+        }
+        if (count) {
+          count.textContent = String(nextLikeCount);
+        }
+        button.dataset.likeCount = String(nextLikeCount);
+        button.classList.toggle("liked", nextLiked);
+      });
+    });
+
+    commentsList.querySelectorAll(".comment-reply-btn").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const commentId = button.dataset.commentId;
+        const authorName = button.dataset.authorName || "this user";
+        if (!commentId) return;
+
+        if (activeReplyCommentId === String(commentId)) {
+          clearCommentReplyMode();
+          return;
+        }
+
+        setCommentReplyMode(commentId, authorName);
+      });
+    });
   } catch (error) {
     console.error("Comment load error:", error);
     commentsList.innerHTML = '<div class="comment-empty">Unable to load comments.</div>';
@@ -3105,28 +3280,73 @@ function getCurrentUserAvatarMarkup(userId = getCurrentUserId()) {
   return '<i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>';
 }
 
-function formatPostDateLabel(dateValue) {
+function formatRelativeDateLabel(dateValue) {
   if (!dateValue) return "";
 
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return "";
 
   const now = new Date();
-  const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMinutes = Math.max(0, Math.round(diffMs / (1000 * 60)));
+  const diffHours = Math.max(0, Math.round(diffMs / (1000 * 60 * 60)));
+  const diffDays = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+  const diffWeeks = Math.max(0, Math.round(diffDays / 7));
+  const diffMonths = Math.max(0, (now.getFullYear() - date.getFullYear()) * 12 + (now.getMonth() - date.getMonth()) + (now.getDate() < date.getDate() ? -1 : 0));
+  const diffYears = Math.max(0, now.getFullYear() - date.getFullYear() - (now.getMonth() < date.getMonth() || (now.getMonth() === date.getMonth() && now.getDate() < date.getDate()) ? 1 : 0));
+
+  if (diffMinutes < 1) {
+    return "Just now";
+  }
+
+  if (diffMinutes < 60) {
+    return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`;
+  }
 
   if (diffHours < 24) {
     return "Today";
   }
 
-  if (diffHours < 48) {
+  if (diffDays === 1) {
     return "Yesterday";
   }
 
-  return new Intl.DateTimeFormat("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric"
-  }).format(date);
+  if (diffDays < 7) {
+    return `${diffDays} days ago`;
+  }
+
+  if (diffWeeks === 1) {
+    return "1 week ago";
+  }
+
+  if (diffWeeks < 5) {
+    return `${diffWeeks} weeks ago`;
+  }
+
+  if (diffMonths === 1) {
+    return "1 month ago";
+  }
+
+  if (diffMonths < 12) {
+    return `${diffMonths} months ago`;
+  }
+
+  if (diffYears === 1) {
+    return "1 year ago";
+  }
+
+  return `${diffYears} years ago`;
+}
+
+function formatPostDateLabel(dateValue) {
+  if (!dateValue) return "";
+
+  const relativeLabel = formatRelativeDateLabel(dateValue);
+  if (relativeLabel) {
+    return relativeLabel;
+  }
+
+  return "";
 }
 
 async function openUserProfileSheet(userId = getCurrentUserId()) {
@@ -3505,6 +3725,7 @@ function openCommentsSheet(postId = "") {
   if (!commentsSheet || !commentsList) return;
 
   activeCommentsPostId = String(postId || "");
+  clearCommentReplyMode();
   commentsSheet.classList.add("show");
   commentsSheet.style.pointerEvents = "auto";
   commentsList.innerHTML = '<div class="comment-empty">Loading comments...</div>';
@@ -3520,6 +3741,7 @@ if (closeCommentsSheet && commentsSheet) {
   closeCommentsSheet.addEventListener("click", () => {
     commentsSheet.classList.remove("show");
     commentsSheet.style.pointerEvents = "none";
+    clearCommentReplyMode();
     if (commentInput) commentInput.value = "";
   });
 }
@@ -3542,21 +3764,34 @@ if (submitCommentBtn && commentInput && commentsSheet) {
 
     try {
       submitCommentBtn.disabled = true;
-      submitCommentBtn.textContent = "Posting...";
+      submitCommentBtn.textContent = activeReplyCommentId ? "Replying..." : "Posting...";
 
       const response = await fetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({
           post_id: Number(postId),
           user_id: getCurrentUserId(),
-          content: commentText
+          content: activeReplyCommentId ? `@${activeReplyCommentName}: ${commentText}` : commentText,
+          reply_to: activeReplyCommentId ? Number(activeReplyCommentId) : null
         })
       });
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(data?.error || "Unable to add comment.");
+      }
+
+        if (activeReplyCommentId) {
+        const currentState = getCommentLocalState(activeReplyCommentId);
+        const currentReplyCount = Number(currentState.replyCount || 0);
+        setCommentLocalState(activeReplyCommentId, {
+          liked: Boolean(currentState.liked),
+          likeCount: Number(currentState.likeCount || 0),
+          replyCount: currentReplyCount + 1
+        });
+        clearCommentReplyMode();
       }
 
       const commentCountBadge = document.querySelector(`.comment-btn[data-post-id="${CSS.escape(String(postId))}"] .comment-count`);
@@ -3584,7 +3819,7 @@ if (submitCommentBtn && commentInput && commentsSheet) {
       alert(error.message || "Unable to add comment.");
     } finally {
       submitCommentBtn.disabled = false;
-      submitCommentBtn.textContent = "Post";
+      syncCommentReplyInputState();
     }
   });
 }
