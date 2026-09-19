@@ -270,10 +270,14 @@ function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic
   const values = [safeUserId, fullName, safeEmail, safeProfilePic, safeFirstName, safeLastName, safeDob];
 
   const placeholders = columns.map(() => "?").join(", ");
-  const updates = columns
-    .filter((column) => column !== "id")
-    .map((column) => `${column} = VALUES(${column})`)
-    .join(", ");
+  const updates = [
+    "name = COALESCE(VALUES(name), name)",
+    "email = COALESCE(VALUES(email), email)",
+    "profile_pic = COALESCE(VALUES(profile_pic), profile_pic)",
+    "first_name = COALESCE(VALUES(first_name), first_name)",
+    "last_name = COALESCE(VALUES(last_name), last_name)",
+    "dob = COALESCE(VALUES(dob), dob)"
+  ].join(", ");
 
   const query = `
     INSERT INTO users (${columns.join(", ")})

@@ -254,8 +254,11 @@ async function loadUserProfileDataFromServer(userId = getCurrentUserId()) {
 
     localStorage.setItem(getUserProfileKey(userId), JSON.stringify(profile));
 
-    if (data?.profile_pic) {
-      localStorage.setItem(getProfilePicKeyForUser(userId), data.profile_pic);
+    const storedProfilePic = getProfilePicForUser(userId);
+    const recoveredProfilePic = data?.profile_pic || storedProfilePic || null;
+
+    if (recoveredProfilePic) {
+      localStorage.setItem(getProfilePicKeyForUser(userId), recoveredProfilePic);
     }
 
     return profile;
@@ -3286,6 +3289,10 @@ function renderFeedPost(post) {
   const reportButtonMarkup = !isOwnPost ? `
     <button class="post-report-btn" type="button" data-post-id="${post?.id || ""}" data-action="report">
       <i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i> Report this content
+      
+    </button>
+    <button class="see-more-like-this" type="button" data-post-id="${post?.id || ""}" data-action="see-more-like-this">
+      <i class="fa-solid fa-star" style="color: rgb(1, 1, 1);"></i> See more like this
     </button>
   ` : "";
   const deleteButtonMarkup = isOwner ? `
@@ -3331,7 +3338,9 @@ function renderFeedPost(post) {
             </button>
           </div>
 
-         <i class="fa-solid fa-bookmark fa-lg" style="color: rgb(109, 106, 106);"></i>
+          
+
+         <i class="fa-solid fa-bookmark fa-xl" style="color: rgb(109, 106, 106);"></i>
 
           <button class="comment-btn" type="button" aria-label="Open comments" data-post-id="${post?.id || ""}">
             <i class="fa-regular fa-comments fa-xl" style="color: rgb(76, 76, 76);"></i>
