@@ -2375,7 +2375,7 @@ async function loadCommentsForCurrentPost() {
       throw new Error(data?.error || "Unable to load comments.");
     }
 
-    const comments = Array.isArray(data.comments) ? data.comments : [];
+    const comments = Array.isArray(data) ? data : (Array.isArray(data.comments) ? data.comments : []);
     if (!comments.length) {
       commentsList.innerHTML = '<div class="comment-empty">No comments yet.</div>';
       return;
@@ -2383,12 +2383,29 @@ async function loadCommentsForCurrentPost() {
 
     commentsList.innerHTML = comments
       .map((comment) => {
-        const author = comment?.user_name || "User";
+        const authorId = comment?.user_id || "";
+        const author = comment?.user_name || comment?.first_name || comment?.name || getDisplayNameForUser(authorId) || "User";
         const text = comment?.comment || "";
+        const profilePic = comment?.profile_pic || getProfilePicForUser(authorId) || "";
+        const createdAt = comment?.created_at ? new Date(comment.created_at) : null;
+        const formattedDate = createdAt && !Number.isNaN(createdAt.getTime())
+          ? createdAt.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+          : "Just now";
+
+        const avatarMarkup = profilePic
+          ? `<img src="${escapeHtml(profilePic)}" alt="${escapeHtml(author)} profile" class="comment-avatar-img" />`
+          : `<span class="comment-avatar-fallback"><i class="fa-solid fa-circle-user"></i></span>`;
+
         return `
           <div class="comment-item">
-            <strong>${escapeHtml(author)}</strong>
-            <div>${escapeHtml(text)}</div>
+            <div class="comment-user-row">
+              <div class="comment-avatar">${avatarMarkup}</div>
+              <div class="comment-user-meta">
+                <strong>${escapeHtml(author)}</strong>
+                <span class="comment-date">${escapeHtml(formattedDate)}</span>
+              </div>
+            </div>
+            <div class="comment-text">${escapeHtml(text)}</div>
           </div>
         `;
       })
@@ -3173,6 +3190,9 @@ function renderFeedPost(post) {
   const displayName = getDisplayNameForUser(ownerUserId) || "User";
   const postDateLabel = formatPostDateLabel(post?.created_at);
   const isOwner = Boolean(post?.user_id) && String(post.user_id) === String(getCurrentUserId());
+  const likeCount = Number(post?.likes_count ?? post?.like_count ?? 0);
+  const commentCount = Number(post?.comment_count ?? post?.comments_count ?? post?.commentCount ?? 0);
+  const isLikedByCurrentUser = Boolean(post?.liked_by_current_user || post?.liked === true);
   const captionPreviewLimit = 80;
 
   const renderCaptionMarkup = (text) => {
@@ -3189,11 +3209,22 @@ function renderFeedPost(post) {
       .replace(/\"/g, "&quot;")
       .replace(/\n/g, "<br>");
 
-    const safeText = encodeHtml(normalizedText);
+    const encodeAttribute = (value) => value
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    const captionPreviewLimit = 90;
+    const isLongCaption = normalizedText.length > captionPreviewLimit;
+    const previewText = isLongCaption ? `${normalizedText.slice(0, captionPreviewLimit).trim()}...` : normalizedText;
+    const safeText = encodeHtml(previewText);
+    const fullTextAttr = encodeAttribute(normalizedText);
 
     return `
-      <div class="feed-caption">
+      <div class="feed-caption" data-full-text="${fullTextAttr}">
         <span class="feed-caption-text">${safeText}</span>
+        ${isLongCaption ? '<button class="feed-read-more-btn" type="button" aria-expanded="false">Read more</button>' : ""}
       </div>
     `;
   };
@@ -3254,7 +3285,7 @@ function renderFeedPost(post) {
   const isOwnPost = Boolean(post?.user_id) && String(post.user_id) === String(getCurrentUserId());
   const reportButtonMarkup = !isOwnPost ? `
     <button class="post-report-btn" type="button" data-post-id="${post?.id || ""}" data-action="report">
-      <i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i> Report
+      <i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i> Report this content
     </button>
   ` : "";
   const deleteButtonMarkup = isOwner ? `
@@ -3304,12 +3335,14 @@ function renderFeedPost(post) {
 
           <button class="comment-btn" type="button" aria-label="Open comments" data-post-id="${post?.id || ""}">
             <i class="fa-regular fa-comments fa-xl" style="color: rgb(76, 76, 76);"></i>
+            <span class="comment-count">${commentCount}</span>
           </button>
 
           <i class="fa-solid fa-retweet fa-xl" style="color: rgb(252, 218, 0);"></i>
 
-          <button class="like-btn" type="button">
-           <i class="fa-regular fa-heart fa-xl" style="color: rgb(101, 101, 100);"></i>
+          <button class="like-btn" type="button" data-post-id="${post?.id || ""}" data-liked="${isLikedByCurrentUser ? "true" : "false"}">
+            <i class="${isLikedByCurrentUser ? "fa-solid fa-heart" : "fa-regular fa-heart"} fa-xl" style="color: ${isLikedByCurrentUser ? "rgb(255, 93, 93)" : "rgb(101, 101, 100)"};"></i>
+            <span class="like-count">${likeCount}</span>
           </button>
         </div>
       </div>
@@ -3318,7 +3351,29 @@ function renderFeedPost(post) {
 }
 
 function bindReadMoreButtons() {
-  // Feed captions are intentionally displayed in full without a read-more toggle.
+  document.querySelectorAll(".feed-read-more-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const caption = button.closest(".feed-caption");
+      const textEl = caption?.querySelector(".feed-caption-text");
+      if (!caption || !textEl) return;
+
+      const fullText = caption.dataset.fullText || textEl.textContent || "";
+      const isExpanded = caption.classList.contains("expanded");
+
+      if (isExpanded) {
+        const truncated = `${fullText.slice(0, 90).trim()}...`;
+        textEl.innerHTML = truncated.replace(/\n/g, "<br>");
+        button.textContent = "Read more";
+        button.setAttribute("aria-expanded", "false");
+        caption.classList.remove("expanded");
+      } else {
+        textEl.innerHTML = fullText.replace(/\n/g, "<br>");
+        button.textContent = "Read less";
+        button.setAttribute("aria-expanded", "true");
+        caption.classList.add("expanded");
+      }
+    });
+  });
 }
 
 function bindTextPostMenus() {
@@ -3374,7 +3429,12 @@ function bindTextPostMenus() {
 
 async function loadPosts() {
   try {
-    const response = await fetch("/api/posts");
+    const currentUserId = getCurrentUserId();
+    const url = currentUserId && currentUserId !== "guest"
+      ? `/api/posts?user_id=${encodeURIComponent(currentUserId)}`
+      : "/api/posts";
+
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error("Failed to load posts");
     }
@@ -3490,7 +3550,25 @@ if (submitCommentBtn && commentInput && commentsSheet) {
         throw new Error(data?.error || "Unable to add comment.");
       }
 
+      const commentCountBadge = document.querySelector(`.comment-btn[data-post-id="${CSS.escape(String(postId))}"] .comment-count`);
+      if (commentCountBadge) {
+        const currentCount = Number(commentCountBadge.textContent.trim()) || 0;
+        commentCountBadge.textContent = String(currentCount + 1);
+      }
+
+      if (Array.isArray(window.__feedPostsCache)) {
+        const cachedPost = window.__feedPostsCache.find((post) => String(post.id) === String(postId));
+        if (cachedPost) {
+          const newValue = Number(cachedPost.comment_count || cachedPost.comments_count || 0) + 1;
+          cachedPost.comment_count = newValue;
+          cachedPost.comments_count = newValue;
+        }
+      }
+
       commentInput.value = "";
+      if (feedPosts) {
+        await loadPosts();
+      }
       await loadCommentsForCurrentPost();
     } catch (error) {
       console.error("Comment submit error:", error);
@@ -3505,11 +3583,54 @@ if (submitCommentBtn && commentInput && commentsSheet) {
 if (feedPosts) {
   loadPosts();
 
-  feedPosts.addEventListener("click", (event) => {
+  feedPosts.addEventListener("click", async (event) => {
     const commentButton = event.target.closest(".comment-btn");
     if (commentButton) {
       event.stopPropagation();
       openCommentsSheet(commentButton.dataset.postId || "");
+      return;
+    }
+
+    const likeButton = event.target.closest(".like-btn");
+    if (likeButton) {
+      event.stopPropagation();
+
+      const postId = likeButton.dataset.postId;
+      const currentUserId = getCurrentUserId();
+      if (!postId) return;
+      if (!currentUserId || currentUserId === "guest") {
+        alert("Please sign in to like posts.");
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/posts/${encodeURIComponent(postId)}/like`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: currentUserId })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to update like.");
+        }
+
+        const icon = likeButton.querySelector("i");
+        const countEl = likeButton.querySelector(".like-count");
+        const isLiked = Boolean(data?.liked);
+        if (icon) {
+          icon.className = isLiked ? "fa-solid fa-heart fa-xl" : "fa-regular fa-heart fa-xl";
+          icon.style.color = isLiked ? "rgb(255, 93, 93)" : "rgb(101, 101, 100)";
+        }
+        if (countEl) {
+          countEl.textContent = String(data?.likeCount ?? 0);
+        }
+        likeButton.dataset.liked = String(isLiked);
+      } catch (error) {
+        console.error("Like toggle error:", error);
+        alert(error.message || "Unable to update like.");
+      }
+      return;
     }
 
     const clickedVideoShell = event.target.closest(".video-shell");

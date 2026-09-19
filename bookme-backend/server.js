@@ -696,6 +696,7 @@ app.post("/api/posts", upload.array("file", 20), (req, res) => {
 
 app.get("/api/posts", (req, res) => {
   const publicBaseUrl = getPublicBaseUrl(req);
+  const viewerUserId = req.query?.user_id ? String(req.query.user_id).trim() : "";
 
   if (!isDbEnabled()) {
     pruneMissingMediaPosts();
@@ -704,7 +705,26 @@ app.get("/api/posts", (req, res) => {
       .slice(0, 20));
   }
 
-  db.query("SELECT * FROM posts ORDER BY created_at DESC", (err, results) => {
+  const query = viewerUserId
+    ? `
+      SELECT p.*, 
+        COALESCE((SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), 0) AS like_count,
+        COALESCE((SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id), 0) AS comment_count,
+        CASE WHEN EXISTS (SELECT 1 FROM likes l2 WHERE l2.post_id = p.id AND l2.user_id = ?) THEN 1 ELSE 0 END AS liked_by_current_user
+      FROM posts p
+      ORDER BY p.created_at DESC
+    `
+    : `
+      SELECT p.*, 
+        COALESCE((SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), 0) AS like_count,
+        COALESCE((SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id), 0) AS comment_count
+      FROM posts p
+      ORDER BY p.created_at DESC
+    `;
+
+  const params = viewerUserId ? [viewerUserId] : [];
+
+  db.query(query, params, (err, results) => {
     if (err) {
       console.error("DB SELECT ERROR:", err);
       return res.status(500).json({ error: err.message });
@@ -722,7 +742,12 @@ app.get("/api/posts", (req, res) => {
           media_urls: resolvedMediaUrls,
           media_url: resolvedMediaUrls[0] || null,
           is_flagged: Boolean(post.is_flagged),
-          report_count: Number(post.report_count || 0)
+          report_count: Number(post.report_count || 0),
+          likes_count: Number(post.like_count || post.likes_count || 0),
+          like_count: Number(post.like_count || post.likes_count || 0),
+          comment_count: Number(post.comment_count || 0),
+          liked_by_current_user: Boolean(viewerUserId && Number(post.liked_by_current_user || 0)),
+          liked: Boolean(viewerUserId && Number(post.liked_by_current_user || 0))
         };
       })
       .filter(post => {
@@ -735,6 +760,128 @@ app.get("/api/posts", (req, res) => {
       });
 
     res.json(fixedResults);
+  });
+});
+
+app.get("/api/posts/:id/likes", (req, res) => {
+  const postId = Number(req.params.id);
+  const userId = req.query?.user_id ? String(req.query.user_id).trim() : "";
+
+  if (!Number.isFinite(postId)) {
+    return res.status(400).json({ error: "Invalid post id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.status(503).json({ error: "Database is not enabled for likes." });
+  }
+
+  db.query("SELECT COUNT(*) AS total_likes FROM likes WHERE post_id = ?", [postId], (countErr, countRows) => {
+    if (countErr) {
+      console.error("LIKE COUNT ERROR:", countErr);
+      return res.status(500).json({ error: countErr.message });
+    }
+
+    const base = {
+      post_id: postId,
+      likeCount: Number(countRows?.[0]?.total_likes || 0)
+    };
+
+    if (!userId) {
+      return res.json(base);
+    }
+
+    db.query("SELECT id FROM likes WHERE post_id = ? AND user_id = ? LIMIT 1", [postId, userId], (likedErr, likedRows) => {
+      if (likedErr) {
+        console.error("LIKE STATUS ERROR:", likedErr);
+        return res.status(500).json({ error: likedErr.message });
+      }
+
+      return res.json({
+        ...base,
+        liked: Boolean(likedRows?.length)
+      });
+    });
+  });
+});
+
+app.post("/api/posts/:id/like", (req, res) => {
+  const postId = Number(req.params.id);
+  const userId = req.body?.user_id ? String(req.body.user_id).trim() : "";
+
+  if (!Number.isFinite(postId)) {
+    return res.status(400).json({ error: "Invalid post id" });
+  }
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.status(503).json({ error: "Database is not enabled for likes." });
+  }
+
+  db.query("SELECT id FROM posts WHERE id = ?", [postId], (postErr, postRows) => {
+    if (postErr) {
+      console.error("LIKE POST SELECT ERROR:", postErr);
+      return res.status(500).json({ error: postErr.message });
+    }
+
+    if (!postRows?.length) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    ensureUserRecord(userId, {
+      name: req.body?.name,
+      email: req.body?.email,
+      profile_pic: req.body?.profile_pic
+    }, (userErr) => {
+      if (userErr) {
+        console.error("LIKE USER ENSURE ERROR:", userErr);
+        return res.status(500).json({ error: userErr.message });
+      }
+
+      db.query("SELECT id FROM likes WHERE post_id = ? AND user_id = ? LIMIT 1", [postId, userId], (selectErr, likeRows) => {
+        if (selectErr) {
+          console.error("LIKE SELECT ERROR:", selectErr);
+          return res.status(500).json({ error: selectErr.message });
+        }
+
+        const alreadyLiked = Boolean(likeRows?.length);
+        const sql = alreadyLiked
+          ? "DELETE FROM likes WHERE post_id = ? AND user_id = ?"
+          : "INSERT INTO likes (post_id, user_id) VALUES (?, ?)";
+        const params = alreadyLiked ? [postId, userId] : [postId, userId];
+
+        db.query(sql, params, (opErr) => {
+          if (opErr) {
+            console.error("LIKE TOGGLE ERROR:", opErr);
+            return res.status(500).json({ error: opErr.message });
+          }
+
+          db.query("SELECT COUNT(*) AS total_likes FROM likes WHERE post_id = ?", [postId], (countErr, countRows) => {
+            if (countErr) {
+              console.error("LIKE COUNT UPDATE ERROR:", countErr);
+              return res.status(500).json({ error: countErr.message });
+            }
+
+            const likeCount = Number(countRows?.[0]?.total_likes || 0);
+            db.query("UPDATE posts SET likes_count = ? WHERE id = ?", [likeCount, postId], (updateErr) => {
+              if (updateErr) {
+                console.error("POST LIKE COUNT UPDATE ERROR:", updateErr);
+                return res.status(500).json({ error: updateErr.message });
+              }
+
+              return res.json({
+                success: true,
+                liked: !alreadyLiked,
+                likeCount,
+                status: alreadyLiked ? "unliked" : "liked"
+              });
+            });
+          });
+        });
+      });
+    });
   });
 });
 
@@ -824,7 +971,18 @@ app.get("/api/comments/:postId", (req, res) => {
   }
 
   db.query(
-    "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at ASC",
+    `
+      SELECT c.*, 
+        u.name,
+        u.first_name,
+        u.last_name,
+        u.profile_pic,
+        CONCAT(COALESCE(u.first_name, ''), IF(COALESCE(u.last_name, '') = '', '', CONCAT(' ', u.last_name))) AS user_name
+      FROM comments c
+      LEFT JOIN users u ON u.id = c.user_id
+      WHERE c.post_id = ?
+      ORDER BY c.created_at ASC
+    `,
     [postId],
     (err, results) => {
       if (err) {
@@ -832,7 +990,14 @@ app.get("/api/comments/:postId", (req, res) => {
         return res.status(500).json({ error: err.message });
       }
 
-      return res.json(normalizeCommentRows(results));
+      const comments = (results || []).map((comment) => ({
+        ...comment,
+        user_name: comment.user_name || comment.name || comment.first_name || "User",
+        profile_pic: comment.profile_pic || null,
+        created_at: comment.created_at || new Date().toISOString()
+      }));
+
+      return res.json(comments);
     }
   );
 });
