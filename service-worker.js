@@ -1,4 +1,14 @@
-const CACHE_NAME = "bookme-app-shell-v1";
+if (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1") {
+  self.addEventListener("install", () => self.skipWaiting());
+  self.addEventListener("activate", () => self.clients.claim());
+  self.addEventListener("fetch", (event) => {
+    if (event.request.method === "GET") {
+      event.respondWith(fetch(event.request));
+    }
+  });
+}
+
+const CACHE_NAME = "bookme-app-shell-v2";
 const APP_SHELL = [
   "./",
   "./index.html",

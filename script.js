@@ -11,11 +11,21 @@ if (window.firebase && firebase.apps && firebase.apps.length === 0) {
 }
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch((error) => {
-      console.warn("Service worker registration failed:", error);
+  const isLocalHost =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+
+  if (isLocalHost) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => registration.unregister());
+    }).catch(() => {});
+  } else {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js").catch((error) => {
+        console.warn("Service worker registration failed:", error);
+      });
     });
-  });
+  }
 }
 
 let deferredInstallPrompt = null;
@@ -3562,23 +3572,27 @@ function renderFeedPost(post) {
         ${mediaWrap}
 
         <div class="feed-actions actions">
+
+        <button class="like-btn" type="button" data-post-id="${post?.id || ""}" data-liked="${isLikedByCurrentUser ? "true" : "false"}">
+            <i class="${isLikedByCurrentUser ? "fa-solid fa-heart" : "fa-regular fa-heart"} fa-xl" style="color: ${isLikedByCurrentUser ? "rgb(255, 93, 93)" : "rgb(50, 50, 49)"};"></i>
+            <span class="like-count">${likeCount}</span>
+          </button>
           
 
           
 
-         <i class="fa-solid fa-bookmark fa-xl" style="color: rgb(109, 106, 106);"></i>
+        
 
           <button class="comment-btn" type="button" aria-label="Open comments" data-post-id="${post?.id || ""}">
             <i class="fa-regular fa-comments fa-xl" style="color: rgb(76, 76, 76);"></i>
             <span class="comment-count">${commentCount}</span>
           </button>
 
+           <i class="fa-solid fa-bookmark fa-xl" style="color: rgb(109, 106, 106);"></i>
+
           <i class="fa-solid fa-retweet fa-xl" style="color: rgb(252, 218, 0);"></i>
 
-          <button class="like-btn" type="button" data-post-id="${post?.id || ""}" data-liked="${isLikedByCurrentUser ? "true" : "false"}">
-            <i class="${isLikedByCurrentUser ? "fa-solid fa-heart" : "fa-regular fa-heart"} fa-xl" style="color: ${isLikedByCurrentUser ? "rgb(255, 93, 93)" : "rgb(50, 50, 49)"};"></i>
-            <span class="like-count">${likeCount}</span>
-          </button>
+          
         </div>
       </div>
     </div>
