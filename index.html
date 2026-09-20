@@ -2252,25 +2252,25 @@ font-weight: 590;
 .video-shell {
   position: relative;
   display: block;
-  width: 100%;
-  margin-top: -2px; 
+  width: calc(100% - 0px);
+  margin-top: 0;
   overflow: hidden;
- 
+  border-radius: 15px;
   
- 
 }
 
 .video-shell video {
-  width: 100%;
-  
+  width: calc(83% - 22px);
+  float: right;
+  margin: 0 22px 0 0;
   display: block;
-  background: #000;
+  background: none;
   min-height: 120px;
   max-height: 410px;
   object-fit: cover;
-  margin-top: -42px;
-  border-bottom-left-radius: 0px;
-  border-bottom-right-radius: 0px;
+  border-radius: 15px;
+  margin-right: 22px;
+  float: right;
 }
 
 .video-toggle {
@@ -2300,11 +2300,11 @@ font-weight: 590;
 
 .video-meta {
   position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
+  left: auto;
+  right: 14px;
+  bottom: 12px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
   z-index: 2;
@@ -2312,32 +2312,24 @@ font-weight: 590;
 }
 
 .video-progress {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  background: rgba(255,255,255,0.12);
-  overflow: hidden;
-  z-index: 2;
+  display: none !important;
 }
 
 .video-progress-bar {
-  display: block;
-  width: 0%;
-  height: 100%;
-  background: linear-gradient(90deg, #ffff05 90%, #fffb04 100%);;
-  transition: width 0.12s linear;
+  display: none !important;
 }
 
 .video-timer {
   background: rgba(0, 0, 0, 0.48);
   border-radius: 999px;
-  color: #fff;
+  color: #e7f707;
   font-size: 11px;
   letter-spacing: 0.03em;
   padding: 5px 9px;
   backdrop-filter: blur(2px);
+  position: relative;
+  left: auto;
+  right: 14px;
 }
 
 .video-tag {
@@ -2349,6 +2341,7 @@ font-weight: 590;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 4px 7px;
+  display: none !important;
 }
 
 
