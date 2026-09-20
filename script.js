@@ -2,10 +2,8 @@ const firebaseConfig = {
   apiKey: "AIzaSyBAnPo7WP5SeFoz-hSKWil6v0tWI1oUeCw",
   authDomain: "my-book-d3907.firebaseapp.com",
   projectId: "my-book-d3907",
-  storageBucket: "my-book-d3907.firebasestorage.app",
   messagingSenderId: "376744576799",
-  appId: "1:376744576799:web:f913314bbe68364f8b522a",
-  measurementId: "G-M8PGSMBP97"
+  appId: "1:376744576799:web:f913314bbe68364f8b522a"
 };
 
 if (window.firebase && firebase.apps && firebase.apps.length === 0) {
@@ -3549,11 +3547,7 @@ function renderFeedPost(post) {
         ${mediaWrap}
 
         <div class="feed-actions actions">
-          <div class="lang-wrapper">
-            <button class="translate-btn" type="button">
-              <span class="translate-label">${translateText}</span><i class="fa-solid fa-language" style="color: rgb(244, 228, 136);"></i>
-            </button>
-          </div>
+          
 
           
 

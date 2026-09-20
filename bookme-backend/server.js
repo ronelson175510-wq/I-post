@@ -137,6 +137,28 @@ function saveCommentsToFile() {
 const inMemoryPosts = loadPostsFromFile();
 const inMemoryComments = loadCommentsFromFile();
 
+async function uploadMediaFile(file, folderName = "uploads") {
+  if (!file || !file.path) {
+    return null;
+  }
+
+  const publicUrl = `${getPublicBaseUrl()}/uploads/${file.filename}`;
+
+  try {
+    if (fs.existsSync(file.path)) {
+      const destinationDir = path.join(uploadsDir, folderName.replace(/\//g, path.sep));
+      fs.mkdirSync(destinationDir, { recursive: true });
+      const destinationPath = path.join(destinationDir, file.filename);
+      fs.copyFileSync(file.path, destinationPath);
+      fs.unlinkSync(file.path);
+    }
+  } catch (error) {
+    console.warn("Local media copy failed, keeping original temp path:", error.message);
+  }
+
+  return publicUrl;
+}
+
 function normalizeStoredMediaUrls(value) {
   if (Array.isArray(value)) {
     return value.filter(Boolean);
@@ -482,7 +504,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }
+  limits: { fileSize: 10 * 1024 * 1024 }
 });
 
 app.use("/uploads", express.static(uploadsDir));
@@ -560,10 +582,9 @@ app.post("/api/translate", async (req, res) => {
   });
 });
 
-app.post("/api/profile-picture", upload.single("profilePic"), (req, res) => {
+app.post("/api/profile-picture", upload.single("profilePic"), async (req, res) => {
   const userId = req.body.user_id || "anonymous";
   const file = req.file;
-  const publicBaseUrl = getPublicBaseUrl(req);
 
   if (!file) {
     return res.status(400).json({ error: "No profile picture uploaded" });
@@ -573,14 +594,19 @@ app.post("/api/profile-picture", upload.single("profilePic"), (req, res) => {
     return res.status(400).json({ error: "Profile picture must be an image" });
   }
 
-  const imageUrl = `${publicBaseUrl}/uploads/${file.filename}`;
+  try {
+    const imageUrl = await uploadMediaFile(file, `profile-pictures/${userId}`) || `${getPublicBaseUrl(req)}/uploads/${file.filename}`;
 
-  return res.json({
-    success: true,
-    user_id: userId,
-    url: imageUrl,
-    file: file.filename
-  });
+    return res.json({
+      success: true,
+      user_id: userId,
+      url: imageUrl,
+      file: file.filename
+    });
+  } catch (error) {
+    console.error("PROFILE PIC UPLOAD ERROR:", error);
+    return res.status(500).json({ error: error.message || "Failed to upload profile picture" });
+  }
 });
 
 app.get("/api/profile/:userId", (req, res) => {
@@ -677,71 +703,24 @@ app.post("/api/profile", (req, res) => {
   });
 });
 
-app.post("/api/posts", upload.array("file", 20), (req, res) => {
+app.post("/api/posts", upload.array("file", 20), async (req, res) => {
   const user_id = req.body.user_id || "anonymous";
   const commonContent = (req.body.content || "").trim();
   const files = Array.isArray(req.files) ? req.files : [];
-  const publicBaseUrl = getPublicBaseUrl(req);
 
   if (!files.length) {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
-  const mediaUrls = files.map((file) => normalizeMediaUrlForPublic(`${publicBaseUrl}/uploads/${file.filename}`, req));
-  const firstOriginalName = files[0]?.originalname || "uploaded file";
-  const cleanOriginalName = path.parse(firstOriginalName).name || firstOriginalName;
-  const media_type = files.some((file) => file.mimetype?.startsWith("video/")) ? "video" : "photo";
-  const content = commonContent;
+  try {
+    const mediaUrls = await Promise.all(files.map((file) => uploadMediaFile(file, `posts/${user_id}`) || `${getPublicBaseUrl(req)}/uploads/${file.filename}`));
+    const firstOriginalName = files[0]?.originalname || "uploaded file";
+    const media_type = files.some((file) => file.mimetype?.startsWith("video/")) ? "video" : "photo";
+    const content = commonContent;
 
-  if (!isDbEnabled()) {
-    const savedPost = {
-      id: Date.now() + Math.floor(Math.random() * 1000),
-      user_id,
-      content,
-      media_type,
-      media_url: mediaUrls[0] || null,
-      media_urls: mediaUrls,
-      saved_filename: files[0]?.filename || null,
-      original_name: firstOriginalName,
-      created_at: new Date().toISOString(),
-      dbDisabled: true,
-      is_gallery: mediaUrls.length > 1
-    };
-
-    inMemoryPosts.unshift(savedPost);
-    savePostsToFile();
-
-    return res.json({
-      success: true,
-      dbDisabled: true,
-      post: savedPost,
-      posts: [savedPost]
-    });
-  }
-
-  const query = `
-    INSERT INTO posts (user_id, content, media_type, media_url, media_urls)
-    VALUES (?, ?, ?, ?, ?)
-  `;
-
-  ensureUserRecord(user_id, {
-    name: req.body?.name,
-    email: req.body?.email,
-    profile_pic: req.body?.profile_pic
-  }, (userErr) => {
-    if (userErr) {
-      console.error("USER ENSURE ERROR:", userErr);
-      return res.status(500).json({ error: userErr.message });
-    }
-
-    db.query(query, [String(user_id), content, media_type, mediaUrls[0] || null, JSON.stringify(mediaUrls)], (err, results) => {
-      if (err) {
-        console.error("DB INSERT ERROR:", err);
-        return res.status(500).json({ error: err.message });
-      }
-
+    if (!isDbEnabled()) {
       const savedPost = {
-        id: results.insertId,
+        id: Date.now() + Math.floor(Math.random() * 1000),
         user_id,
         content,
         media_type,
@@ -749,17 +728,67 @@ app.post("/api/posts", upload.array("file", 20), (req, res) => {
         media_urls: mediaUrls,
         saved_filename: files[0]?.filename || null,
         original_name: firstOriginalName,
-        success: true,
+        created_at: new Date().toISOString(),
+        dbDisabled: true,
         is_gallery: mediaUrls.length > 1
       };
 
-      res.json({
+      inMemoryPosts.unshift(savedPost);
+      savePostsToFile();
+
+      return res.json({
         success: true,
+        dbDisabled: true,
         post: savedPost,
         posts: [savedPost]
       });
+    }
+
+    const query = `
+      INSERT INTO posts (user_id, content, media_type, media_url, media_urls)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    ensureUserRecord(user_id, {
+      name: req.body?.name,
+      email: req.body?.email,
+      profile_pic: req.body?.profile_pic
+    }, (userErr) => {
+      if (userErr) {
+        console.error("USER ENSURE ERROR:", userErr);
+        return res.status(500).json({ error: userErr.message });
+      }
+
+      db.query(query, [String(user_id), content, media_type, mediaUrls[0] || null, JSON.stringify(mediaUrls)], (err, results) => {
+        if (err) {
+          console.error("DB INSERT ERROR:", err);
+          return res.status(500).json({ error: err.message });
+        }
+
+        const savedPost = {
+          id: results.insertId,
+          user_id,
+          content,
+          media_type,
+          media_url: mediaUrls[0] || null,
+          media_urls: mediaUrls,
+          saved_filename: files[0]?.filename || null,
+          original_name: firstOriginalName,
+          success: true,
+          is_gallery: mediaUrls.length > 1
+        };
+
+        res.json({
+          success: true,
+          post: savedPost,
+          posts: [savedPost]
+        });
+      });
     });
-  });
+  } catch (error) {
+    console.error("POST UPLOAD ERROR:", error);
+    return res.status(500).json({ error: error.message || "Failed to upload media" });
+  }
 });
 
 app.get("/api/posts", (req, res) => {

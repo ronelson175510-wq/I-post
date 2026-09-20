@@ -68,3 +68,7 @@ node_modules/
 # dataconnect generated files
 .dataconnect
 bookme-backend/firebase-key.json
+
+# Local media and screenshots that should not be committed
+bookme-backend/uploads/
+bookmeassets/
