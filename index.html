@@ -1803,7 +1803,7 @@ font-weight: 590;
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid rgba(231, 241, 41, 0.08);
-  margin-left: 5px;
+ 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1877,17 +1877,19 @@ font-weight: 590;
 
 .feed-post-date {
   color: #6b7280;
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   letter-spacing: 0.02em;
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
   line-height: 1.2;
   margin: -3px 23px 0 10px;
   margin-left: -1px;
 }
 
 .feed-caption {
-  margin: 10px 10px 8px;
-  margin-left: 19px;
+  margin: -10px 9px 10px;
+  margin-left: 64px;
+
   font-weight: 500;
   color: #0c0c0c;
   line-height: 1.70;
@@ -1969,7 +1971,7 @@ font-weight: 590;
 
 .gallery-controls {
   position: absolute;
-  right: 10px;
+  right: 30px;
   top: 10px;
   display: flex;
   align-items: center;
@@ -2197,8 +2199,8 @@ font-weight: 590;
 .feed-post-card .feed-actions {
   margin-top: 0;
   background: white;
-  border-top: none;
- 
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  float: right;
   padding: 8px 10px 10px;
   width:100%;
 }
@@ -2235,15 +2237,16 @@ font-weight: 590;
   border-top-right-radius: 12px
 }
 
-.feed-post-card img,
-.feed-post-card video {
-  width: 100%;
+.feed-post-card > img,
+.feed-post-card .gallery-slide img,
+.feed-post-card .media-gallery img {
+  width: 78%;
+  float: right;
+  margin-right: 22px;
   display: block;
   max-height: 380px;
   object-fit: cover;
-  float: right;
-  border-radius: 12px;
-  
+  border-radius: 15px;
 }
 
 .video-shell {
@@ -2259,12 +2262,15 @@ font-weight: 590;
 
 .video-shell video {
   width: 100%;
+  
   display: block;
   background: #000;
   min-height: 120px;
   max-height: 410px;
   object-fit: cover;
   margin-top: -42px;
+  border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
 }
 
 .video-toggle {
