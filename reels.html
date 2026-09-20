@@ -451,23 +451,26 @@
         }
 
         .reel-caption {
-            margin-top: -5px;
+            margin-top: 2px;
             max-width: 80%;
             margin-left: 34px;
             color: #fff;
             font-size: 14px;
-            line-height: 1.4;
+            line-height: 1.5;
             word-break: break-word;
+            display: block;
+            white-space: normal;
         }
 
         .reel-caption-text {
             display: inline;
             white-space: normal;
+            color: #fff;
         }
 
         .reel-read-more-btn {
             display: inline;
-            margin-left: 6px;
+            margin-left: 2px;
             padding: 0;
             background: transparent;
             border: none;
@@ -477,6 +480,10 @@
             cursor: pointer;
             text-align: left;
             vertical-align: baseline;
+        }
+
+        .reel-caption.expanded .reel-caption-text {
+            white-space: normal;
         }
 
         .reel-empty {

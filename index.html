@@ -1856,9 +1856,8 @@ font-weight: 590;
 }
 
 .feed-caption {
-  margin: -55px 10px 6px;
+  margin: 10px 10px 8px;
   margin-left: 19px;
-  top: -2px;
   font-weight: 500;
   color: #0c0c0c;
   line-height: 1.70;
@@ -1866,12 +1865,14 @@ font-weight: 590;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   display: block;
   text-align: left;
-  white-space: pre-wrap;
+  white-space: normal;
+  position: relative;
+  z-index: 1;
 }
 
 .feed-caption-text {
-  display: block;
-  white-space: pre-wrap;
+  display: inline;
+  white-space: normal;
   color: #0d0d0d;
   line-height: 1.7;
   text-align: left;
@@ -1881,29 +1882,26 @@ font-weight: 590;
 
 .feed-read-more-btn {
   appearance: none;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: rgba(17, 24, 39, 0.03);
+  background: transparent;
+  border: none;
   color: #1c1d1f;
   font-weight: 700;
-  float: right;
-  padding: 6px 10px;
-  margin-top: -5px;
+  padding: 0;
+  margin-left: 2px;
+  margin-top: 0;
   cursor: pointer;
   font-size: 0.78rem;
   line-height: 1.2;
-  border-radius: 999px;
+  border-radius: 0;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  transition: opacity 0.18s ease;
+  display: inline;
+  vertical-align: baseline;
 }
 
 .feed-read-more-btn:hover,
 .feed-read-more-btn:focus-visible {
-  background: rgba(17, 24, 39, 0.06);
-  border-color: rgba(17, 24, 39, 0.14);
-  transform: translateY(-1px);
+  opacity: 0.8;
   outline: none;
 }
 
@@ -1916,7 +1914,7 @@ font-weight: 590;
   border-radius: 0;
   overflow: hidden;
   background: #f3f3f3;
-margin-top: -42px;
+  margin-top: 0;
 }
 
 .gallery-slide {
@@ -1976,23 +1974,42 @@ margin-top: -42px;
   width: 100%;
 }
 
-.text-only-post .feed-caption,
+.text-only-post .feed-caption {
+  margin: 10px 10px 8px;
+  margin-left: 19px;
+  font-size: 16px;
+  line-height: 1.35;
+  color: #1b1b1b;
+  white-space: normal;
+  display: block;
+  text-align: left;
+}
+
 .text-only-post .feed-caption-text,
 .text-only-post p {
-  margin: -20px 9px 0px;
-  margin-left: 10px !important;
-  margin-bottom: -15px;
+  margin: 0;
   padding-left: 0 !important;
   text-indent: 0 !important;
   font-size: 16px;
-  
-  line-height: 1.30;
+  line-height: 1.35;
   color: #1b1b1b;
-  
-  white-space: pre-wrap;
+  white-space: normal;
   word-break: break-word;
-  display: block;
+  display: inline;
   text-align: left;
+}
+
+.text-only-post .feed-read-more-btn {
+  display: inline;
+  margin-left: 2px;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1c1d1f;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  vertical-align: baseline;
 }
 
 .text-post-menu-wrapper,
@@ -2149,9 +2166,7 @@ margin-top: -42px;
   margin-top: 0;
   background: white;
   border-top: 1.5px solid rgba(0,0,0,0.08);
-  border-bottom: 1.5px solid rgba(13, 13, 13, 0.08);
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
+ 
   padding: 8px 10px 10px;
   width:100%;
 }
@@ -2189,7 +2204,7 @@ margin-top: -42px;
   position: relative;
   display: block;
   width: 100%;
-  margin-top: -62px; 
+  margin-top: -2px; 
   overflow: hidden;
  
   
@@ -2200,7 +2215,7 @@ margin-top: -42px;
   width: 100%;
   display: block;
   background: #000;
-  min-height: 180px;
+  min-height: 120px;
   max-height: 390px;
   object-fit: cover;
   margin-top: -42px;

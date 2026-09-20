@@ -2919,7 +2919,8 @@ async function loadReels() {
         const isExpanded = caption.classList.contains("expanded");
 
         if (isExpanded) {
-          text.textContent = `${fullText.slice(0, 90)}...`;
+          const truncated = `${fullText.slice(0, 90).trim()}...`;
+          text.textContent = truncated;
           button.textContent = "Read more";
           caption.classList.remove("expanded");
         } else {
