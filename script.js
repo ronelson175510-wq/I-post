@@ -425,6 +425,20 @@ const searchSheet = document.getElementById("searchSheet");
 const closeSearchSheet = document.getElementById("closeSearchSheet");
 const headerBrandLink = document.getElementById("headerBrandLink");
 
+function closeSheet(sheet) {
+  if (!sheet) return;
+  sheet.classList.remove("show");
+  sheet.style.bottom = "0";
+}
+
+function closeAllSheets(exceptSheet = null) {
+  [searchSheet, writePostSheet, uploadSheet].forEach((sheet) => {
+    if (sheet && sheet !== exceptSheet) {
+      closeSheet(sheet);
+    }
+  });
+}
+
 if (headerBrandLink) {
   headerBrandLink.addEventListener("click", (event) => {
     event.preventDefault();
@@ -439,6 +453,7 @@ if (searchBtn && searchSheet) {
     if (footerIconMenu) {
       footerIconMenu.classList.remove("show");
     }
+    closeAllSheets(searchSheet);
     searchSheet.classList.add("show");
   });
 }
@@ -446,24 +461,7 @@ if (searchBtn && searchSheet) {
 if (closeSearchSheet && searchSheet) {
   closeSearchSheet.addEventListener("click", (event) => {
     event.stopPropagation();
-    searchSheet.classList.remove("show");
-  });
-}
-
-if (searchSheet) {
-  document.addEventListener("click", (event) => {
-    const clickedSearchAction = event.target.closest("#searchSheet") ||
-      event.target.closest("#searchBtn") ||
-      event.target.closest("#uploadMediaBtn") ||
-      event.target.closest("#writePostBtn") ||
-      event.target.closest("#footerIconMenu") ||
-      event.target.closest(".plus-btn") ||
-      event.target.closest("#uploadSheet") ||
-      event.target.closest("#writePostSheet");
-
-    if (!clickedSearchAction) {
-      searchSheet.classList.remove("show");
-    }
+    closeSheet(searchSheet);
   });
 }
 
@@ -471,6 +469,10 @@ let searchStartY = 0, searchCurrentY = 0, searchIsDragging = false;
 
 if (searchSheet) {
   searchSheet.addEventListener("touchstart", (e) => {
+    if (e.target.closest(".close-btn") || e.target.closest("input") || e.target.closest("textarea") || e.target.closest("button")) {
+      searchIsDragging = false;
+      return;
+    }
     searchStartY = e.touches[0].clientY;
     searchIsDragging = true;
   });
@@ -2250,18 +2252,15 @@ if (writePostBtn && writePostSheet) {
       footerIconMenu.classList.remove("show");
     }
 
-    if (searchSheet) {
-      searchSheet.classList.remove("show");
-      searchSheet.style.bottom = "0";
-    }
-
+    closeAllSheets(writePostSheet);
     writePostSheet.classList.add("show");
   });
 }
 
 if (closeWritePostSheet && writePostSheet) {
-  closeWritePostSheet.addEventListener("click", () => {
-    writePostSheet.classList.remove("show");
+  closeWritePostSheet.addEventListener("click", (event) => {
+    event.stopPropagation();
+    closeSheet(writePostSheet);
   });
 }
 
@@ -3073,11 +3072,7 @@ if (uploadMediaBtn && uploadSheet) {
       footerIconMenu.classList.remove("show");
     }
 
-    if (searchSheet) {
-      searchSheet.classList.remove("show");
-      searchSheet.style.bottom = "0";
-    }
-
+    closeAllSheets(uploadSheet);
     uploadSheet.classList.add("show");
 
     if (mediaInput) {
@@ -3087,8 +3082,9 @@ if (uploadMediaBtn && uploadSheet) {
 }
 
 if (closeUploadSheet && uploadSheet) {
-  closeUploadSheet.addEventListener("click", () => {
-    uploadSheet.classList.remove("show");
+  closeUploadSheet.addEventListener("click", (event) => {
+    event.stopPropagation();
+    closeSheet(uploadSheet);
     resetUploadForm();
   });
 }

@@ -1129,7 +1129,37 @@ font-weight: 590;
             cursor: pointer;
         }
 
-         
+        .like-btn .like-count,
+        .comment-btn .comment-count {
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1;
+            color: #2b2b2b;
+            min-width: 18px;
+            text-align: left;
+            display: inline-block;
+        }
+
+        .like-btn i,
+        .comment-btn i {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .comment-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            color: rgb(49, 49, 50);
+        }
 
         .like-btn i{
             display: flex;
@@ -1715,9 +1745,9 @@ font-weight: 590;
   width: min(92vw, 560px);
   margin: 24px auto 0;
   padding: 22px 18px;
-  border: 2px solid rgba(11, 11, 11, 0.12);
+  border: 2px solid rgba(18, 16, 16, 0.12);
   border-radius: 18px;
-  background: linear-gradient(135deg, #fffef2, #f4f4f4);
+  background: linear-gradient(135deg, #858583, #f4f4f4);
   color: #171717;
   text-align: center;
   font-size: 15px;
@@ -1913,7 +1943,7 @@ font-weight: 590;
   position: relative;
   border-radius: 0;
   overflow: hidden;
-  background: #f3f3f3;
+  background: none;
   margin-top: 0;
 }
 
@@ -2162,14 +2192,18 @@ font-weight: 590;
   z-index: 25;
 }
 
+
+
 .feed-post-card .feed-actions {
   margin-top: 0;
   background: white;
-  border-top: 1.5px solid rgba(0,0,0,0.08);
+  border-top: none;
  
   padding: 8px 10px 10px;
   width:100%;
 }
+
+
 
 .feed-post-card .comment-btn {
   background: transparent;
@@ -2179,8 +2213,20 @@ font-weight: 590;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   cursor: pointer;
   color: rgb(49, 49, 50);
+}
+
+.feed-post-card .comment-btn .comment-count,
+.feed-post-card .like-btn .like-count {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  color: black;
+  min-width: 18px;
+  text-align: left;
+  display: inline-block;
 }
 
 #previewContainer img,
@@ -2193,10 +2239,10 @@ font-weight: 590;
 .feed-post-card video {
   width: 100%;
   display: block;
-  max-height: 340px;
+  max-height: 380px;
   object-fit: cover;
-  
-  
+  float: right;
+  border-radius: 12px;
   
 }
 
@@ -2216,7 +2262,7 @@ font-weight: 590;
   display: block;
   background: #000;
   min-height: 120px;
-  max-height: 390px;
+  max-height: 410px;
   object-fit: cover;
   margin-top: -42px;
 }
