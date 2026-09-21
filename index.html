@@ -32,7 +32,7 @@
         }
 
         body{
-          background-color: white;
+          background-color: #ffffff;
           padding: 0 0 420px;
           min-height: 100vh;
           position: relative;
@@ -41,7 +41,7 @@
 
         @media (min-width: 980px) {
           body {
-            background: linear-gradient(180deg, #f8f8f8 0%, #f2f2f2 100%);
+            background: linear-gradient(180deg, #ffffff 0%, #f9f9f9 100%);
           }
 
           .header {
@@ -123,7 +123,7 @@
             font-size: 12px;
             font-family:'Times New Roman', Times, serif;
             overflow: hidden;
-            height: 48px;
+            height: 58px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -1889,7 +1889,7 @@ font-weight: 590;
 
 .feed-post-user-name {
   color: #050505;
-  font-size: 16px;
+  font-size: 18px;
   margin-left: -22px;
   font-weight: 760;
    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -1915,11 +1915,11 @@ font-weight: 590;
   right: -42px;
   margin-top: 6px;
 
-  font-weight: 600;
-  color: #0c0c0c;
-  line-height: 1.70;
+  font-weight: 500;
+  color: #080808;
+  line-height: 1.35;
   font-size: 16px;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   display: block;
   text-align: left;
   white-space: normal;
@@ -1996,7 +1996,7 @@ font-weight: 590;
 
 .gallery-controls {
   position: absolute;
-  right: 50px;
+  right: 20px;
   top: 10px;
   display: flex;
   align-items: center;
@@ -2034,8 +2034,9 @@ font-weight: 590;
 .text-only-post .feed-caption {
   right: -45px;
   width: 79%;
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: 500;
+  font-size: 19px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   line-height: 1.35;
   color: #1b1b1b;
   white-space: normal;
@@ -2229,12 +2230,15 @@ font-weight: 590;
 
 .feed-post-card .feed-actions {
   margin-top: 0;
-  left: -40px;
+  margin-right: 75px;
   background: none;
-  border-top: none;
+  border-top:none;
+  
   float: right;
   padding: 8px 10px 10px;
-  width:85%;
+  width:75%;
+  
+  border-bottom: none;
 }
 
 
@@ -2272,13 +2276,14 @@ font-weight: 590;
 .feed-post-card > img,
 .feed-post-card .gallery-slide img,
 .feed-post-card .media-gallery img {
- width: calc(85% - 22px);
+ width: calc(92% - 22px);
   float: right;
-  margin-right: 42px;
+  margin-right: 12px;
   display: block;
-  max-height: 380px;
+  max-height: 480px;
   object-fit: cover;
   border-radius: 15px;
+ 
 }
 
 .video-shell {
@@ -2293,16 +2298,16 @@ font-weight: 590;
 }
 
 .video-shell video {
-  width: calc(85% - 22px);
+  width: calc(90% - 22px);
   float: right;
   margin: 0 22px 0 0;
   display: block;
   background: none;
-  min-height: 120px;
-  max-height: 410px;
+
+  max-height: 220px;
   object-fit: cover;
   border-radius: 15px;
-  margin-right: 42px;
+  margin-right: 15px;
   float: right;
 }
 
@@ -2362,7 +2367,7 @@ font-weight: 590;
   backdrop-filter: blur(2px);
   position: relative;
   left: auto;
-  right: 44px;
+  right: 9px;
 }
 
 .video-tag {
