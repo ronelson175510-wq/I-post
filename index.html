@@ -119,11 +119,11 @@
             left: 0;
             top: 0;
             position: relative;
-            padding: calc(18px + env(safe-area-inset-top, 0px)) 12px 18px;
+            padding: 18px 12px;
             font-size: 12px;
             font-family:'Times New Roman', Times, serif;
             overflow: hidden;
-            height: calc(58px + env(safe-area-inset-top, 0px));
+            height: 58px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -170,7 +170,7 @@
             letter-spacing: 2px;
             font-weight: 700;
             font-size: 24px;
-           
+            
             font-family: comic sans ms, sans-serif;
             text-shadow: black 1px 1px 2px, black 1px 1px 2px;
         }
@@ -529,13 +529,13 @@
 
 
         .sidemenu {
-    height: 100vh;
+    height: 100%;
     width: 0;
     position: fixed;
     z-index: 1;
     top: 0;
     left: 0;
-    background: linear-gradient(180deg, rgba(16, 16, 16, 0.98), rgba(32, 32, 32, 0.97));
+   background: white;
     box-shadow: 8px 0 24px rgba(0, 0, 0, 0.28);
     overflow-x: hidden;
     overflow-y: auto;
@@ -562,11 +562,11 @@
     margin: 10px 16px;
     text-decoration: none;
     font-size: 21px;
-    color: #f0eef7;
+    color: #030303;
     border-radius: 14px;
     transition: all 0.25s ease;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(244, 242, 242, 0.04);
+    border: 1.7px solid rgba(6, 6, 6, 0.06);
 }
 
 .sidemenu a:hover,
@@ -620,11 +620,11 @@
     margin: 10px 16px;
     text-decoration: none;
     font-size: 21px;
-    color: #f3f0ff;
+    color: #060606;
     border-radius: 14px;
     transition: all 0.25s ease;
     background: rgba(255, 255, 255, 0.04);
-    border: 1.5px solid rgb(70, 69, 69);
+    border: 1.7px solid rgba(6, 6, 6, 0.06);
     cursor: pointer;
     font-family: inherit;
     width: calc(100% - 32px);
@@ -643,7 +643,7 @@
 .side-menu-profile-btn {
   width: 54px;
   height: 54px;
-  border: 2px solid rgba(246, 226, 8, 0.8);
+  border: 1.1px solid rgba(231, 230, 230, 0.8);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
@@ -678,7 +678,7 @@
 .side-menu-user-name-btn {
   background: transparent;
   border: none;
-  color: #f4f3f8;
+  color: #060606;
   font-size: 20px;
   font-weight: 700;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
@@ -702,7 +702,7 @@
     font-size: 12px;
     font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     line-height: 1.5;
-    color: rgb(238, 236, 236);
+    color: rgb(0, 0, 0);
     
 }
 
@@ -717,7 +717,7 @@
     position: absolute;
     top: -10px;
     right: -18px;
-    font-size: 36px;
+    font-size: 66px;
     color: #090909;
     text-decoration: none;
     opacity: 0.85;
@@ -1803,16 +1803,17 @@ font-weight: 590;
   overflow: visible;
 }
 
-.post-thread .feed-post-card::before {
+.post-thread .feed-post-card:not(.text-only-post)::before {
   content: "";
   position: absolute;
-  left: -30px;
-  top: 38px;
-  width: 29px;
-  height: 26px;
-  border-left: 1.5px solid white;
-  border-bottom: 1.5px solid white;
+  left: 23px;
+  top: 48px;
+  width: 69px;
+  height: 196px;
+  border-left: 1.5px solid rgb(224, 223, 223);
+  border-bottom: 1.5px solid rgb(224, 223, 223);
   border-bottom-left-radius: 16px;
+  
   background: transparent;
   z-index: -1;
 }
@@ -3068,7 +3069,7 @@ font-weight: 590;
 
     <div id="mysidemenu" class="sidemenu">
           
-    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()" style="background-color: #090909;">&times;</a>
+    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()" style="background-color: none !important; border: none !important;">&times;</a>
 
     <div class="sidemenu-profile">
       <button id="sideMenuProfileBtn" class="side-menu-profile-btn" type="button" aria-label="Open profile">
@@ -3087,11 +3088,11 @@ font-weight: 590;
        <span class="report-menu-icon"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></span>
        <span class="report-menu-label" data-i18n="report">Report</span>
      </a>
-      <a href="#" data-i18n="friends"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(253, 253, 254);"></i>Friends</a>
-      <a href="message.html" data-i18n="chat"><i class="fa-solid fa-comment fa-sm" style="color: rgb(246, 245, 247);"></i>Chat</a>
-      <button id="settingsBtn" class="menu-settings-btn" type="button" data-i18n="settings"><i class="fa-solid fa-cog fa-sm" style="color: rgb(255, 254, 254);"></i>Settings</button>
+      <a href="#" data-i18n="friends"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(7, 7, 7);"></i>Friends</a>
+      <a href="message.html" data-i18n="chat"><i class="fa-solid fa-comment fa-sm" style="color: rgb(7, 7, 7);"></i>Chat</a>
+      <button id="settingsBtn" class="menu-settings-btn" type="button" data-i18n="settings"><i class="fa-solid fa-cog fa-sm" style="color: rgb(7, 7, 7);"></i>Settings</button>
        <div class="menu-auth-actions">
-         <button class="auth-btn sign-out-btn" type="button" data-i18n="signOut"><i class="fa-solid fa-arrow-right-from-bracket fa-sm" style="color: rgb(0, 0, 0);"></i>Sign out</button>
+         <button class="auth-btn sign-out-btn" type="button" data-i18n="signOut"><i class="fa-solid fa-arrow-right-from-bracket fa-sm" style="color: rgb(7, 7, 7);"></i>Sign out</button>
       </div>
     </div>
 

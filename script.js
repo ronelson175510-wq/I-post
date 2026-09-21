@@ -3082,11 +3082,15 @@ async function submitUploadedFiles() {
     const responseText = await response.text();
     let data = {};
 
-    try {
-      data = responseText ? JSON.parse(responseText) : {};
-    } catch (error) {
-      console.error("Upload response was not valid JSON:", responseText.slice(0, 250));
-      throw new Error("Upload failed: the server returned an invalid response.");
+    if (responseText && responseText.trim()) {
+      try {
+        data = JSON.parse(responseText);
+      } catch (error) {
+        const snippet = responseText.slice(0, 250).replace(/\s+/g, " ").trim();
+        console.error("Upload response was not valid JSON:", snippet);
+        const reason = /<html|<!doctype/i.test(responseText) ? "The server returned an HTML page instead of JSON." : "The server returned an unexpected response.";
+        throw new Error(`Upload failed: ${reason}`);
+      }
     }
 
     if (!response.ok) {

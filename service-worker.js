@@ -16,7 +16,7 @@ if (self.location.hostname === "localhost" || self.location.hostname === "127.0.
   return;
 }
 
-const CACHE_NAME = "bookme-app-shell-v2";
+const CACHE_NAME = "bookme-app-shell-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -51,6 +51,7 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api/")) return;
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
