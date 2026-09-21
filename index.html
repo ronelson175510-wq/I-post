@@ -119,11 +119,11 @@
             left: 0;
             top: 0;
             position: relative;
-            padding: 18px 12px;
+            padding: calc(18px + env(safe-area-inset-top, 0px)) 12px 18px;
             font-size: 12px;
             font-family:'Times New Roman', Times, serif;
             overflow: hidden;
-            height: 58px;
+            height: calc(58px + env(safe-area-inset-top, 0px));
             display: flex;
             align-items: center;
             justify-content: space-between;

@@ -17,7 +17,11 @@ if ("serviceWorker" in navigator) {
 
   if (isLocalHost) {
     navigator.serviceWorker.getRegistrations().then((registrations) => {
-      registrations.forEach((registration) => registration.unregister());
+      Promise.all(registrations.map((registration) => registration.unregister())).catch(() => {});
+    }).catch(() => {});
+
+    caches.keys().then((keys) => {
+      keys.forEach((key) => caches.delete(key));
     }).catch(() => {});
   } else {
     window.addEventListener("load", () => {
@@ -454,8 +458,30 @@ function closeSheet(sheet) {
   sheet.style.bottom = "0";
 }
 
+function getAllSheets() {
+  return [searchSheet, writePostSheet, uploadSheet].filter(Boolean);
+}
+
+function openSheet(targetSheet) {
+  if (!targetSheet) return;
+
+  const isAlreadyOpen = targetSheet.classList.contains("show");
+  if (isAlreadyOpen) {
+    closeSheet(targetSheet);
+    return;
+  }
+
+  getAllSheets().forEach((sheet) => {
+    if (sheet !== targetSheet) {
+      closeSheet(sheet);
+    }
+  });
+
+  targetSheet.classList.add("show");
+}
+
 function closeAllSheets(exceptSheet = null) {
-  [searchSheet, writePostSheet, uploadSheet].forEach((sheet) => {
+  getAllSheets().forEach((sheet) => {
     if (sheet && sheet !== exceptSheet) {
       closeSheet(sheet);
     }
@@ -476,8 +502,7 @@ if (searchBtn && searchSheet) {
     if (footerIconMenu) {
       footerIconMenu.classList.remove("show");
     }
-    closeAllSheets(searchSheet);
-    searchSheet.classList.add("show");
+    openSheet(searchSheet);
   });
 }
 
@@ -2275,8 +2300,7 @@ if (writePostBtn && writePostSheet) {
       footerIconMenu.classList.remove("show");
     }
 
-    closeAllSheets(writePostSheet);
-    writePostSheet.classList.add("show");
+    openSheet(writePostSheet);
   });
 }
 
@@ -3095,8 +3119,7 @@ if (uploadMediaBtn && uploadSheet) {
       footerIconMenu.classList.remove("show");
     }
 
-    closeAllSheets(uploadSheet);
-    uploadSheet.classList.add("show");
+    openSheet(uploadSheet);
 
     if (mediaInput) {
       mediaInput.click();
@@ -3372,7 +3395,7 @@ function formatPostDateLabel(dateValue) {
 async function openUserProfileSheet(userId = getCurrentUserId()) {
   const targetUserId = userId || getCurrentUserId();
 
-  if (targetUserId && targetUserId !== "guest" && targetUserId !== getCurrentUserId()) {
+  if (targetUserId && targetUserId !== "guest") {
     await loadUserProfileDataFromServer(targetUserId);
   }
 
@@ -3393,6 +3416,8 @@ async function openUserProfileSheet(userId = getCurrentUserId()) {
     profilePicBtn.style.opacity = isCurrentUser ? "1" : "0.7";
   }
 
+  updateSideMenuProfileAvatar();
+  updateSideMenuUserName();
   updateProfileNameDisplay(targetUserId);
   renderUserSheetMedia(targetUserId, activeUserSheetFilter);
 }
