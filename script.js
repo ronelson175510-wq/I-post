@@ -11,11 +11,20 @@ if (window.firebase && firebase.apps && firebase.apps.length === 0) {
 }
 
 if ("serviceWorker" in navigator) {
-  const isLocalHost =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1";
+  const isLocalDevelopmentHost = () => {
+    const host = window.location.hostname;
+    return (
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      /^10\./.test(host) ||
+      /^192\.168\./.test(host) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+      /^169\.254\./.test(host) ||
+      host.endsWith(".local")
+    );
+  };
 
-  if (isLocalHost) {
+  if (isLocalDevelopmentHost()) {
     navigator.serviceWorker.getRegistrations().then((registrations) => {
       Promise.all(registrations.map((registration) => registration.unregister())).catch(() => {});
     }).catch(() => {});

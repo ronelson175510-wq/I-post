@@ -1,4 +1,17 @@
-if (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1") {
+const isLocalDevelopmentHost = () => {
+  const host = self.location.hostname;
+  return (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    host.endsWith(".local")
+  );
+};
+
+if (isLocalDevelopmentHost()) {
   self.addEventListener("install", (event) => {
     event.waitUntil(self.skipWaiting());
   });
