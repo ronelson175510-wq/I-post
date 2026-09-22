@@ -2723,7 +2723,7 @@ function renderUserSheetCard(post) {
       ${isVideo ? `
         <div class="user-sheet-media-wrap">
           <i class="fa-solid fa-circle-play fa-sm" style="color: rgb(255, 255, 255);"></i>
-          <video src="${mediaUrl}" autoplay muted loop playsinline></video>
+          <video src="${mediaUrl}" muted loop playsinline></video>
         </div>
       ` : `
         <div class="user-sheet-media-wrap">
@@ -2817,12 +2817,15 @@ async function renderUserSheetMedia(userId, filterType = "all") {
 
     userSheetPosts.innerHTML = filteredPosts.map(renderUserSheetCard).join("");
     bindTextPostMenus();
-    userSheetPosts.querySelectorAll("video").forEach((video) => {
-      video.muted = true;
-      video.autoplay = true;
-      video.loop = true;
-      video.playsInline = true;
-      video.play().catch(() => {});
+    userSheetPosts.querySelectorAll(".video-shell").forEach((videoShell, index) => {
+      videoShell.dataset.autoplay = String(index === 0);
+      const video = videoShell.querySelector("video");
+      if (video) {
+        video.muted = true;
+        video.autoplay = index === 0;
+        video.loop = true;
+        video.playsInline = true;
+      }
     });
   } catch (error) {
     console.error("User sheet media load error:", error);
@@ -2843,7 +2846,7 @@ function renderSearchCard(post) {
 
   return `
     <div class="search-post-card">
-      <video src="${mediaUrl}" autoplay muted loop playsinline preload="metadata"></video>
+      <video src="${mediaUrl}" muted loop playsinline preload="metadata"></video>
       <div class="search-caption-row">
         <button type="button" class="search-user-avatar profile-avatar-trigger" data-user-id="${ownerUserId}" aria-label="View profile">
           ${getCurrentUserAvatarMarkup(ownerUserId)}
@@ -2871,10 +2874,19 @@ function renderSearchSheet(posts) {
   bindProfileAvatarButtons(searchResults);
   searchResults.querySelectorAll(".search-post-card video").forEach((video) => {
     video.muted = true;
-    video.autoplay = true;
+    video.autoplay = false;
     video.loop = true;
     video.playsInline = true;
-    video.play().catch(() => {});
+  });
+  searchResults.querySelectorAll(".search-post-card").forEach((card, index) => {
+    const video = card.querySelector("video");
+    if (video) {
+      video.autoplay = index === 0;
+    }
+    const shell = card.closest(".video-shell") || card;
+    if (shell) {
+      shell.dataset.autoplay = String(index === 0);
+    }
   });
 }
 
@@ -2914,8 +2926,8 @@ async function loadReels() {
       return `
         <div class="reel-item" data-post-id="${postId}">
           <div class="video-shell" data-post-id="${postId}">
-            <video src="${videoUrl}" autoplay muted loop playsinline preload="auto"></video>
-            <button class="video-toggle" type="button" aria-label="Play video">▶</button>
+            <video src="${videoUrl}" muted loop playsinline preload="auto"></video>
+            <button class="video-toggle" type="button" aria-label="Unmute video">🔇</button>
             <div class="video-progress"><span class="video-progress-bar"></span></div>
             <div class="video-meta">
               <span class="video-timer">0:00 / 0:00</span>
@@ -2953,6 +2965,16 @@ async function loadReels() {
       `;
     }).join("");
 
+    reelsContainer.querySelectorAll(".video-shell").forEach((videoShell, index) => {
+      videoShell.dataset.autoplay = String(index === 0);
+      const video = videoShell.querySelector("video");
+      if (video) {
+        video.muted = true;
+        video.autoplay = index === 0;
+        video.loop = true;
+        video.playsInline = true;
+      }
+    });
     reelsContainer.querySelectorAll(".video-shell").forEach(bindVideoControls);
 
     if (targetVideoId) {
@@ -3042,7 +3064,7 @@ function handleMediaSelection() {
       if (file.type.startsWith("video/")) {
         return `
           <div class="preview-item video-preview video-shell">
-            <video src="${objectUrl}" autoplay muted loop playsinline></video>
+            <video src="${objectUrl}" muted loop playsinline></video>
           </div>
         `;
       }
@@ -3179,13 +3201,22 @@ function bindVideoControls(videoShell) {
 
   if (!video || !toggleBtn) return;
 
-  video.muted = false;
-  video.volume = 1;
-  video.autoplay = true;
+  const shouldAutoplay = videoShell.dataset.autoplay === "true";
+  video.muted = true;
+  video.volume = 0;
+  video.autoplay = shouldAutoplay;
   video.loop = true;
   video.playsInline = true;
 
   const progressBar = videoShell.querySelector(".video-progress-bar");
+
+  const syncPlayButton = () => {
+    toggleBtn.innerHTML = video.muted
+      ? '<i class="fa-solid fa-volume-low fa-lg" style="color: rgb(255, 255, 255);"></i>'
+      : '<i class="fa-solid fa-volume-xmark fa-lg" style="color: rgb(255, 255, 255);"></i>';
+    toggleBtn.setAttribute("aria-label", video.muted ? "Unmute video" : "Mute video");
+    toggleBtn.title = video.muted ? "Unmute video" : "Mute video";
+  };
 
   const syncTimer = () => {
     if (!timer) return;
@@ -3228,30 +3259,31 @@ function bindVideoControls(videoShell) {
 
   video.addEventListener("loadedmetadata", syncTimer);
   video.addEventListener("timeupdate", syncTimer);
-  video.addEventListener("play", () => {
-    toggleBtn.textContent = "❚❚";
-  });
-  video.addEventListener("pause", () => {
-    toggleBtn.textContent = "▶";
-  });
+  video.addEventListener("play", syncPlayButton);
+  video.addEventListener("pause", syncPlayButton);
 
   toggleBtn.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
 
-    const isNowMuted = !video.muted;
-    video.muted = isNowMuted;
-    video.volume = isNowMuted ? 0 : 1;
-
     if (video.paused) {
+      video.muted = false;
+      video.volume = 1;
       video.play().catch(() => {});
-    } else if (isNowMuted) {
-      video.pause();
+    } else {
+      video.muted = !video.muted;
+      video.volume = video.muted ? 0 : 1;
     }
+
+    syncPlayButton();
   });
 
   syncTimer();
-  video.play().catch(() => {});
+  syncPlayButton();
+
+  if (shouldAutoplay) {
+    video.play().catch(() => {});
+  }
 }
 
 function normalizeMediaList(post) {
@@ -3521,8 +3553,8 @@ function renderFeedPost(post) {
             ? `
               <div class="gallery-slide ${index === 0 ? "active" : ""}">
                 <div class="video-shell" data-post-id="${post?.id || ""}">
-                  <video src="${url}" autoplay muted loop playsinline ${index === 0 ? "" : "preload=metadata"}></video>
-                  <button class="video-toggle" type="button" aria-label="Play video">▶</button>
+                  <video src="${url}" muted loop playsinline ${index === 0 ? "" : "preload=metadata"}></video>
+                  <button class="video-toggle" type="button" aria-label="Unmute video">🔇</button>
                   <div class="video-progress"><span class="video-progress-bar"></span></div>
                   <div class="video-meta">
                     <span class="video-tag">${videoText}</span>
@@ -3548,8 +3580,8 @@ function renderFeedPost(post) {
   } else if (mediaUrl) {
     mediaMarkup = isVideo ? `
       <div class="video-shell" data-post-id="${post?.id || ""}">
-        <video src="${mediaUrl}" autoplay muted loop playsinline></video>
-        <button class="video-toggle" type="button" aria-label="Play video">▶</button>
+        <video src="${mediaUrl}" muted loop playsinline></video>
+        <button class="video-toggle" type="button" aria-label="Unmute video">🔇</button>
         <div class="video-progress"><span class="video-progress-bar"></span></div>
         <div class="video-meta">
           <span class="video-tag">${videoText}</span>
@@ -3743,12 +3775,15 @@ async function loadPosts() {
       feedPosts.innerHTML = visiblePosts.map(renderFeedPost).join("");
       bindReadMoreButtons();
       bindProfileAvatarButtons(feedPosts);
-      feedPosts.querySelectorAll(".video-shell video").forEach((video) => {
-        video.muted = true;
-        video.autoplay = true;
-        video.loop = true;
-        video.playsInline = true;
-        video.play().catch(() => {});
+      feedPosts.querySelectorAll(".video-shell").forEach((videoShell, index) => {
+        videoShell.dataset.autoplay = String(index === 0);
+        const video = videoShell.querySelector("video");
+        if (video) {
+          video.muted = true;
+          video.autoplay = index === 0;
+          video.loop = true;
+          video.playsInline = true;
+        }
       });
       feedPosts.querySelectorAll(".video-shell").forEach(bindVideoControls);
       feedPosts.querySelectorAll(".media-gallery").forEach(bindMediaGalleryControls);
