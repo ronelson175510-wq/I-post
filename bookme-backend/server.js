@@ -3,9 +3,15 @@ const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
 const { db, isDbEnabled } = require("./db");
 
 const app = express();
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY || process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET || process.env.CLOUDINARY_SECRET
+});
 const uploadsDir = path.join(__dirname, "uploads");
 const projectRoot = path.join(__dirname, "..");
 const postsFilePath = path.join(__dirname, "posts.json");
@@ -137,12 +143,41 @@ function saveCommentsToFile() {
 const inMemoryPosts = loadPostsFromFile();
 const inMemoryComments = loadCommentsFromFile();
 
+function isCloudinaryConfigured() {
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME ||
+    process.env.CLOUD_NAME ||
+    process.env.CLOUDINARY_API_KEY ||
+    process.env.CLOUDINARY_KEY ||
+    process.env.CLOUDINARY_API_SECRET ||
+    process.env.CLOUDINARY_SECRET ||
+    process.env.CLOUDINARY_URL
+  );
+}
+
 async function uploadMediaFile(file, folderName = "uploads") {
   if (!file || !file.path) {
     return null;
   }
 
-  const publicUrl = `${getPublicBaseUrl()}/uploads/${file.filename}`;
+  const localPublicUrl = `${getPublicBaseUrl()}/uploads/${file.filename}`;
+
+  if (isCloudinaryConfigured()) {
+    try {
+      const result = await cloudinary.uploader.upload(file.path, {
+        folder: folderName.replace(/\\/g, "/"),
+        resource_type: "auto"
+      });
+
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+
+      return result?.secure_url || result?.url || localPublicUrl;
+    } catch (error) {
+      console.warn("Cloudinary upload failed, falling back to local storage:", error.message);
+    }
+  }
 
   try {
     if (fs.existsSync(file.path)) {
@@ -156,7 +191,7 @@ async function uploadMediaFile(file, folderName = "uploads") {
     console.warn("Local media copy failed, keeping original temp path:", error.message);
   }
 
-  return publicUrl;
+  return localPublicUrl;
 }
 
 function normalizeStoredMediaUrls(value) {
@@ -597,11 +632,22 @@ app.post("/api/profile-picture", upload.single("profilePic"), async (req, res) =
   try {
     const imageUrl = await uploadMediaFile(file, `profile-pictures/${userId}`) || `${getPublicBaseUrl(req)}/uploads/${file.filename}`;
 
-    return res.json({
-      success: true,
-      user_id: userId,
-      url: imageUrl,
-      file: file.filename
+    ensureUserRecord(userId, {
+      profile_pic: imageUrl,
+      name: req.body?.name,
+      email: req.body?.email
+    }, (userErr) => {
+      if (userErr) {
+        console.error("PROFILE PIC DB UPDATE ERROR:", userErr);
+        return res.status(500).json({ error: userErr.message || "Failed to save profile picture" });
+      }
+
+      return res.json({
+        success: true,
+        user_id: userId,
+        url: imageUrl,
+        file: file.filename
+      });
     });
   } catch (error) {
     console.error("PROFILE PIC UPLOAD ERROR:", error);
