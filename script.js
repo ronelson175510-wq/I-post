@@ -55,6 +55,11 @@ const sideMenuUserNameBtn = document.getElementById("sideMenuUserNameBtn");
 const sideMenuProfileAvatar = document.getElementById("sideMenuProfileAvatar");
 const sideMenuUserName = document.getElementById("sideMenuUserName");
 
+/* ============================================================
+   AUTH + PROFILE FUNCTIONS
+   Handles login state, profile data, local storage, and avatar work.
+   ============================================================ */
+
 function updateSideMenuProfileAvatar() {
   if (!sideMenuProfileAvatar) return;
 
@@ -464,7 +469,7 @@ const headerBrandLink = document.getElementById("headerBrandLink");
 function closeSheet(sheet) {
   if (!sheet) return;
   sheet.classList.remove("show");
-  sheet.style.bottom = "0";
+  sheet.style.bottom = "-100%";
 }
 
 function getAllSheets() {
@@ -487,6 +492,7 @@ function openSheet(targetSheet) {
   });
 
   targetSheet.classList.add("show");
+  targetSheet.style.bottom = "0";
 }
 
 function closeAllSheets(exceptSheet = null) {
@@ -1308,6 +1314,11 @@ const TRANSLATIONS = {
 let pIndex = 0;
 let charIndex = 0;
 
+/* ============================================================
+   TRANSLATION + LANGUAGE FUNCTIONS
+   Controls all language switching and UI text updates.
+   ============================================================ */
+
 function getPreferredLanguage() {
   const saved = localStorage.getItem(LANGUAGE_KEY);
   return Object.prototype.hasOwnProperty.call(TRANSLATIONS, saved) ? saved : "en";
@@ -1457,6 +1468,11 @@ if (document.getElementById("languageSelect")) {
 
 applyTranslations();
 
+/* ============================================================
+   MEDIA + PROFILE IMAGE FUNCTIONS
+   Handles media resizing, avatar preview, and profile upload logic.
+   ============================================================ */
+
 function resizeProfileImage(file, maxSize = 1024) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type || !file.type.startsWith("image/")) {
@@ -1589,6 +1605,11 @@ if (profilePicBtn && profilePicInput) {
 
 updateProfileNameDisplay();
 populateProfileSettingsForm();
+
+/* ============================================================
+   MESSAGE PAGE FUNCTIONS
+   Handles chat screens, conversations, and messaging UI.
+   ============================================================ */
 
 function initializeMessagePage() {
   const currentUserId = typeof getCurrentUserId === "function" ? getCurrentUserId() : "guest";
@@ -2927,7 +2948,8 @@ async function loadReels() {
         <div class="reel-item" data-post-id="${postId}">
           <div class="video-shell" data-post-id="${postId}">
             <video src="${videoUrl}" muted loop playsinline preload="auto"></video>
-            <button class="video-toggle" type="button" aria-label="Unmute video">🔇</button>
+            <button class="video-toggle" type="button" aria-label="Play video"><i class="fa-solid fa-play fa-lg" style="color: rgb(255, 255, 255);"></i></button>
+            <button class="video-mute-toggle" type="button" aria-label="Unmute video"><i class="fa-solid fa-volume-low fa-lg" style="color: rgb(255, 255, 255);"></i></button>
             <div class="video-progress"><span class="video-progress-bar"></span></div>
             <div class="video-meta">
               <span class="video-timer">0:00 / 0:00</span>
@@ -2942,7 +2964,7 @@ async function loadReels() {
               <i class="fa-regular fa-comment" style="color: rgba(242, 224, 22, 0.9)"></i>
             </button>
             <button class="reel-action-btn comment-btn" type="button" aria-label="Open comments" data-post-id="${postId}">
-             <i class="fa-regular fa-bookmark" style="color: rgba(242, 224, 22, 0.9);"></i>
+             <i class="fa-regular fa-bookmark" style="color: rgb(123, 117, 117);"></i>
             </button>
             <button class="reel-action-btn menu-btn post-menu-toggle" type="button" aria-label="More options">
               <i class="fa-solid fa-ellipsis" style="color: rgba(242, 224, 22, 0.9);"></i>
@@ -3162,13 +3184,15 @@ if (uploadMediaBtn && uploadSheet) {
   });
 }
 
-if (closeUploadSheet && uploadSheet) {
-  closeUploadSheet.addEventListener("click", (event) => {
+const uploadSheetCloseButtons = document.querySelectorAll(".upload-close-btn, #closeUploadSheet");
+
+uploadSheetCloseButtons.forEach((button) => {
+  button.addEventListener("click", (event) => {
     event.stopPropagation();
     closeSheet(uploadSheet);
     resetUploadForm();
   });
-}
+});
 
 if (mediaInput) {
   mediaInput.addEventListener("change", handleMediaSelection);
@@ -3184,6 +3208,11 @@ if (submitFilesBtn && uploadSheet) {
   submitFilesBtn.addEventListener("click", submitUploadedFiles);
 }
 
+/* ============================================================
+   VIDEO CONTROLS + PLAYBACK
+   Handles video timers, play/pause, and mute controls.
+   ============================================================ */
+
 function formatVideoTime(totalSeconds) {
   const safeSeconds = Number.isFinite(totalSeconds) ? Math.max(0, totalSeconds) : 0;
   const minutes = Math.floor(safeSeconds / 60);
@@ -3196,6 +3225,7 @@ function bindVideoControls(videoShell) {
 
   const video = videoShell.querySelector("video");
   const toggleBtn = videoShell.querySelector(".video-toggle");
+  const muteBtn = videoShell.querySelector(".video-mute-toggle");
   const timer = videoShell.querySelector(".video-timer");
   const progressTrack = videoShell.querySelector(".video-progress");
 
@@ -3211,11 +3241,18 @@ function bindVideoControls(videoShell) {
   const progressBar = videoShell.querySelector(".video-progress-bar");
 
   const syncPlayButton = () => {
-    toggleBtn.innerHTML = video.muted
+    toggleBtn.innerHTML = video.paused ? '<i class="fa-solid fa-play fa-lg" style="color: rgb(255, 255, 255);"></i>' : '<i class="fa-solid fa-pause fa-lg" style="color: rgb(255, 255, 255);"></i>';
+    toggleBtn.setAttribute("aria-label", video.paused ? "Play video" : "Pause video");
+    toggleBtn.title = video.paused ? "Play video" : "Pause video";
+  };
+
+  const syncMuteButton = () => {
+    if (!muteBtn) return;
+    muteBtn.innerHTML = video.muted
       ? '<i class="fa-solid fa-volume-low fa-lg" style="color: rgb(255, 255, 255);"></i>'
       : '<i class="fa-solid fa-volume-xmark fa-lg" style="color: rgb(255, 255, 255);"></i>';
-    toggleBtn.setAttribute("aria-label", video.muted ? "Unmute video" : "Mute video");
-    toggleBtn.title = video.muted ? "Unmute video" : "Mute video";
+    muteBtn.setAttribute("aria-label", video.muted ? "Unmute video" : "Mute video");
+    muteBtn.title = video.muted ? "Unmute video" : "Mute video";
   };
 
   const syncTimer = () => {
@@ -3259,27 +3296,41 @@ function bindVideoControls(videoShell) {
 
   video.addEventListener("loadedmetadata", syncTimer);
   video.addEventListener("timeupdate", syncTimer);
-  video.addEventListener("play", syncPlayButton);
-  video.addEventListener("pause", syncPlayButton);
+  video.addEventListener("play", () => {
+    syncPlayButton();
+    syncMuteButton();
+  });
+  video.addEventListener("pause", () => {
+    syncPlayButton();
+    syncMuteButton();
+  });
 
   toggleBtn.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
 
     if (video.paused) {
-      video.muted = false;
-      video.volume = 1;
       video.play().catch(() => {});
     } else {
-      video.muted = !video.muted;
-      video.volume = video.muted ? 0 : 1;
+      video.pause();
     }
 
     syncPlayButton();
   });
 
+  if (muteBtn) {
+    muteBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      video.muted = !video.muted;
+      video.volume = video.muted ? 0 : 1;
+      syncMuteButton();
+    });
+  }
+
   syncTimer();
   syncPlayButton();
+  syncMuteButton();
 
   if (shouldAutoplay) {
     video.play().catch(() => {});
@@ -3352,6 +3403,11 @@ function bindMediaGalleryControls(gallery) {
 
   updateGallery(0);
 }
+
+/* ============================================================
+   FEED + USER SHEET + POSTS
+   Loads post data, renders feed cards, and handles user profile sheets.
+   ============================================================ */
 
 function getCacheBustedImageUrl(url) {
   if (!url) return url;
@@ -3554,7 +3610,8 @@ function renderFeedPost(post) {
               <div class="gallery-slide ${index === 0 ? "active" : ""}">
                 <div class="video-shell" data-post-id="${post?.id || ""}">
                   <video src="${url}" muted loop playsinline ${index === 0 ? "" : "preload=metadata"}></video>
-                  <button class="video-toggle" type="button" aria-label="Unmute video">🔇</button>
+                  <button class="video-toggle" type="button" aria-label="Play video"><i class="fa-solid fa-play fa-lg" style="color: rgb(255, 255, 255);"></i></button>
+                  <button class="video-mute-toggle" type="button" aria-label="Unmute video"><i class="fa-solid fa-volume-low fa-lg" style="color: rgb(255, 255, 255);"></i></button>
                   <div class="video-progress"><span class="video-progress-bar"></span></div>
                   <div class="video-meta">
                     <span class="video-tag">${videoText}</span>
@@ -3581,7 +3638,8 @@ function renderFeedPost(post) {
     mediaMarkup = isVideo ? `
       <div class="video-shell" data-post-id="${post?.id || ""}">
         <video src="${mediaUrl}" muted loop playsinline></video>
-        <button class="video-toggle" type="button" aria-label="Unmute video">🔇</button>
+        <button class="video-toggle" type="button" aria-label="Play video"><i class="fa-solid fa-play fa-lg" style="color: rgb(255, 255, 255);"></i></button>
+        <button class="video-mute-toggle" type="button" aria-label="Unmute video"><i class="fa-solid fa-volume-low fa-lg" style="color: rgb(255, 255, 255);"></i></button>
         <div class="video-progress"><span class="video-progress-bar"></span></div>
         <div class="video-meta">
           <span class="video-tag">${videoText}</span>
@@ -3658,7 +3716,7 @@ function renderFeedPost(post) {
             <span class="comment-count">${commentCount}</span>
           </button>
 
-           <i class="fa-solid fa-bookmark fa-xl" style="color: rgb(109, 106, 106);"></i>
+          <i class="fa-regular fa-bookmark" style="color: rgb(123, 117, 117);"></i>
 
           <i class="fa-solid fa-retweet fa-xl" style="color: rgb(252, 218, 0);"></i>
 

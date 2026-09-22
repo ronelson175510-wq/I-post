@@ -1220,7 +1220,7 @@ font-weight: 590;
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
   transition: bottom 0.35s ease;
-  z-index: 9999;
+  z-index: 99999;
   resize:none;
 }
 
@@ -1268,7 +1268,8 @@ font-weight: 590;
 
 
 #postTextArea {
-  width: 90%;
+  width: 100%;
+  height: 150px;
   padding: 14px;
   border-radius: 12px;
   border: 1.5px solid black;
@@ -1281,7 +1282,7 @@ font-weight: 590;
 
 
 .post-submit-btn {
-  margin-top: 12px;
+  margin-top: 42px;
   width: 100%;
   padding: 12px;
   background: black;
@@ -1604,12 +1605,12 @@ font-weight: 590;
   left: 0;
   bottom: -100%;
   width: 100%;
-  height: 90%;
-  max-height: 80vh;
+  height: 100%;
+  max-height: 100vh;
   background: white;
-  border-radius: 20px 20px 0 0;
+ 
   box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
-  transition: bottom 0.35s ease;
+  transition: bottom 0.08s ease;
   z-index: 9999;
   overflow: hidden;
 }
@@ -1626,6 +1627,7 @@ font-weight: 590;
 
 .sheet-drag {
   width: 45px;
+  margin-top: -8px;
   height: 6px;
   background: turquoise;
   border-radius: 10px;
@@ -1646,7 +1648,9 @@ font-weight: 590;
   font-size: 24px;
   cursor: pointer;
   z-index: 999;
-  margin-right: -12px;
+ 
+ float: right;
+  
 }
 
 .sheet-content {
@@ -1672,10 +1676,11 @@ font-weight: 590;
 }
 
 #uploadDescription {
-  width: 90%;
-  border: 1.5px solid rgb(189, 188, 188);
+  width: 100%;
+  border: none;
   min-height: 62px;
   resize: none;
+  margin-top: 42px;
   border-radius: 10px;
  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   background: #ffffff;
@@ -1685,6 +1690,17 @@ font-weight: 590;
   line-height: 1.4;
  
  
+}
+
+.Upload-settings-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: absolute;
+  top: 17px;
+  float: left;
+  left: 18px;
+  z-index: 1000;
 }
 
 .upload-btn {
@@ -1726,7 +1742,7 @@ font-weight: 590;
   justify-content: flex-start;
   gap: 10px;
   max-height: 100%;
-  overflow-y: auto;
+  overflow-y: hidden;
   margin-top: 10px;
   padding-right: 4px;
 }
@@ -2322,16 +2338,15 @@ font-weight: 590;
 
 .video-toggle {
   position: absolute;
-  right: 22px;
-  top: 14px;
-  width: 42px;
-  height: 42px;
-  border: none;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: 62px;
+  height: 62px;
+  border: 2px solid rgba(255,255,255,0.7);
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.52);
+  background: rgba(0, 0, 0, 0.55);
   color: #fff;
-  font-size: 18px;
-  line-height: 1;
+  font-size: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2342,8 +2357,27 @@ font-weight: 590;
 }
 
 .video-toggle:hover {
-  transform: scale(1.04);
+  transform: translate(-50%, -50%) scale(1.04);
   background: rgba(0, 0, 0, 0.65);
+}
+
+.video-mute-toggle {
+  position: absolute;
+  margin-left: 49px;
+  top: 14px;
+  width: 42px;
+  height: 42px;
+  border: 2px solid rgba(255,255,255,0.7);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.52);
+  color: #fff;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+  z-index: 2;
 }
 
 .video-meta {
@@ -3110,21 +3144,7 @@ font-weight: 590;
 
  
 
- <div id="searchSheet" class="sheet">
-  <div class="sheet-header">
-    <span class="sheet-drag"></span>
-    <button id="closeSearchSheet" class="close-btn" type="button">×</button>
-   
-
-  </div>
-
-  <div class="sheet-content">
-    <h3 data-i18n="search">Search</h3>
-    <input id="searchInput" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Search people or posts" />
-    <h3 data-i18n="youMightLike" style="color: rgba(6, 6, 6, 0.85); font-size: 18px; margin: 16px 0 8px 14px;font-style: bold; font-family: comic sans ms, sans-serif;">We think you might like:</h3>
-    <div id="searchResults" class="search-video-grid"></div>
-  </div>
-</div>
+ 
 
 
 
@@ -3146,9 +3166,8 @@ font-weight: 590;
 <!-- Upload Media Slide-Up Sheet -->
 
 <div id="uploadSheet" class="upload-sheet">
-  <div class="sheet-header">
-    <span class="sheet-drag"></span>
-    <button id="closeUploadSheet" class="close-btn" type="button">×</button>
+  <div class="sheet-header" style="position: relative; justify-content: flex-end;">
+    <button id="closeUploadSheet" class="close-btn upload-close-btn" type="button" aria-label="Close upload sheet" title="Close upload sheet" style="position: relative; z-index: 1;">×</button>
   </div>
 
   <div class="sheet-content">
@@ -3158,14 +3177,20 @@ font-weight: 590;
       <div class="upload-description-group">
         <label for="uploadDescription" class="upload-description-label"></label>
         
-       <textarea id="uploadDescription" data-i18n-placeholder="uploadDescription" placeholder='Speak your mind or tag someone...' rows="3"></textarea>
+       <textarea id="uploadDescription" data-i18n-placeholder="uploadDescription" placeholder='Speak your mind and tag someone...' rows="3"></textarea>
+       
        
        
       </div>
+
+       <button class="Upload-settings-btn">
+        <i class="fa-solid fa-gear fa-lg" style="color: rgb(1, 1, 1);"></i>
+      </button>
       
       <!-- Preview container (blank for now) -->
       <div id="previewContainer"></div>
 
+     
       <!-- Upload button -->
       <div class="upload-actions">
         <button id="uploadFilesBtn" class="upload-btn" data-i18n="upload">Upload
