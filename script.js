@@ -638,7 +638,7 @@ const TRANSLATIONS = {
     noCommentsYet: "No comments yet.",
     uploadDescription: "Speak your mind or tag someone...",
     upload: "Upload",
-    submit: "Submit",
+    submit: "<i class='fa-solid fa-circle-arrow-right fa-lg' style='color: rgb(255, 255, 255);'></i>",
     saveSettings: "Save profile",
     contact: "Contact us",
     login: "Log In",
@@ -3124,7 +3124,7 @@ async function submitUploadedFiles() {
   try {
     if (submitFilesBtn) {
       submitFilesBtn.disabled = true;
-      submitFilesBtn.textContent = "Uploading...";
+      submitFilesBtn.innerHTML = '<i class="fa-solid fa-circle-arrow-right fa-lg" style="color: rgb(255, 255, 255);"></i>';
     }
 
     const response = await fetch("/api/posts", {
@@ -3163,7 +3163,7 @@ async function submitUploadedFiles() {
   } finally {
     if (submitFilesBtn) {
       submitFilesBtn.disabled = false;
-      submitFilesBtn.textContent = "Submit";
+      submitFilesBtn.innerHTML = '<i class="fa-solid fa-circle-arrow-right fa-lg" style="color: rgb(255, 255, 255);"></i>';
     }
   }
 }
@@ -3177,10 +3177,6 @@ if (uploadMediaBtn && uploadSheet) {
     }
 
     openSheet(uploadSheet);
-
-    if (mediaInput) {
-      mediaInput.click();
-    }
   });
 }
 
