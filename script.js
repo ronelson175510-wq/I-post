@@ -3363,29 +3363,39 @@ function bindMediaGalleryControls(gallery) {
     slides.forEach((slide, index) => {
       slide.classList.toggle("active", index === currentIndex);
     });
-    const counter = gallery.querySelector(".gallery-counter");
-    if (counter) {
-      counter.textContent = `${currentIndex + 1}/${slides.length}`;
-    }
+
+    const dots = gallery.querySelectorAll(".gallery-dot");
+    dots.forEach((dot, index) => {
+      dot.classList.toggle("active", index === currentIndex);
+    });
   };
 
   const prevBtn = gallery.querySelector(".gallery-prev");
   const nextBtn = gallery.querySelector(".gallery-next");
 
   if (prevBtn) {
-    prevBtn.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      updateGallery(currentIndex - 1);
-    });
+    prevBtn.remove();
   }
 
   if (nextBtn) {
-    nextBtn.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      updateGallery(currentIndex + 1);
-    });
+    nextBtn.remove();
+  }
+
+  const dots = Array.from({ length: slides.length }, (_, index) => {
+    const dot = document.createElement("span");
+    dot.className = `gallery-dot${index === 0 ? " active" : ""}`;
+    dot.setAttribute("aria-label", `Go to slide ${index + 1}`);
+    return dot;
+  });
+
+  const controls = gallery.querySelector(".gallery-controls");
+  if (controls) {
+    dots.forEach((dot) => controls.appendChild(dot));
+  }
+
+  const hideCounter = gallery.querySelector(".gallery-counter");
+  if (hideCounter) {
+    hideCounter.style.display = "none";
   }
 
   gallery.addEventListener("touchstart", (event) => {

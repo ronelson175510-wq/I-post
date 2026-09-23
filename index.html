@@ -1776,7 +1776,6 @@ font-weight: 590;
   gap: 1px;
   width: 100%;
   margin: 0 auto;
-  
  
   border-radius: 12px;
   z-index: 1;
@@ -1799,10 +1798,7 @@ font-weight: 590;
 
 .post-thread {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  column-gap: 12px;
-  align-items: start;
+  display: block;
   width: 100%;
   max-width: 760px;
   margin: 0 auto 18px;
@@ -1824,10 +1820,10 @@ font-weight: 590;
   position: absolute;
   left: 23px;
   top: 50px;
-  width: 69px;
+  width: 9px;
   height: 86px;
-  border-left: 1.5px solid rgb(224, 223, 223);
-  border-bottom: 1.5px solid rgb(224, 223, 223);
+  border-left: 1.5px solid rgb(255, 255, 255);
+  border-bottom: 1.5px solid rgb(255, 255, 255);
   border-bottom-left-radius: 16px;
   
   background: transparent;
@@ -1841,8 +1837,8 @@ font-weight: 590;
 .post-avatar-bubble {
   position: relative;
   z-index: 3;
-  width: 53px;
-  height: 53px;
+  width: 43px;
+  height: 43px;
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid rgba(231, 241, 41, 0.08);
@@ -1932,9 +1928,9 @@ font-weight: 590;
 
 .feed-caption {
   margin: -10px 9px 10px;
-  right: -42px;
-  margin-top: -5px;
-
+  
+  margin-top: 5px;
+width: 97%;
   font-weight: 500;
   color: #080808;
   line-height: 1.35;
@@ -2016,34 +2012,44 @@ font-weight: 590;
 
 .gallery-controls {
   position: absolute;
-  right: 20px;
-  top: 10px;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.38);
+  justify-content: center;
+  gap: 7px;
+  background: rgba(0, 0, 0, 0.34);
   color: white;
   border-radius: 999px;
   padding: 6px 10px;
   backdrop-filter: blur(4px);
+  z-index: 3;
 }
 
 .gallery-controls button {
-  border: none;
-  background: transparent;
-  color: white;
-  width: 24px;
-  height: 24px;
+  display: none;
+}
+
+.gallery-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  cursor: pointer;
-  font-size: 20px;
-  line-height: 1;
+  background: rgba(255, 255, 255, 0.55);
+  transition: all 0.2s ease;
+  display: inline-block;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14);
+}
+
+.gallery-dot.active {
+  width: 9px;
+  height: 9px;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
 }
 
 .gallery-counter {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  display: none;
 }
 
 .text-only-post {
@@ -2191,15 +2197,18 @@ font-weight: 590;
 }
 
 .feed-post-card {
-  
-  
   padding: 0;
-
   width: 100%;
   max-width: 760px;
   box-sizing: border-box;
   overflow: visible;
   position: relative;
+  height: auto;
+  border-bottom: 2px solid rgba(17, 17, 17, 0.12);
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  padding-bottom: 49px;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .feed-post-card .post-menu-wrapper {
@@ -2252,13 +2261,12 @@ font-weight: 590;
   margin-top: 0;
   margin-right: 75px;
   background: none;
-  border-top:none;
-  
+  border-top: none;
   float: right;
   padding: 8px 10px 10px;
-  width:75%;
-  
+  width: 75%;
   border-bottom: none;
+  margin-bottom: 0;
 }
 
 
@@ -2296,19 +2304,14 @@ font-weight: 590;
 .feed-post-card > img,
 .feed-post-card .gallery-slide img,
 .feed-post-card .media-gallery img {
- width: calc(92% - 22px);
-  float: right;
-  margin-right: 12px;
-  margin-top: 5px;
+  width: 100%;
   display: block;
   max-height: 480px;
   object-fit: cover;
-  border-radius: 28px;
-   background: rgba(16, 16, 16, 0.08);
-            border: 1.2px solid rgb(221, 221, 221);
-            box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
-
- 
+  border-radius: 0;
+  background: rgba(16, 16, 16, 0.08);
+  border: 1.2px solid rgb(221, 221, 221);
+  box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
 }
 
 .video-shell {
@@ -2317,22 +2320,18 @@ font-weight: 590;
   width: calc(100% - 0px);
   margin-top: 0;
   overflow: hidden;
-  border-radius: 28px;
-  margin-right: 42px;
+  border-radius: 0;
   
 }
 
 .video-shell video {
-  width: calc(90% - 22px);
-  float: right;
+  width: 100%;
   margin: 0 22px 0 0;
   display: block;
   background: none;
-
   max-height: 480px;
   object-fit: cover;
-  border-radius: 15px;
-  margin-right: 15px;
+  margin: 0;
   float: right;
 }
 
@@ -2363,7 +2362,7 @@ font-weight: 590;
 
 .video-mute-toggle {
   position: absolute;
-  margin-left: 49px;
+  margin-left: 9px;
   top: 14px;
   width: 42px;
   height: 42px;
