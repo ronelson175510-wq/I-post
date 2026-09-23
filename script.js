@@ -575,6 +575,190 @@ const profilePicBtn = document.getElementById("profilePicBtn");
 const profileSettingsForm = document.getElementById("profileSettingsForm");
 const PROFILE_PIC_KEY = "bookme_profile_pic";
 const LANGUAGE_KEY = "bookme_language";
+const DEVICE_LANGUAGE_KEY = "bookme_device_language";
+
+const LOCAL_CAPTION_TRANSLATIONS = {
+  en: {
+    "hello": "hello",
+    "hi": "hi",
+    "welcome": "welcome",
+    "good morning": "good morning",
+    "good night": "good night",
+    "love": "love",
+    "happy": "happy",
+    "sad": "sad",
+    "beautiful": "beautiful",
+    "amazing": "amazing",
+    "family": "family",
+    "friends": "friends",
+    "today": "today",
+    "tomorrow": "tomorrow",
+    "yesterday": "yesterday",
+    "photo": "photo",
+    "video": "video",
+    "check this out": "check this out"
+  },
+  es: {
+    "hello": "hola",
+    "hi": "hola",
+    "welcome": "bienvenido",
+    "good morning": "buenos días",
+    "good night": "buenas noches",
+    "love": "amor",
+    "happy": "feliz",
+    "sad": "triste",
+    "beautiful": "hermoso",
+    "amazing": "asombroso",
+    "family": "familia",
+    "friends": "amigos",
+    "today": "hoy",
+    "tomorrow": "mañana",
+    "yesterday": "ayer",
+    "photo": "foto",
+    "video": "video",
+    "check this out": "mira esto"
+  },
+  fr: {
+    "hello": "bonjour",
+    "hi": "salut",
+    "welcome": "bienvenue",
+    "good morning": "bon matin",
+    "good night": "bonne nuit",
+    "love": "amour",
+    "happy": "heureux",
+    "sad": "triste",
+    "beautiful": "beau",
+    "amazing": "incroyable",
+    "family": "famille",
+    "friends": "amis",
+    "today": "aujourd'hui",
+    "tomorrow": "demain",
+    "yesterday": "hier",
+    "photo": "photo",
+    "video": "vidéo",
+    "check this out": "regarde ça"
+  },
+  hi: {
+    "hello": "नमस्ते",
+    "hi": "नमस्ते",
+    "welcome": "स्वागत है",
+    "good morning": "सुप्रभात",
+    "good night": "शुभ रात्रि",
+    "love": "प्यार",
+    "happy": "खुशी",
+    "sad": "उदास",
+    "beautiful": "सुंदर",
+    "amazing": "अद्भुत",
+    "family": "परिवार",
+    "friends": "दोस्त",
+    "today": "आज",
+    "tomorrow": "कल",
+    "yesterday": "कल",
+    "photo": "फ़ोटो",
+    "video": "वीडियो",
+    "check this out": "इसे देखिए"
+  },
+  pt: {
+    "hello": "olá",
+    "hi": "oi",
+    "welcome": "bem-vindo",
+    "good morning": "bom dia",
+    "good night": "boa noite",
+    "love": "amor",
+    "happy": "feliz",
+    "sad": "triste",
+    "beautiful": "bonito",
+    "amazing": "incrível",
+    "family": "família",
+    "friends": "amigos",
+    "today": "hoje",
+    "tomorrow": "amanhã",
+    "yesterday": "ontem",
+    "photo": "foto",
+    "video": "vídeo",
+    "check this out": "confira isso"
+  },
+  ar: {
+    "hello": "مرحبًا",
+    "hi": "أهلاً",
+    "welcome": "مرحبًا",
+    "good morning": "صباح الخير",
+    "good night": "طاب مساؤك",
+    "love": "حب",
+    "happy": "سعيد",
+    "sad": "حزين",
+    "beautiful": "جميل",
+    "amazing": "رائع",
+    "family": "العائلة",
+    "friends": "الأصدقاء",
+    "today": "اليوم",
+    "tomorrow": "غدًا",
+    "yesterday": "أمس",
+    "photo": "صورة",
+    "video": "فيديو",
+    "check this out": "شاهد هذا"
+  },
+  zh: {
+    "hello": "你好",
+    "hi": "你好",
+    "welcome": "欢迎",
+    "good morning": "早上好",
+    "good night": "晚安",
+    "love": "爱",
+    "happy": "开心",
+    "sad": "伤心",
+    "beautiful": "美丽",
+    "amazing": "惊人",
+    "family": "家人",
+    "friends": "朋友",
+    "today": "今天",
+    "tomorrow": "明天",
+    "yesterday": "昨天",
+    "photo": "照片",
+    "video": "视频",
+    "check this out": "看看这个"
+  },
+  bn: {
+    "hello": "হ্যালো",
+    "hi": "হাই",
+    "welcome": "স্বাগতম",
+    "good morning": "শুভ সকাল",
+    "good night": "শুভ রাত্রি",
+    "love": "ভালবাসা",
+    "happy": "খুশি",
+    "sad": "দুঃখিত",
+    "beautiful": "সুন্দর",
+    "amazing": "আশ্চর্যজনক",
+    "family": "পরিবার",
+    "friends": "বন্ধুরা",
+    "today": "আজ",
+    "tomorrow": "আগামীকাল",
+    "yesterday": "গতকাল",
+    "photo": "ফটো",
+    "video": "ভিডিও",
+    "check this out": "এটা দেখুন"
+  },
+  ur: {
+    "hello": "ہیلو",
+    "hi": "ہیلو",
+    "welcome": "خوش آمدید",
+    "good morning": "صبح بخیر",
+    "good night": "شام بخیر",
+    "love": "محبت",
+    "happy": "خوش",
+    "sad": "اداس",
+    "beautiful": "خوبصورت",
+    "amazing": "عجیب",
+    "family": "خاندان",
+    "friends": "دوست",
+    "today": "آج",
+    "tomorrow": "کل",
+    "yesterday": "گذشتہ کل",
+    "photo": "تصویر",
+    "video": "ویڈیو",
+    "check this out": "یہ دیکھیں"
+  }
+};
 
 const TRANSLATIONS = {
   en: {
@@ -1319,9 +1503,58 @@ let charIndex = 0;
    Controls all language switching and UI text updates.
    ============================================================ */
 
+function getDeviceLanguage() {
+  const saved = localStorage.getItem(DEVICE_LANGUAGE_KEY);
+  if (saved && Object.prototype.hasOwnProperty.call(LOCAL_CAPTION_TRANSLATIONS, saved)) {
+    return saved;
+  }
+
+  const navLang = (navigator.language || navigator.languages?.[0] || "en").toLowerCase();
+  const base = navLang.split("-")[0];
+
+  if (Object.prototype.hasOwnProperty.call(LOCAL_CAPTION_TRANSLATIONS, base)) {
+    localStorage.setItem(DEVICE_LANGUAGE_KEY, base);
+    return base;
+  }
+
+  localStorage.setItem(DEVICE_LANGUAGE_KEY, "en");
+  return "en";
+}
+
 function getPreferredLanguage() {
   const saved = localStorage.getItem(LANGUAGE_KEY);
-  return Object.prototype.hasOwnProperty.call(TRANSLATIONS, saved) ? saved : "en";
+  if (Object.prototype.hasOwnProperty.call(TRANSLATIONS, saved)) {
+    return saved;
+  }
+  return getDeviceLanguage();
+}
+
+function translateTextForCurrentLocale(text) {
+  if (!text || !text.trim()) return text;
+
+  const targetLang = getPreferredLanguage();
+  if (!targetLang || targetLang === "en") return text;
+
+  if (typeof window !== "undefined" && window.mlKitTranslate && typeof window.mlKitTranslate.translate === "function") {
+    try {
+      const translated = window.mlKitTranslate.translate(text, targetLang);
+      if (translated && translated.trim()) return translated;
+    } catch (error) {
+      console.warn("ML Kit translation fallback failed:", error);
+    }
+  }
+
+  const dictionary = LOCAL_CAPTION_TRANSLATIONS[targetLang] || {};
+  const normalized = text.trim().toLowerCase();
+  if (dictionary[normalized]) {
+    return dictionary[normalized];
+  }
+
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const translatedWords = words.map((word) => dictionary[word] || word);
+  const translated = translatedWords.join(" ");
+
+  return translated === normalized ? text : translated;
 }
 
 function applyTranslations(lang = getPreferredLanguage()) {
@@ -2911,6 +3144,96 @@ function renderSearchSheet(posts) {
   });
 }
 
+function renderUserSearchCard(user = {}) {
+  const userId = user?.user_id || user?.id || "";
+  const displayName = (user?.name || [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "User").trim();
+  const avatarUrl = user?.profile_pic || getProfilePicForUser(userId);
+
+  return `
+    <button type="button" class="search-post-card search-user-result profile-avatar-trigger" data-user-id="${escapeHtml(String(userId))}" aria-label="Open ${escapeHtml(displayName)} profile">
+      <div class="search-caption-row">
+        <span class="search-user-avatar">${avatarUrl ? `<img src="${getCacheBustedImageUrl(avatarUrl)}" alt="${escapeHtml(displayName)} profile" />` : '<i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>'}</span>
+        <span class="search-caption">${escapeHtml(displayName)}</span>
+      </div>
+    </button>
+  `;
+}
+
+async function runSearch(query = "") {
+  if (!searchResults) return;
+
+  const trimmedQuery = String(query || "").trim();
+
+  if (!trimmedQuery) {
+    try {
+      const response = await fetch("/api/search?q=");
+      if (!response.ok) {
+        throw new Error("Failed to load default search results");
+      }
+      const data = await response.json();
+      const posts = Array.isArray(data?.posts) ? data.posts : [];
+      renderSearchSheet(posts);
+      return;
+    } catch (error) {
+      console.warn("Default search render failed:", error);
+      renderSearchSheet([]);
+      return;
+    }
+  }
+
+  try {
+    const response = await fetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}`);
+    if (!response.ok) {
+      throw new Error("Search request failed");
+    }
+
+    const data = await response.json();
+    const users = Array.isArray(data?.users) ? data.users : [];
+    const posts = Array.isArray(data?.posts) ? data.posts : [];
+
+    const userCards = users.slice(0, 8).map(renderUserSearchCard).join("");
+    const postCards = posts.slice(0, 8).map(renderSearchCard).join("");
+    const userListMarkup = userCards ? `<div class="search-user-results-list">${userCards}</div>` : "";
+    const postGridMarkup = postCards ? `<div class="search-video-grid">${postCards}</div>` : "";
+    const combinedCards = [userListMarkup, postGridMarkup].filter(Boolean).join("");
+
+    if (!combinedCards) {
+      searchResults.innerHTML = '<div class="search-empty-state">No people or posts found.</div>';
+      return;
+    }
+
+    searchResults.innerHTML = combinedCards;
+    bindProfileAvatarButtons(searchResults);
+    searchResults.querySelectorAll(".search-post-card video").forEach((video) => {
+      video.muted = true;
+      video.autoplay = false;
+      video.loop = true;
+      video.playsInline = true;
+    });
+  } catch (error) {
+    console.error("Search failed:", error);
+    searchResults.innerHTML = '<div class="search-empty-state">Search is temporarily unavailable.</div>';
+  }
+}
+
+let searchDebounceTimer = null;
+if (searchResults) {
+  const searchInput = document.getElementById("searchInput");
+
+  if (searchInput) {
+    searchInput.addEventListener("input", (event) => {
+      const value = event.target.value || "";
+      if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+      }
+
+      searchDebounceTimer = setTimeout(() => {
+        runSearch(value);
+      }, 180);
+    });
+  }
+}
+
 // Load and render video reels
 async function loadReels() {
   const reelsContainer = document.getElementById("reelsContainer");
@@ -3550,6 +3873,7 @@ function renderFeedPost(post) {
   const videoText = dict.video || "Video";
   const originalName = (post?.original_name || post?.saved_filename || "Uploaded file").replace(/\.[^/.]+$/, "");
   const content = (post?.content || "").trim();
+  const translatedContent = translateTextForCurrentLocale(content);
   const normalizedContent = content.replace(/\.[^/.]+$/, "");
   const isLikelyNumericCaption = /^\d+$/.test(content);
   const isLikelyFilenameCaption = Boolean(content) && (
@@ -3557,7 +3881,7 @@ function renderFeedPost(post) {
     /^(IMG|VID|VIDEO|PHOTO|PXL|Screenshot|Screenshot_)/i.test(content) ||
     /^[A-Za-z0-9_\-() ]{3,80}$/.test(content) && /(?:IMG|VID|PHOTO|PXL|Screenshot|DCIM|image|video)/i.test(content)
   );
-  const caption = content && !isLikelyNumericCaption && !isLikelyFilenameCaption ? content : "";
+  const caption = content && !isLikelyNumericCaption && !isLikelyFilenameCaption ? translatedContent : "";
   const isVideo = isVideoMediaUrl(mediaUrl);
   const isGallery = mediaList.length > 1;
   const isTextOnly = !mediaUrl && !!caption;

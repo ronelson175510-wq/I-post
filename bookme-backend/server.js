@@ -285,7 +285,7 @@ function initializeDatabaseSchema() {
   };
 
   const ensureColumn = (tableName, columnName, columnDefinition, callback) => {
-    db.query("SHOW COLUMNS FROM ?? LIKE ?", [tableName, columnName], (err, rows) => {
+    db.query(`SHOW COLUMNS FROM ${tableName} LIKE ?`, [columnName], (err, rows) => {
       if (err) {
         console.error("SCHEMA CHECK ERROR:", err.message);
         return callback(err);
@@ -295,7 +295,7 @@ function initializeDatabaseSchema() {
         return callback();
       }
 
-      db.query(`ALTER TABLE ?? ADD COLUMN ?? ${columnDefinition}`, [tableName, columnName], (alterErr) => {
+      db.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`, (alterErr) => {
         if (alterErr) {
           console.error("SCHEMA ALTER ERROR:", alterErr.message);
           return callback(alterErr);
@@ -328,38 +328,46 @@ function initializeDatabaseSchema() {
         ensureColumn("posts", "report_status", "ENUM('active', 'taken_down') DEFAULT 'active'", (err3) => {
           if (err3) return;
 
-          runSchemaQuery(`
-            CREATE TABLE IF NOT EXISTS comments (
-              id INT PRIMARY KEY AUTO_INCREMENT,
-              user_id VARCHAR(255) NOT NULL,
-              post_id INT NOT NULL,
-              reply_to INT NULL,
-              comment TEXT NOT NULL,
-              like_count INT DEFAULT 0,
-              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-              FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-              FOREIGN KEY (reply_to) REFERENCES comments(id) ON DELETE CASCADE
-            )
-          `, () => {
-            ensureColumn("comments", "reply_to", "INT NULL", (err4) => {
-              if (err4) return;
+          ensureColumn("posts", "original_name", "VARCHAR(255) NULL", (err4) => {
+            if (err4) return;
 
-              ensureColumn("comments", "like_count", "INT DEFAULT 0", (err5) => {
-                if (err5) return;
+            ensureColumn("posts", "saved_filename", "VARCHAR(255) NULL", (err5) => {
+              if (err5) return;
 
-                runSchemaQuery(`
-                  CREATE TABLE IF NOT EXISTS comment_likes (
-                    id INT PRIMARY KEY AUTO_INCREMENT,
-                    user_id VARCHAR(255) NOT NULL,
-                    comment_id INT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE KEY unique_comment_like (user_id, comment_id),
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
-                  )
-                `, () => {
-                  console.log("Database schema initialized.");
+              runSchemaQuery(`
+                CREATE TABLE IF NOT EXISTS comments (
+                  id INT PRIMARY KEY AUTO_INCREMENT,
+                  user_id VARCHAR(255) NOT NULL,
+                  post_id INT NOT NULL,
+                  reply_to INT NULL,
+                  comment TEXT NOT NULL,
+                  like_count INT DEFAULT 0,
+                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                  FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                  FOREIGN KEY (reply_to) REFERENCES comments(id) ON DELETE CASCADE
+                )
+              `, () => {
+                ensureColumn("comments", "reply_to", "INT NULL", (err6) => {
+                  if (err6) return;
+
+                  ensureColumn("comments", "like_count", "INT DEFAULT 0", (err7) => {
+                    if (err7) return;
+
+                    runSchemaQuery(`
+                      CREATE TABLE IF NOT EXISTS comment_likes (
+                        id INT PRIMARY KEY AUTO_INCREMENT,
+                        user_id VARCHAR(255) NOT NULL,
+                        comment_id INT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE KEY unique_comment_like (user_id, comment_id),
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
+                      )
+                    `, () => {
+                      console.log("Database schema initialized.");
+                    });
+                  });
                 });
               });
             });
@@ -655,6 +663,273 @@ app.post("/api/profile-picture", upload.single("profilePic"), async (req, res) =
   }
 });
 
+app.get("/api/search", (req, res) => {
+  const searchTerm = String(req.query?.q || "").trim();
+
+  if (!searchTerm) {
+    return res.json({ users: [], posts: [] });
+  }
+
+  const likeTerm = `%${searchTerm}%`;
+
+  if (!isDbEnabled()) {
+    const filteredPosts = inMemoryPosts.filter((post) => {
+      const haystack = [
+        post?.content || "",
+        post?.original_name || "",
+        post?.saved_filename || "",
+        getDisplayNameForUser(post?.user_id || "") || ""
+      ].join(" ").toLowerCase();
+      return haystack.includes(searchTerm.toLowerCase());
+    }).slice(0, 20);
+
+    return res.json({
+      users: [],
+      posts: filteredPosts
+    });
+  }
+
+  const userQuery = `
+    SELECT id, name, email, first_name, last_name, profile_pic
+    FROM users
+    WHERE name LIKE ?
+      OR email LIKE ?
+      OR first_name LIKE ?
+      OR last_name LIKE ?
+    ORDER BY
+      CASE
+        WHEN name LIKE ? THEN 0
+        WHEN first_name LIKE ? THEN 1
+        WHEN last_name LIKE ? THEN 2
+        WHEN email LIKE ? THEN 3
+        ELSE 4
+      END,
+      LENGTH(COALESCE(name, '')),
+      name ASC,
+      first_name ASC,
+      last_name ASC,
+      email ASC
+    LIMIT 20
+  `;
+
+  const postQuery = `
+    SELECT p.*, 
+      COALESCE((SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), 0) AS like_count,
+      COALESCE((SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id), 0) AS comment_count
+    FROM posts p
+    WHERE p.content LIKE ?
+      OR p.media_url LIKE ?
+    ORDER BY p.created_at DESC
+    LIMIT 20
+  `;
+
+  const prefixTerm = `${searchTerm}%`;
+  const containsTerm = `%${searchTerm}%`;
+
+  db.query(userQuery, [prefixTerm, prefixTerm, prefixTerm, prefixTerm, prefixTerm, prefixTerm, prefixTerm, prefixTerm], (userErr, userRows) => {
+    if (userErr) {
+      console.error("USER SEARCH ERROR:", userErr);
+      return res.status(500).json({ error: userErr.message });
+    }
+
+    const resolveUsers = (rows) => (rows || []).map((row) => ({
+      user_id: row.id,
+      id: row.id,
+      name: row.name || [row.first_name, row.last_name].filter(Boolean).join(" ") || row.email || "User",
+      first_name: row.first_name || "",
+      last_name: row.last_name || "",
+      email: row.email || "",
+      profile_pic: row.profile_pic || null
+    }));
+
+    const finalUserRows = userRows && userRows.length ? userRows : [];
+    const users = resolveUsers(finalUserRows);
+
+    if (!finalUserRows.length) {
+      db.query(userQuery, [containsTerm, containsTerm, containsTerm, containsTerm, containsTerm, containsTerm, containsTerm, containsTerm], (fallbackErr, fallbackRows) => {
+        if (fallbackErr) {
+          console.error("USER SEARCH FALLBACK ERROR:", fallbackErr);
+          return res.status(500).json({ error: fallbackErr.message });
+        }
+
+        db.query(postQuery, [likeTerm, likeTerm], (postErr, postRows) => {
+          if (postErr) {
+            console.error("POST SEARCH ERROR:", postErr);
+            return res.status(500).json({ error: postErr.message });
+          }
+
+          return res.json({
+            users: resolveUsers(fallbackRows || []),
+            posts: (postRows || []).map((post) => {
+              const storedMediaUrls = normalizeStoredMediaUrls(post.media_urls || post.media_url);
+              const resolvedMediaUrls = storedMediaUrls.length
+                ? storedMediaUrls.map((url) => normalizeMediaUrlForPublic(url, req))
+                : (post.media_url ? [normalizeMediaUrlForPublic(post.media_url, req)] : []);
+
+              return {
+                ...post,
+                media_urls: resolvedMediaUrls,
+                media_url: resolvedMediaUrls[0] || null,
+                is_flagged: Boolean(post.is_flagged),
+                report_count: Number(post.report_count || 0),
+                likes_count: Number(post.like_count || post.likes_count || 0),
+                like_count: Number(post.like_count || post.likes_count || 0),
+                comment_count: Number(post.comment_count || 0),
+                liked_by_current_user: false,
+                liked: false
+              };
+            }).filter((post) => {
+              if (post.is_flagged || Number(post.report_count || 0) >= 10) {
+                return false;
+              }
+              if (!post.media_url) return true;
+              const localUploadPath = getLocalUploadPathFromMediaUrl(post.media_url);
+              return !localUploadPath || fs.existsSync(localUploadPath);
+            })
+          });
+        });
+      });
+      return;
+    }
+
+    db.query(postQuery, [likeTerm, likeTerm], (postErr, postRows) => {
+      if (postErr) {
+        console.error("POST SEARCH ERROR:", postErr);
+        return res.status(500).json({ error: postErr.message });
+      }
+
+      const users = resolveUsers(finalUserRows);
+
+      const posts = (postRows || []).map((post) => {
+        const storedMediaUrls = normalizeStoredMediaUrls(post.media_urls || post.media_url);
+        const resolvedMediaUrls = storedMediaUrls.length
+          ? storedMediaUrls.map((url) => normalizeMediaUrlForPublic(url, req))
+          : (post.media_url ? [normalizeMediaUrlForPublic(post.media_url, req)] : []);
+
+        return {
+          ...post,
+          media_urls: resolvedMediaUrls,
+          media_url: resolvedMediaUrls[0] || null,
+          is_flagged: Boolean(post.is_flagged),
+          report_count: Number(post.report_count || 0),
+          likes_count: Number(post.like_count || post.likes_count || 0),
+          like_count: Number(post.like_count || post.likes_count || 0),
+          comment_count: Number(post.comment_count || 0),
+          liked_by_current_user: false,
+          liked: false
+        };
+      }).filter((post) => {
+        if (post.is_flagged || Number(post.report_count || 0) >= 10) {
+          return false;
+        }
+        if (!post.media_url) return true;
+        const localUploadPath = getLocalUploadPathFromMediaUrl(post.media_url);
+        return !localUploadPath || fs.existsSync(localUploadPath);
+      });
+
+      return res.json({ users, posts });
+    });
+  });
+});
+
+app.get("/api/users", (req, res) => {
+  const searchTerm = String(req.query?.q || "").trim();
+
+  if (!isDbEnabled()) {
+    return res.json([]);
+  }
+
+  if (!searchTerm) {
+    db.query(
+      `
+        SELECT id, name, email, first_name, last_name, profile_pic
+        FROM users
+        ORDER BY name, first_name, last_name, email
+        LIMIT 20
+      `,
+      [],
+      (err, rows) => {
+        if (err) {
+          console.error("USER SEARCH LIST ERROR:", err);
+          return res.status(500).json({ error: err.message });
+        }
+
+        return res.json((rows || []).map((row) => ({
+          user_id: row.id,
+          id: row.id,
+          name: row.name || [row.first_name, row.last_name].filter(Boolean).join(" ") || row.email || "User",
+          first_name: row.first_name || "",
+          last_name: row.last_name || "",
+          email: row.email || "",
+          profile_pic: row.profile_pic || null
+        })));
+      }
+    );
+    return;
+  }
+
+  const likeTerm = `%${searchTerm}%`;
+  const prefixTerm = `${searchTerm}%`;
+  const userLookupQuery = `
+    SELECT id, name, email, first_name, last_name, profile_pic
+    FROM users
+    WHERE name LIKE ?
+      OR email LIKE ?
+      OR first_name LIKE ?
+      OR last_name LIKE ?
+    ORDER BY
+      CASE
+        WHEN name LIKE ? THEN 0
+        WHEN first_name LIKE ? THEN 1
+        WHEN last_name LIKE ? THEN 2
+        WHEN email LIKE ? THEN 3
+        ELSE 4
+      END,
+      LENGTH(name),
+      name ASC,
+      first_name ASC,
+      last_name ASC,
+      email ASC
+    LIMIT 20
+  `;
+
+  db.query(userLookupQuery, [prefixTerm, prefixTerm, prefixTerm, prefixTerm, prefixTerm, prefixTerm, prefixTerm, prefixTerm], (err, rows) => {
+    if (err) {
+      console.error("USER SEARCH ERROR:", err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    if (rows && rows.length) {
+      return res.json((rows || []).map((row) => ({
+        user_id: row.id,
+        id: row.id,
+        name: row.name || [row.first_name, row.last_name].filter(Boolean).join(" ") || row.email || "User",
+        first_name: row.first_name || "",
+        last_name: row.last_name || "",
+        email: row.email || "",
+        profile_pic: row.profile_pic || null
+      })));
+    }
+
+    db.query(userLookupQuery, [likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm], (fallbackErr, fallbackRows) => {
+      if (fallbackErr) {
+        console.error("USER SEARCH FALLBACK ERROR:", fallbackErr);
+        return res.status(500).json({ error: fallbackErr.message });
+      }
+
+      return res.json((fallbackRows || []).map((row) => ({
+        user_id: row.id,
+        id: row.id,
+        name: row.name || [row.first_name, row.last_name].filter(Boolean).join(" ") || row.email || "User",
+        first_name: row.first_name || "",
+        last_name: row.last_name || "",
+        email: row.email || "",
+        profile_pic: row.profile_pic || null
+      })));
+    });
+  });
+});
+
 app.get("/api/profile/:userId", (req, res) => {
   const userId = String(req.params.userId || "").trim();
   if (!userId) {
@@ -791,8 +1066,8 @@ app.post("/api/posts", upload.array("file", 20), async (req, res) => {
     }
 
     const query = `
-      INSERT INTO posts (user_id, content, media_type, media_url, media_urls)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO posts (user_id, content, media_type, media_url, media_urls, original_name, saved_filename)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
     ensureUserRecord(user_id, {
@@ -805,7 +1080,7 @@ app.post("/api/posts", upload.array("file", 20), async (req, res) => {
         return res.status(500).json({ error: userErr.message });
       }
 
-      db.query(query, [String(user_id), content, media_type, mediaUrls[0] || null, JSON.stringify(mediaUrls)], (err, results) => {
+      db.query(query, [String(user_id), content, media_type, mediaUrls[0] || null, JSON.stringify(mediaUrls), firstOriginalName, files[0]?.filename || null], (err, results) => {
         if (err) {
           console.error("DB INSERT ERROR:", err);
           return res.status(500).json({ error: err.message });

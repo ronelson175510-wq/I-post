@@ -152,9 +152,9 @@
             display: flex;
             align-items: center;
             position: absolute;
-            left: 53%;
+            left: 48%;
             transform: translateX(-50%);
-            margin-top: 0;
+            margin-top: -20px;
             
         }
 
@@ -351,9 +351,15 @@
   display: none;
 }
 
-#searchInput {
+.search-input-wrap {
+  position: relative;
   width: 95%;
-  padding: 14px 12px;
+  margin: 0 auto 12px;
+}
+
+#searchInput {
+  width: 100%;
+  padding: 14px 48px 14px 12px;
   font-size: 17px;
   border-radius: 14px;
   border: 2.5px solid #060606;
@@ -362,6 +368,32 @@
   color: #414141;
 }
 
+.search-input-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.search-input-btn:hover {
+  background: rgba(0, 0, 0, 0.09);
+}
+
+.search-input-btn:active {
+  transform: translateY(-50%) scale(0.97);
+}
 
 #searchInput::placeholder {
   font-size: 16px;
@@ -395,16 +427,44 @@
   gap: 10px;
   padding: 0 10px 16px;
   align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.search-user-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0 10px 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.search-user-result {
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8f8f8 100%);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  padding: 12px 14px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .search-post-card {
-  background: rgb(190, 189, 189);
+  background: rgb(255, 255, 255);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
   width: 100%;
-  min-width: 0;
+ 
 }
 
 .search-post-card video,
@@ -420,32 +480,38 @@
 
 .search-post-card .search-caption-row {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
+
+  align-items: center;
+  gap: 10px;
   padding: 8px 10px 10px;
+  width: 100%;
 }
 
 .search-post-card .search-user-avatar {
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid rgba(239, 251, 9, 0.984);
+  border: 2px solid rgba(239, 251, 9, 0.9);
   background: linear-gradient(135deg, rgba(177, 151, 252, 0.18), rgba(255, 255, 255, 0.9));
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 2px;
+  margin-top: 0;
   cursor: pointer;
   padding: 0;
+  box-shadow: 0 4px 10px rgba(17, 17, 17, 0.08);
 }
 
 .search-post-card .search-user-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
+  border-radius: 50%;
+  background: #f3f3f3;
 }
 
 .search-post-card .search-user-avatar i {
@@ -456,12 +522,15 @@
 .search-post-card .search-caption {
   font-size: 16px;
   line-height: 1.35;
-  font-weight: 500;
+  font-weight: 600;
   color: #000000;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   flex: 1;
   padding: 0;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 
@@ -2005,7 +2074,7 @@ width: 96%;
   appearance: none;
   background: transparent;
   border: none;
-  color: #fef102;
+  color: #696969;
   font-weight: 700;
   padding: 0;
   margin-left: 2px;
@@ -3132,7 +3201,9 @@ width: 96%;
         </div>
 
         <div class="title">
+          <div class="title-wrap">
             Chat-mini
+          </div>
         </div>
 
         <div class="header-icons">
@@ -3192,6 +3263,27 @@ width: 96%;
  
 
  
+<div id="searchSheet" class="sheet">
+  <div class="sheet-header">
+    <span class="sheet-drag"></span>
+    <button id="closeSearchSheet" class="close-btn" type="button">×</button>
+   
+
+  </div>
+
+  <div class="sheet-content">
+    <h3 data-i18n="search">Search</h3>
+    <div class="search-input-wrap">
+      <input id="searchInput" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Search people or posts" />
+      <button id="searchIconBtn" class="search-input-btn" type="button" aria-label="Search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </button>
+    </div>
+    
+    <div id="searchResults" class="search-video-grid"></div>
+  </div>
+
+
 
 
 
