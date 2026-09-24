@@ -530,25 +530,12 @@
     <div class="reelpage-header">
         <div style="flex: 1;"></div>
         <div class="header-icons">
-            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(237, 230, 18);"></i>
-           
+            <a href="search.html" id="searchBtn" class="header-nav-link" aria-label="Open search page" style="color: rgb(237, 230, 18);">
+                <i class="fa-solid fa-magnifying-glass fa-xl"></i>
+            </a>
         </div>
     </div>
 
     <div id="reelsContainer" class="reels-container" aria-live="polite"></div>
-
-    <div id="searchSheet" class="sheet">
-        <div class="sheet-header">
-            <span class="sheet-drag"></span>
-            <button id="closeSearchSheet" class="close-btn" type="button">×</button>
-        </div>
-
-        <div class="sheet-content">
-            <h3 style="color: black; font-size: 18px; margin: 16px; font-family:'Times New Roman', Times, serif;">Search</h3>
-            <input id="searchInput" type="text" placeholder="" />
-            <h3 style="color: rgba(6, 6, 6, 0.85); font-size: 18px; margin: 16px 0 8px 14px; font-style: bold; font-family: comic sans ms, sans-serif;">We think you might like:</h3>
-            <div id="searchResults" class="search-video-grid"></div>
-        </div>
-    </div>
 </body>
 </html>

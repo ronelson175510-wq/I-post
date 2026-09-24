@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#111111">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Bookme">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./app-icon.svg">
+    <title>Search</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="script.js" defer></script>
+    <style>
+    /* search css */
+
+
+body {
+  margin: 0;
+padding: 0;
+  background-color: #f5f5f5;
+}
+
+
+.sheet-content {
+  padding: 20px;
+  margin-top: -60px;
+  height: calc(100% - 54px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sheet-content::-webkit-scrollbar {
+  display: none;
+}
+
+.search-input-wrap {
+  position: relative;
+  width: 95%;
+  margin: 0 auto 12px;
+}
+
+.search-back-btn {
+  position: absolute;
+  left: -27px;
+  top: 45%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s ease, transform 0.2s ease;
+  z-index: 2;
+}
+
+.search-back-btn:hover {
+  background: rgba(0, 0, 0, 0.09);
+}
+
+.search-back-btn:active {
+  transform: translateY(-50%) scale(0.97);
+}
+
+#searchInput {
+  margin-top: -8px;
+  width: 95%;
+  height: 30px;
+  margin-left: 12px;
+  
+  font-size: 17px;
+  border-radius: 25px;
+  border: none;
+  outline: none;
+  background: #d2d1d1;
+  color: #414141;
+  box-sizing: border-box;
+}
+
+.search-input-btn {
+  position: absolute;
+  right: 20px;
+  top: 38%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.search-input-btn:hover {
+  background: rgba(0, 0, 0, 0.09);
+}
+
+.search-input-btn:active {
+  transform: translateY(-50%) scale(0.97);
+}
+
+#searchInput::placeholder {
+  font-size: 16px;
+  color: rgb(17, 17, 18);
+  opacity: 1;
+  font-style: italic;
+
+}
+
+#searchInput:focus {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(#faf7ff, #faf7ff) padding-box,
+    linear-gradient(90deg, #ffeb3b, #ff4d4d, #3b82f6, #22c55e, #f59e0b, #8b5cf6, #ec4899) border-box;
+  background-size: 200% 200%;
+  animation: borderFlow 2.5s linear infinite;
+}
+
+@keyframes borderFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.search-video-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 0 10px 16px;
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.search-user-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  
+  width: 300px;
+  height: 100px;
+  box-sizing: border-box;
+}
+
+.search-user-result {
+  width: 100%;
+  min-height: 58px;
+  border: none;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  font-weight: 600;
+  
+  background: none;
+  
+  text-align: left;
+  display: flex;
+  align-items: center;
+  
+}
+
+.search-post-card {
+  background: rgb(255, 255, 255);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+  width: 100%;
+ 
+}
+
+.search-post-card video,
+.search-post-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+  background: #000;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.search-post-card .search-caption-row {
+  display: flex;
+
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 10px;
+  width: 100%;
+}
+
+.search-post-card .search-user-avatar {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(239, 251, 9, 0.9);
+  background: linear-gradient(135deg, rgba(177, 151, 252, 0.18), rgba(255, 255, 255, 0.9));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 4px 10px rgba(17, 17, 17, 0.08);
+}
+
+.search-post-card .search-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  border-radius: 50%;
+  background: #f3f3f3;
+}
+
+.search-post-card .search-user-avatar i {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.search-post-card .search-caption {
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #000000;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  flex: 1;
+  padding: 0;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+</style>
+</head>
+<body>
+
+
+  <div class="sheet-content">
+    <h3 data-i18n="search">Search</h3>
+    <div class="search-input-wrap">
+      <button id="searchBackBtn" class="search-back-btn" type="button" aria-label="Go back">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      <input id="searchInput" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Search people or posts" />
+      <button id="searchIconBtn" class="search-input-btn" type="button" aria-label="Search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </button>
+    </div>
+    
+    <div id="searchResults" class="search-video-grid"></div>
+</div>
+
+

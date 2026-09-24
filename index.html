@@ -192,6 +192,43 @@
             transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
         }
 
+        .search-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            margin: 0 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgb(255, 255, 255);
+            border-radius: 10px;
+            box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
+        }
+
+        .search-icon a,
+        .header-brand-icon a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            text-decoration: none;
+            outline: none;
+            box-shadow: none;
+            border: none;
+        }
+
+        .search-icon a:focus,
+        .header-brand-icon a:focus,
+        .search-icon a:active,
+        .header-brand-icon a:active {
+            outline: none;
+            box-shadow: none;
+            text-decoration: none;
+        }
+
         .header-icons{
           margin-left: auto;
           margin-right: -7px;
@@ -287,267 +324,6 @@
 
 #notifyBell:hover {
   transform: scale(1.15);
-}
-
-/* search css */
-
-.sheet {
-  position: fixed;
-  left: 0;
-  bottom: -100%;
-  width: 100%;
-  height: 100%;
-  background: white;
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
-  transition: bottom 0.35s ease;
-  z-index: 9999;
-  overflow: hidden;
-  border: none;
-}
-
-.sheet.show {
-  bottom: 0;
-}
-
-.sheet-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  flex-shrink: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-.close-btn {
-  background: transparent;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #111;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.sheet-content {
-  padding: 20px;
-  margin-top: -60px;
-  height: calc(100% - 54px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  box-sizing: border-box;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.sheet-content::-webkit-scrollbar {
-  display: none;
-}
-
-.search-input-wrap {
-  position: relative;
-  width: 95%;
-  margin: 0 auto 12px;
-}
-
-#searchInput {
-  width: 100%;
-  padding: 14px 48px 14px 12px;
-  font-size: 17px;
-  border-radius: 14px;
-  border: 2.5px solid #060606;
-  outline: none;
-  background: #faf7ff;
-  color: #414141;
-}
-
-.search-input-btn {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.05);
-  color: #111;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 16px;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.search-input-btn:hover {
-  background: rgba(0, 0, 0, 0.09);
-}
-
-.search-input-btn:active {
-  transform: translateY(-50%) scale(0.97);
-}
-
-#searchInput::placeholder {
-  font-size: 16px;
-  color: rgb(17, 17, 18);
-  opacity: 1;
-  font-style: italic;
-
-}
-
-#searchInput:focus {
-  border: 2px solid transparent;
-  background:
-    linear-gradient(#faf7ff, #faf7ff) padding-box,
-    linear-gradient(90deg, #ffeb3b, #ff4d4d, #3b82f6, #22c55e, #f59e0b, #8b5cf6, #ec4899) border-box;
-  background-size: 200% 200%;
-  animation: borderFlow 2.5s linear infinite;
-}
-
-@keyframes borderFlow {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 200% 50%;
-  }
-}
-
-.search-video-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
-  gap: 10px;
-  padding: 0 10px 16px;
-  align-items: start;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.search-user-results-list {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 0 10px 12px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.search-user-result {
-  width: 100%;
-  min-height: 58px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8f8f8 100%);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-  padding: 12px 14px;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  box-sizing: border-box;
-}
-
-.search-post-card {
-  background: rgb(255, 255, 255);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
-  width: 100%;
- 
-}
-
-.search-post-card video,
-.search-post-card img {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  display: block;
-  background: #000;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
-}
-
-.search-post-card .search-caption-row {
-  display: flex;
-
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px 10px;
-  width: 100%;
-}
-
-.search-post-card .search-user-avatar {
-  width: 46px;
-  height: 46px;
-  min-width: 46px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2px solid rgba(239, 251, 9, 0.9);
-  background: linear-gradient(135deg, rgba(177, 151, 252, 0.18), rgba(255, 255, 255, 0.9));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 0;
-  cursor: pointer;
-  padding: 0;
-  box-shadow: 0 4px 10px rgba(17, 17, 17, 0.08);
-}
-
-.search-post-card .search-user-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-  border-radius: 50%;
-  background: #f3f3f3;
-}
-
-.search-post-card .search-user-avatar i {
-  font-size: 16px;
-  line-height: 1;
-}
-
-.search-post-card .search-caption {
-  font-size: 16px;
-  line-height: 1.35;
-  font-weight: 600;
-  color: #000000;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  flex: 1;
-  padding: 0;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-
-.sheet-drag {
-  width: 45px;
-  height: 6px;
-  background: turquoise;
-  border-radius: 10px;
-  display: block;
-  margin: 0 auto;
-  animation: dragPulse 1.8s infinite ease-in-out;
-}
-
-@keyframes dragPulse {
-  0% { transform: translateY(0); opacity: 0.7; }
-  50% { transform: translateY(-4px); opacity: 1; }
-  100% { transform: translateY(0); opacity: 0.7; }
 }
 
 
@@ -707,6 +483,9 @@
   gap: 10px;
   padding: 4px 16px 10px;
   margin-top: -52px;
+  border-radius: 25px;
+  border: 1.2px solid rgba(6, 6, 6, 0.06);
+  background: rgba(235, 233, 233, 0.06);
 }
 
 .side-menu-profile-btn {
@@ -784,9 +563,13 @@
 
 .closebtn {
     position: absolute;
-    top: -10px;
-    right: -18px;
-    font-size: 66px;
+    background: rgba(255, 255, 255, 0.04);
+    top: -15px;
+    border: 1.5px solid rgba(6, 6, 6, 0.06);
+    right: -12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    font-size: 46px;
+    
     color: #090909;
     text-decoration: none;
     opacity: 0.85;
@@ -3207,8 +2990,9 @@ width: 96%;
         </div>
 
         <div class="header-icons">
-            <i id="searchBtn" class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(104, 93, 104);"></i>
-          
+          <div class="search-icon">
+            <a href="search.html" aria-label="Search"><i class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(104, 93, 104);"></i></a>
+          </div>
             <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars-staggered fa-2xl" style="color: rgb(43, 43, 44);"></i></button>
         </div>
     </div>
@@ -3263,25 +3047,7 @@ width: 96%;
  
 
  
-<div id="searchSheet" class="sheet">
-  <div class="sheet-header">
-    <span class="sheet-drag"></span>
-    <button id="closeSearchSheet" class="close-btn" type="button">×</button>
-   
 
-  </div>
-
-  <div class="sheet-content">
-    <h3 data-i18n="search">Search</h3>
-    <div class="search-input-wrap">
-      <input id="searchInput" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Search people or posts" />
-      <button id="searchIconBtn" class="search-input-btn" type="button" aria-label="Search">
-        <i class="fa-solid fa-magnifying-glass"></i>
-      </button>
-    </div>
-    
-    <div id="searchResults" class="search-video-grid"></div>
-  </div>
 
 
 

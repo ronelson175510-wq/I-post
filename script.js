@@ -511,13 +511,21 @@ if (headerBrandLink) {
   });
 }
 
-if (searchBtn && searchSheet) {
+if (searchBtn) {
   searchBtn.addEventListener("click", (event) => {
-    event.stopPropagation();
-    if (footerIconMenu) {
-      footerIconMenu.classList.remove("show");
+    if (searchSheet) {
+      event.stopPropagation();
+      if (footerIconMenu) {
+        footerIconMenu.classList.remove("show");
+      }
+      openSheet(searchSheet);
+      return;
     }
-    openSheet(searchSheet);
+
+    if (event && typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
+    window.location.href = "search.html";
   });
 }
 
@@ -3219,19 +3227,50 @@ async function runSearch(query = "") {
 let searchDebounceTimer = null;
 if (searchResults) {
   const searchInput = document.getElementById("searchInput");
+  const searchPageButton = document.getElementById("searchIconBtn");
+  const searchBackButton = document.getElementById("searchBackBtn");
+
+  const triggerSearchFromPage = (value = "") => {
+    const trimmed = String(value || "").trim();
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+    }
+
+    searchDebounceTimer = setTimeout(() => {
+      runSearch(trimmed);
+    }, 180);
+  };
+
+  if (searchBackButton) {
+    searchBackButton.addEventListener("click", () => {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = "index.html";
+      }
+    });
+  }
 
   if (searchInput) {
     searchInput.addEventListener("input", (event) => {
-      const value = event.target.value || "";
-      if (searchDebounceTimer) {
-        clearTimeout(searchDebounceTimer);
-      }
+      triggerSearchFromPage(event.target.value || "");
+    });
 
-      searchDebounceTimer = setTimeout(() => {
-        runSearch(value);
-      }, 180);
+    searchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        triggerSearchFromPage(searchInput.value || "");
+      }
     });
   }
+
+  if (searchPageButton && searchInput) {
+    searchPageButton.addEventListener("click", () => {
+      triggerSearchFromPage(searchInput.value || "");
+    });
+  }
+
+  runSearch("");
 }
 
 // Load and render video reels
