@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
+
+.brand-title-font,
+#welcomeMessage.brand-title-font,
+.title-wrap.brand-title-font {
+   color: rgb(249, 245, 3);
+            font-size: 28px;
+            text-transform: uppercase;
+            font-weight: 800;
+            font-style: bold;
+            letter-spacing: 2px;
+            margin-top: -12px;
+            line-height: 1;
+            font-family: "Comic Neue", "Comic Sans MS", "Marker Felt", "Segoe UI", sans-serif;
+            text-shadow: black 1px 1px 2px, black 1px 1px 2px;
+}

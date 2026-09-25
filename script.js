@@ -54,6 +54,307 @@ const sideMenuProfileBtn = document.getElementById("sideMenuProfileBtn");
 const sideMenuUserNameBtn = document.getElementById("sideMenuUserNameBtn");
 const sideMenuProfileAvatar = document.getElementById("sideMenuProfileAvatar");
 const sideMenuUserName = document.getElementById("sideMenuUserName");
+const themeToggleBtn = document.getElementById("themeToggleBtn");
+
+const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
+  const styleTag = document.createElement("style");
+  styleTag.id = "bookme-theme-styles";
+  styleTag.textContent = `
+    :root {
+      --app-bg: #ffffff;
+      --app-text: #111111;
+      --app-muted: #5a5a5a;
+      --header-bg: #ffffff;
+      --surface: #f5f5f5;
+      --surface-strong: #ececec;
+      --primary: rgb(177, 151, 252);
+      --panel-border: rgba(17, 17, 17, 0.08);
+      --shadow: rgba(0, 0, 0, 0.12);
+      --brand-yellow: rgb(249, 245, 3);
+      --menu-text: #111111;
+      --icon-soft: rgb(104, 93, 104);
+      --icon-strong: rgb(43, 43, 44);
+    }
+
+    body {
+      background-color: var(--app-bg);
+      color: var(--app-text);
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    body.dark-mode {
+      --app-bg: #0d1117;
+      --app-text: #f3f4f6;
+      --app-muted: #d1d5db;
+      --header-bg: #111827;
+      --surface: #161d2a;
+      --surface-strong: #1d2433;
+      --primary: rgb(177, 151, 252);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --shadow: rgba(0, 0, 0, 0.38);
+      --brand-yellow: rgb(252, 246, 88);
+      --menu-text: #f3f4f6;
+      --icon-soft: #d5d7db;
+      --icon-strong: #f3f4f6;
+    }
+
+    body.dark-mode,
+    body.dark-mode .header,
+    body.dark-mode .sidemenu,
+    body.dark-mode .write-post-sheet,
+    body.dark-mode .upload-sheet,
+    body.dark-mode .settings-sheet,
+    body.dark-mode .report-sheet,
+    body.dark-mode .message-sheet,
+    body.dark-mode .comment-sheet {
+      background-color: var(--app-bg);
+      color: var(--app-text);
+    }
+
+    body.dark-mode .header {
+      background-color: var(--header-bg);
+      border-bottom-color: rgba(255, 255, 255, 0.06);
+    }
+
+    body.dark-mode .header::after {
+      background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    body.dark-mode .title-wrap.brand-title-font,
+    body.dark-mode #welcomeMessage.brand-title-font {
+      color: var(--brand-yellow);
+    }
+
+    body.dark-mode .search-icon,
+    body.dark-mode .header-brand-icon,
+    body.dark-mode .openbtn,
+    body.dark-mode .menu-settings-btn,
+    body.dark-mode .auth-btn,
+    body.dark-mode .theme-toggle-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--app-text);
+    }
+
+    body.dark-mode .sidemenu a,
+    body.dark-mode .sidemenu .menu-settings-btn,
+    body.dark-mode .theme-toggle-btn,
+    body.dark-mode .menu-legal p,
+    body.dark-mode .menu-auth-actions button,
+    body.dark-mode .report-menu-label,
+    body.dark-mode .report-menu-item,
+    body.dark-mode .sidemenu-profile button,
+    body.dark-mode .sidemenu-main a,
+    body.dark-mode .sidemenu-main button {
+      color: var(--menu-text);
+    }
+
+    body.dark-mode .sidemenu {
+      background-color: var(--header-bg);
+      border-color: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 18px var(--shadow);
+    }
+
+    body.dark-mode .menu-settings-btn,
+    body.dark-mode .auth-btn,
+    body.dark-mode .report-menu-item,
+    body.dark-mode .sidemenu-main a,
+    body.dark-mode .theme-toggle-btn {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    body.dark-mode .announcement {
+      background-color: #4b3a00;
+      color: #fdf5c9;
+    }
+
+    body.dark-mode .feed-posts,
+    body.dark-mode .post-card,
+    body.dark-mode .comment-card,
+    body.dark-mode .post-detail-card,
+    body.dark-mode .search-result-card,
+    body.dark-mode .message-item,
+    body.dark-mode .chat-message,
+    body.dark-mode .sheet-content,
+    body.dark-mode .settings-sheet-content {
+      background-color: var(--surface);
+      color: var(--app-text);
+      border-color: var(--panel-border);
+    }
+
+    body.dark-mode .feed-caption,
+    body.dark-mode .feed-caption-text,
+    body.dark-mode .text-only-post .feed-caption,
+    body.dark-mode .text-only-post .feed-caption-text,
+    body.dark-mode .text-only-post p {
+      color: #ffffff !important;
+    }
+
+    body.dark-mode .like-btn i,
+    body.dark-mode .comment-btn i,
+    body.dark-mode .fa-bookmark,
+    body.dark-mode .fa-retweet,
+    body.dark-mode .like-btn .like-count,
+    body.dark-mode .comment-btn .comment-count,
+    body.dark-mode .feed-post-card .comment-btn .comment-count,
+    body.dark-mode .feed-post-card .like-btn .like-count {
+      color: #ffffff !important;
+    }
+
+    body.dark-mode input,
+    body.dark-mode textarea,
+    body.dark-mode select,
+    body.dark-mode button {
+      color: var(--app-text);
+    }
+
+    body.dark-mode input,
+    body.dark-mode textarea,
+    body.dark-mode select {
+      background-color: var(--surface-strong);
+      border-color: var(--panel-border);
+    }
+
+    .theme-toggle-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(17, 17, 17, 0.08);
+      border-radius: 14px;
+      background: rgba(17, 17, 17, 0.04);
+      color: #111111;
+      cursor: pointer;
+      text-align: left;
+      font-size: 15px;
+      font-weight: 600;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .theme-toggle-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .theme-toggle-label {
+      flex: 1;
+      color: inherit;
+    }
+
+    .theme-toggle-switch {
+      position: relative;
+      width: 46px;
+      height: 26px;
+      border-radius: 999px;
+      background: rgba(17, 17, 17, 0.14);
+      border: 1px solid rgba(17, 17, 17, 0.08);
+      flex-shrink: 0;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .theme-toggle-knob {
+      position: absolute;
+      top: 3px;
+      left: 4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .theme-toggle-btn.is-dark {
+      border-color: rgba(123, 92, 255, 0.45);
+      background: rgba(123, 92, 255, 0.12);
+    }
+
+    .theme-toggle-btn.is-dark .theme-toggle-switch {
+      background: linear-gradient(135deg, #8f7cff, #5c6cff);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .theme-toggle-btn.is-dark .theme-toggle-knob {
+      transform: translateX(20px);
+      background: #f7d14e;
+    }
+
+    body.dark-mode .theme-toggle-btn {
+      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .theme-toggle-switch {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    body.dark-mode .theme-toggle-knob {
+      background: #f5f5f5;
+    }
+
+    body.dark-mode .theme-toggle-btn.is-dark .theme-toggle-switch {
+      background: linear-gradient(135deg, #8f7cff, #5c6cff);
+    }
+  `;
+  document.head.appendChild(styleTag);
+  return styleTag;
+})();
+
+function getPreferredTheme() {
+  const savedTheme = localStorage.getItem("bookme-theme");
+  if (savedTheme === "dark" || savedTheme === "light") {
+    return savedTheme;
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function updateFeedActionTheme(theme) {
+  const isDark = theme === "dark";
+
+  document.querySelectorAll(".like-btn i, .comment-btn i, .fa-bookmark, .fa-retweet, .like-btn .like-count, .comment-btn .comment-count").forEach((element) => {
+    if (!element) return;
+    element.style.color = isDark ? "#ffffff" : "";
+    if (element.classList && element.classList.contains("like-count")) {
+      element.style.color = isDark ? "#ffffff" : "";
+    }
+    if (element.classList && element.classList.contains("comment-count")) {
+      element.style.color = isDark ? "#ffffff" : "";
+    }
+  });
+}
+
+function applyTheme(theme) {
+  const isDark = theme === "dark";
+  document.body.classList.toggle("dark-mode", isDark);
+  document.body.setAttribute("data-theme", theme);
+  localStorage.setItem("bookme-theme", theme);
+  updateFeedActionTheme(theme);
+
+  const themeLabel = themeToggleBtn?.querySelector(".theme-toggle-label");
+
+  if (themeToggleBtn) {
+    themeToggleBtn.classList.toggle("is-dark", isDark);
+    themeToggleBtn.setAttribute("aria-pressed", String(isDark));
+  }
+
+  if (themeLabel) {
+    themeLabel.textContent = isDark ? "Dark mode" : "Dark mode";
+  }
+}
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener("click", () => {
+    const nextTheme = document.body.classList.contains("dark-mode") ? "light" : "dark";
+    applyTheme(nextTheme);
+  });
+}
+
+applyTheme(getPreferredTheme());
 
 /* ============================================================
    AUTH + PROFILE FUNCTIONS
@@ -4051,49 +4352,59 @@ function renderFeedPost(post) {
   ` : "";
 
   return `
-    <div class="post-thread">
-      <div class="feed-post-card ${isTextOnly ? "text-only-post" : ""}" data-post-id="${post?.id || ""}">
-        ${menuMarkup}
-        <div class="feed-post-header">
-          <button type="button" class="post-avatar-bubble profile-avatar-trigger feed-header-avatar" data-user-id="${ownerUserId}" aria-label="View profile">
-            ${getCurrentUserAvatarMarkup(ownerUserId)}
+    <div class="feed-post-card ${isTextOnly ? "text-only-post" : ""}" data-post-id="${post?.id || ""}">
+      ${menuMarkup}
+      <div class="feed-post-header">
+        <button type="button" class="post-avatar-bubble profile-avatar-trigger feed-header-avatar" data-user-id="${ownerUserId}" aria-label="View profile">
+          ${getCurrentUserAvatarMarkup(ownerUserId)}
+        </button>
+        <div class="feed-post-user-block">
+          <button type="button" class="feed-post-user profile-avatar-trigger" data-user-id="${ownerUserId}" aria-label="View ${displayName}'s profile">
+            <span class="feed-post-user-name">${displayName}</span>
           </button>
-          <div class="feed-post-user-block">
-            <button type="button" class="feed-post-user profile-avatar-trigger" data-user-id="${ownerUserId}" aria-label="View ${displayName}'s profile">
-              <span class="feed-post-user-name">${displayName}</span>
-            </button>
-            ${postDateLabel ? `<span class="feed-post-date">${postDateLabel}</span>` : ""}
-          </div>
+          ${postDateLabel ? `<span class="feed-post-date">${postDateLabel}</span>` : ""}
         </div>
-        ${renderCaptionMarkup(caption)}
-        ${mediaWrap}
+      </div>
+      ${renderCaptionMarkup(caption)}
+      ${mediaWrap}
 
-        <div class="feed-actions actions">
+      <div class="feed-actions actions">
 
-        <button class="like-btn" type="button" data-post-id="${post?.id || ""}" data-liked="${isLikedByCurrentUser ? "true" : "false"}">
-            <i class="${isLikedByCurrentUser ? "fa-solid fa-heart" : "fa-regular fa-heart"} fa-xl" style="color: ${isLikedByCurrentUser ? "rgb(255, 93, 93)" : "rgb(50, 50, 49)"};"></i>
-            <span class="like-count">${likeCount}</span>
-          </button>
-          
-
-          
+      <button class="like-btn" type="button" data-post-id="${post?.id || ""}" data-liked="${isLikedByCurrentUser ? "true" : "false"}">
+          <i class="${isLikedByCurrentUser ? "fa-solid fa-heart" : "fa-regular fa-heart"} fa-xl" style="color: ${isLikedByCurrentUser ? "rgb(255, 93, 93)" : "rgb(50, 50, 49)"};"></i>
+          <span class="like-count">${likeCount}</span>
+        </button>
+        
 
         
 
-          <button class="comment-btn" type="button" aria-label="Open comments" data-post-id="${post?.id || ""}">
-            <i class="fa-regular fa-comments fa-xl" style="color: rgb(76, 76, 76);"></i>
-            <span class="comment-count">${commentCount}</span>
-          </button>
+      
 
-          <i class="fa-regular fa-bookmark" style="color: rgb(123, 117, 117);"></i>
+        <button class="comment-btn" type="button" aria-label="Open comments" data-post-id="${post?.id || ""}">
+          <i class="fa-regular fa-comments fa-xl" style="color: rgb(76, 76, 76);"></i>
+          <span class="comment-count">${commentCount}</span>
+        </button>
 
-          <i class="fa-solid fa-retweet fa-xl" style="color: rgb(252, 218, 0);"></i>
+        <i class="fa-regular fa-bookmark" style="color: rgb(123, 117, 117);"></i>
 
-          
-        </div>
+        <i class="fa-solid fa-retweet fa-xl" style="color: rgb(252, 218, 0);"></i>
+
+        
       </div>
     </div>
   `;
+}
+
+function unwrapThreadWrappers() {
+  if (!feedPosts) return;
+
+  const threadWrappers = feedPosts.querySelectorAll(".post-thread");
+  threadWrappers.forEach((threadWrapper) => {
+    const card = threadWrapper.querySelector(".feed-post-card");
+    if (card && threadWrapper.parentNode) {
+      threadWrapper.replaceWith(card);
+    }
+  });
 }
 
 function bindReadMoreButtons() {
@@ -4200,6 +4511,7 @@ async function loadPosts() {
       }
 
       feedPosts.innerHTML = visiblePosts.map(renderFeedPost).join("");
+      unwrapThreadWrappers();
       bindReadMoreButtons();
       bindProfileAvatarButtons(feedPosts);
       feedPosts.querySelectorAll(".video-shell").forEach((videoShell, index) => {
