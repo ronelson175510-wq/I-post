@@ -241,35 +241,20 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
       border-color: var(--panel-border);
     }
 
-    .theme-toggle-btn {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      width: 100%;
-      margin-top: 8px;
-      padding: 10px 12px;
-      border: 1px solid rgba(17, 17, 17, 0.08);
-      border-radius: 14px;
-      background: rgba(17, 17, 17, 0.04);
-      color: #111111;
-      cursor: pointer;
-      text-align: left;
-      font-size: 15px;
-      font-weight: 600;
+    button#themeToggleBtn.theme-toggle-btn {
       transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
     }
 
-    .theme-toggle-btn:hover {
+    button#themeToggleBtn.theme-toggle-btn:hover {
       transform: translateY(-1px);
     }
 
-    .theme-toggle-label {
+    button#themeToggleBtn.theme-toggle-btn .theme-toggle-label {
       flex: 1;
       color: inherit;
     }
 
-    .theme-toggle-switch {
+    button#themeToggleBtn.theme-toggle-btn .theme-toggle-switch {
       position: relative;
       width: 46px;
       height: 26px;
@@ -280,7 +265,7 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
       transition: background 0.2s ease, border-color 0.2s ease;
     }
 
-    .theme-toggle-knob {
+    button#themeToggleBtn.theme-toggle-btn .theme-toggle-knob {
       position: absolute;
       top: 3px;
       left: 4px;
@@ -292,37 +277,37 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
       transition: transform 0.2s ease, background 0.2s ease;
     }
 
-    .theme-toggle-btn.is-dark {
+    button#themeToggleBtn.theme-toggle-btn.is-dark {
       border-color: rgba(123, 92, 255, 0.45);
       background: rgba(123, 92, 255, 0.12);
     }
 
-    .theme-toggle-btn.is-dark .theme-toggle-switch {
+    button#themeToggleBtn.theme-toggle-btn.is-dark .theme-toggle-switch {
       background: linear-gradient(135deg, #8f7cff, #5c6cff);
       border-color: rgba(255, 255, 255, 0.12);
     }
 
-    .theme-toggle-btn.is-dark .theme-toggle-knob {
+    button#themeToggleBtn.theme-toggle-btn.is-dark .theme-toggle-knob {
       transform: translateX(20px);
       background: #f7d14e;
     }
 
-    body.dark-mode .theme-toggle-btn {
+    body.dark-mode button#themeToggleBtn.theme-toggle-btn {
       border-color: rgba(255, 255, 255, 0.12);
       background: rgba(255, 255, 255, 0.04);
       color: #f3f4f6;
     }
 
-    body.dark-mode .theme-toggle-switch {
+    body.dark-mode button#themeToggleBtn.theme-toggle-btn .theme-toggle-switch {
       background: rgba(255, 255, 255, 0.1);
       border-color: rgba(255, 255, 255, 0.08);
     }
 
-    body.dark-mode .theme-toggle-knob {
+    body.dark-mode button#themeToggleBtn.theme-toggle-btn .theme-toggle-knob {
       background: #f5f5f5;
     }
 
-    body.dark-mode .theme-toggle-btn.is-dark .theme-toggle-switch {
+    body.dark-mode button#themeToggleBtn.theme-toggle-btn.is-dark .theme-toggle-switch {
       background: linear-gradient(135deg, #8f7cff, #5c6cff);
     }
     
@@ -3621,31 +3606,13 @@ function renderSearchSheet(posts) {
   const validPosts = Array.isArray(posts)
     ? posts.filter((post) => Boolean(getVideoMediaUrl(post)))
     : [];
-  const itemsToRender = validPosts.slice(0, 8);
 
-  if (!itemsToRender.length) {
+  if (!validPosts.length) {
     searchResults.innerHTML = "";
     return;
   }
 
-  searchResults.innerHTML = itemsToRender.map(renderSearchCard).join("");
-  bindProfileAvatarButtons(searchResults);
-  searchResults.querySelectorAll(".search-post-card video").forEach((video) => {
-    video.muted = true;
-    video.autoplay = false;
-    video.loop = true;
-    video.playsInline = true;
-  });
-  searchResults.querySelectorAll(".search-post-card").forEach((card, index) => {
-    const video = card.querySelector("video");
-    if (video) {
-      video.autoplay = index === 0;
-    }
-    const shell = card.closest(".video-shell") || card;
-    if (shell) {
-      shell.dataset.autoplay = String(index === 0);
-    }
-  });
+  searchResults.innerHTML = "";
 }
 
 function renderUserSearchCard(user = {}) {
@@ -3696,13 +3663,11 @@ async function runSearch(query = "") {
     const posts = Array.isArray(data?.posts) ? data.posts : [];
 
     const userCards = users.slice(0, 8).map(renderUserSearchCard).join("");
-    const postCards = posts.slice(0, 8).map(renderSearchCard).join("");
     const userListMarkup = userCards ? `<div class="search-user-results-list">${userCards}</div>` : "";
-    const postGridMarkup = postCards ? `<div class="search-video-grid">${postCards}</div>` : "";
-    const combinedCards = [userListMarkup, postGridMarkup].filter(Boolean).join("");
+    const combinedCards = userListMarkup;
 
     if (!combinedCards) {
-      searchResults.innerHTML = '<div class="search-empty-state">No people or posts found.</div>';
+      searchResults.innerHTML = '<div class="search-empty-state">No people found.</div>';
       return;
     }
 
