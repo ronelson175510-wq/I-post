@@ -365,7 +365,19 @@ function initializeDatabaseSchema() {
                         FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
                       )
                     `, () => {
-                      console.log("Database schema initialized.");
+                      runSchemaQuery(`
+                        CREATE TABLE IF NOT EXISTS follows (
+                          id INT PRIMARY KEY AUTO_INCREMENT,
+                          user_id VARCHAR(255) NOT NULL,
+                          following_user_id VARCHAR(255) NOT NULL,
+                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          UNIQUE KEY unique_follow (user_id, following_user_id),
+                          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                          FOREIGN KEY (following_user_id) REFERENCES users(id) ON DELETE CASCADE
+                        )
+                      `, () => {
+                        console.log("Database schema initialized.");
+                      });
                     });
                   });
                 });
@@ -977,6 +989,136 @@ app.get("/api/profile/:userId", (req, res) => {
       });
     }
   );
+});
+
+app.get("/api/users/:userId/follow-status", (req, res) => {
+  const targetUserId = String(req.params.userId || "").trim();
+  const viewerUserId = String(req.query?.user_id || "").trim();
+
+  if (!targetUserId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({
+      target_user_id: targetUserId,
+      follower_count: 0,
+      following_count: 0,
+      isFollowing: false
+    });
+  }
+
+  db.query("SELECT COUNT(*) AS follower_count FROM follows WHERE following_user_id = ?", [targetUserId], (countErr, countRows) => {
+    if (countErr) {
+      console.error("FOLLOW COUNT ERROR:", countErr);
+      return res.status(500).json({ error: countErr.message });
+    }
+
+    const followerCount = Number(countRows?.[0]?.follower_count || 0);
+
+    db.query("SELECT COUNT(*) AS following_count FROM follows WHERE user_id = ?", [targetUserId], (followingErr, followingRows) => {
+      if (followingErr) {
+        console.error("FOLLOWING COUNT ERROR:", followingErr);
+        return res.status(500).json({ error: followingErr.message });
+      }
+
+      const followingCount = Number(followingRows?.[0]?.following_count || 0);
+
+      if (!viewerUserId) {
+        return res.json({
+          target_user_id: targetUserId,
+          follower_count: followerCount,
+          following_count: followingCount,
+          isFollowing: false
+        });
+      }
+
+      db.query("SELECT 1 FROM follows WHERE user_id = ? AND following_user_id = ? LIMIT 1", [viewerUserId, targetUserId], (followErr, followRows) => {
+        if (followErr) {
+          console.error("FOLLOW STATUS ERROR:", followErr);
+          return res.status(500).json({ error: followErr.message });
+        }
+
+        return res.json({
+          target_user_id: targetUserId,
+          follower_count: followerCount,
+          following_count: followingCount,
+          isFollowing: Boolean(followRows && followRows.length)
+        });
+      });
+    });
+  });
+});
+
+app.post("/api/users/:userId/follow", (req, res) => {
+  const targetUserId = String(req.params.userId || "").trim();
+  const viewerUserId = String(req.body?.user_id || "").trim();
+
+  if (!targetUserId) {
+    return res.status(400).json({ error: "Missing target user id" });
+  }
+
+  if (!viewerUserId) {
+    return res.status(401).json({ error: "Please sign in to follow users." });
+  }
+
+  if (viewerUserId === targetUserId) {
+    return res.status(400).json({ error: "You cannot follow yourself." });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({
+      target_user_id: targetUserId,
+      isFollowing: false,
+      follower_count: 0,
+      following_count: 0
+    });
+  }
+
+  db.query("SELECT id FROM follows WHERE user_id = ? AND following_user_id = ? LIMIT 1", [viewerUserId, targetUserId], (checkErr, checkRows) => {
+    if (checkErr) {
+      console.error("FOLLOW CHECK ERROR:", checkErr);
+      return res.status(500).json({ error: checkErr.message });
+    }
+
+    const isFollowing = Boolean(checkRows && checkRows.length);
+    const action = isFollowing
+      ? "DELETE FROM follows WHERE user_id = ? AND following_user_id = ?"
+      : "INSERT INTO follows (user_id, following_user_id) VALUES (?, ?)";
+
+    db.query(action, [viewerUserId, targetUserId], (updateErr) => {
+      if (updateErr) {
+        console.error("FOLLOW UPDATE ERROR:", updateErr);
+        return res.status(500).json({ error: updateErr.message });
+      }
+
+      db.query("SELECT COUNT(*) AS follower_count FROM follows WHERE following_user_id = ?", [targetUserId], (countErr, countRows) => {
+        if (countErr) {
+          console.error("FOLLOW COUNT ERROR:", countErr);
+          return res.status(500).json({ error: countErr.message });
+        }
+
+        const followerCount = Number(countRows?.[0]?.follower_count || 0);
+
+        db.query("SELECT COUNT(*) AS following_count FROM follows WHERE user_id = ?", [targetUserId], (followingErr, followingRows) => {
+          if (followingErr) {
+            console.error("FOLLOWING COUNT ERROR:", followingErr);
+            return res.status(500).json({ error: followingErr.message });
+          }
+
+          const followingCount = Number(followingRows?.[0]?.following_count || 0);
+          const nextFollowingState = !isFollowing;
+
+          return res.json({
+            target_user_id: targetUserId,
+            isFollowing: nextFollowingState,
+            follower_count: followerCount,
+            following_count: followingCount
+          });
+        });
+      });
+    });
+  });
 });
 
 app.post("/api/profile", (req, res) => {

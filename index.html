@@ -481,15 +481,25 @@
 }
 
 .sidemenu-profile {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 16px 10px;
-  margin-top: -52px;
-  border-radius: 25px;
-  border: 1.2px solid rgba(6, 6, 6, 0.06);
-  background: rgba(235, 233, 233, 0.06);
+ 
+  margin-top: -62px;
+  margin-left: 16px;
+   display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px 14px 24px;
+    
+    text-decoration: none;
+    font-size: 21px;
+    color: #060606;
+    border-radius: 14px;
+    transition: all 0.25s ease;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1.7px solid rgba(6, 6, 6, 0.06);
+    cursor: pointer;
+    font-family: inherit;
+    width: calc(100% - 32px);
+    text-align: left;
 }
 
 .side-menu-profile-btn {
@@ -524,7 +534,11 @@
 
 .side-menu-profile-avatar i {
   font-size: 28px;
-  color: rgb(177, 151, 252);
+  color: rgb(108, 108, 105);
+  font-family: "Font Awesome 6 Free" !important;
+  font-weight: 900 !important;
+  display: inline-block;
+  line-height: 1;
 }
 
 .side-menu-user-name-btn {
@@ -544,16 +558,22 @@
 }
 
 .dark-mode-btn{
-  background: rgba(255, 255, 255, 0.04);
-  border: 1.7px solid rgba(6, 6, 6, 0.06);
-  border-radius: 14px;
-  padding: 14px 20px 14px 24px;
-  margin: 10px 16px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 21px;
-  color: #060606;
-  transition: all 0.25s ease;
+  display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px 14px 24px;
+    margin: 5px 16px;
+    text-decoration: none;
+    font-size: 21px;
+    color: #060606;
+    border-radius: 14px;
+    transition: all 0.25s ease;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1.7px solid rgba(6, 6, 6, 0.06);
+    cursor: pointer;
+    font-family: inherit;
+    width: calc(50% - 32px);
+    text-align: left;
 }
 
 .menu-legal {
@@ -1693,7 +1713,7 @@ background: rgba(255, 255, 255, 0.08);
   gap: 1px;
   width: 100%;
   margin: 0 auto;
- 
+  
   border-radius: 12px;
   z-index: 1;
 }
@@ -2199,7 +2219,7 @@ width: 96%;
   object-fit: cover;
   border-radius: 0;
   background: rgba(16, 16, 16, 0.08);
-  border: 1.2px solid rgb(221, 221, 221);
+  border: none;
   box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
 }
 
@@ -2461,6 +2481,9 @@ width: 96%;
 .profile-pic i {
   font-size: 70px;
   line-height: 1;
+  font-family: "Font Awesome 6 Free" !important;
+  font-weight: 900 !important;
+  display: inline-block;
 }
 
 .user-display-name {
@@ -2998,7 +3021,9 @@ width: 96%;
     <div class="sidemenu-profile">
       <button id="sideMenuProfileBtn" class="side-menu-profile-btn" type="button" aria-label="Open profile">
         <span id="sideMenuProfileAvatar" class="side-menu-profile-avatar">
-          <i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg" style="display:block; color: rgb(108, 108, 105);">
+            <path fill="currentColor" d="M12 12.2a4.35 4.35 0 1 0-4.35-4.35A4.35 4.35 0 0 0 12 12.2Zm0 2.2c-4.4 0-8 2.35-8 5.25V21h16v-1.35c0-2.9-3.6-5.25-8-5.25Z"/>
+          </svg>
         </span>
       </button>
       <button id="sideMenuUserNameBtn" class="side-menu-user-name-btn" type="button" aria-label="Open profile">
@@ -3013,7 +3038,7 @@ width: 96%;
        <span class="report-menu-label" data-i18n="report">Report</span>
      </a>
       <a href="#" data-i18n="friends"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(7, 7, 7);"></i>Friends</a>
-      <a href="#" data-i18n="bookmarks"><i class="fa-solid fa-bookmark fa-sm" style="color: rgb(7, 7, 7);"></i>Saved</a>
+      <a href="#" data-i18n="bookmarks"><i class="fa-solid fa-bookmark fa-sm" style="color: rgb(2, 2, 2);"></i>Saved</a>
       <a href="message.html" data-i18n="chat"><i class="fa-solid fa-comment fa-sm" style="color: rgb(7, 7, 7);"></i>Chat</a>
       <button id="settingsBtn" class="menu-settings-btn" type="button" data-i18n="settings"><i class="fa-solid fa-cog fa-sm" style="color: rgb(7, 7, 7);"></i>Settings</button>
       <button id="themeToggleBtn" class="theme-toggle-btn" type="button" aria-label="Toggle dark mode" aria-pressed="false">
@@ -3149,14 +3174,17 @@ width: 96%;
   <div class="sheet-content">
     <input id="profilePicInput" type="file" accept="image/*" style="display:none;">
     <button id="profilePicBtn" class="profile-pic" type="button" aria-label="Upload profile picture">
-      <i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="42" height="42" xmlns="http://www.w3.org/2000/svg" style="display:block; color: rgb(108, 108, 105);">
+        <path fill="currentColor" d="M12 12.2a4.35 4.35 0 1 0-4.35-4.35A4.35 4.35 0 0 0 12 12.2Zm0 2.2c-4.4 0-8 2.35-8 5.25V21h16v-1.35c0-2.9-3.6-5.25-8-5.25Z"/>
+      </svg>
     </button>
     <div id="profileNameDisplay" class="user-display-name">User</div>
 
     <div class="user-sheet-actions">
       <button id="messageUserBtn" class="message-btn" type="button"> <i class="fa-solid fa-paper-plane fa-lg" style="color: rgb(255, 255, 255);"></i> Message</button>
-      <button id="followUserBtn" class="follow-btn" type="button"><i class="fa-solid fa-plus fa-lg" style="color: rgb(0, 0, 0);"></i> Follow</button>
+      <button id="followUserBtn" class="follow-btn" type="button" aria-pressed="false"><i class="fa-solid fa-plus fa-lg" style="color: rgb(0, 0, 0);"></i> Follow</button>
     </div>
+    <div id="userFollowCount" class="user-follow-count">0 followers</div>
 
     <div class="userpage-header">
       <button type="button" class="user-media-filter-btn active" data-media-type="all" aria-label="Show all posts">

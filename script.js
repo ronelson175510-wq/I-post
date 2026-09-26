@@ -190,6 +190,32 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
       color: #ffffff !important;
     }
 
+    body.dark-mode #settingsSheet .sheet-content h3,
+    body.dark-mode #settingsSheet .sheet-content label,
+    body.dark-mode #settingsSheet .sheet-content input,
+    body.dark-mode #settingsSheet .sheet-content select,
+    body.dark-mode #settingsSheet .sheet-content button,
+    body.dark-mode #settingsSheet .sheet-content .submit-btn,
+    body.dark-mode #settingsSheet .sheet-content .contact-btn,
+    body.dark-mode .settings-field-group label,
+    body.dark-mode .settings-field-group input,
+    body.dark-mode .settings-field-group select,
+    body.dark-mode #settingsSheet h3,
+    body.dark-mode #settingsSheet label,
+    body.dark-mode #settingsSheet input,
+    body.dark-mode #settingsSheet select {
+      color: #ffffff !important;
+    }
+
+    body.dark-mode #settingsSheet .sheet-content input,
+    body.dark-mode #settingsSheet .sheet-content select,
+    body.dark-mode .settings-field-group input,
+    body.dark-mode .settings-field-group select {
+      background-color: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: #ffffff !important;
+    }
+
     body.dark-mode .like-btn i,
     body.dark-mode .comment-btn i,
     body.dark-mode .fa-bookmark,
@@ -299,6 +325,12 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
     body.dark-mode .theme-toggle-btn.is-dark .theme-toggle-switch {
       background: linear-gradient(135deg, #8f7cff, #5c6cff);
     }
+    
+    body.dark-mode .feed-post-user-name,
+body.dark-mode .side-menu-user-name-btn,
+body.dark-mode #sideMenuUserName {
+  color: #ffffff !important;
+}
   `;
   document.head.appendChild(styleTag);
   return styleTag;
@@ -328,12 +360,30 @@ function updateFeedActionTheme(theme) {
   });
 }
 
+function updateSettingsSheetTheme(theme) {
+  const isDark = theme === "dark";
+  const settingsSheet = document.getElementById("settingsSheet");
+  if (!settingsSheet) return;
+
+  settingsSheet.querySelectorAll("h3, label, input, select, button").forEach((element) => {
+    if (!element) return;
+    const isInputOrSelect = element.tagName === "INPUT" || element.tagName === "SELECT";
+    element.style.color = isDark ? "#ffffff" : "";
+
+    if (isInputOrSelect) {
+      element.style.backgroundColor = isDark ? "rgba(255, 255, 255, 0.04)" : "";
+      element.style.borderColor = isDark ? "rgba(255, 255, 255, 0.12)" : "";
+    }
+  });
+}
+
 function applyTheme(theme) {
   const isDark = theme === "dark";
   document.body.classList.toggle("dark-mode", isDark);
   document.body.setAttribute("data-theme", theme);
   localStorage.setItem("bookme-theme", theme);
   updateFeedActionTheme(theme);
+  updateSettingsSheetTheme(theme);
 
   const themeLabel = themeToggleBtn?.querySelector(".theme-toggle-label");
 
@@ -361,6 +411,14 @@ applyTheme(getPreferredTheme());
    Handles login state, profile data, local storage, and avatar work.
    ============================================================ */
 
+function getDefaultUserAvatarMarkup({ size = 28, color = "rgb(108, 108, 105)" } = {}) {
+  return `
+    <svg aria-hidden="true" viewBox="0 0 24 24" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" style="display:block; color:${color};">
+      <path fill="currentColor" d="M12 12.2a4.35 4.35 0 1 0-4.35-4.35A4.35 4.35 0 0 0 12 12.2Zm0 2.2c-4.4 0-8 2.35-8 5.25V21h16v-1.35c0-2.9-3.6-5.25-8-5.25Z"/>
+    </svg>
+  `;
+}
+
 function updateSideMenuProfileAvatar() {
   if (!sideMenuProfileAvatar) return;
 
@@ -371,7 +429,7 @@ function updateSideMenuProfileAvatar() {
     return;
   }
 
-  sideMenuProfileAvatar.innerHTML = '<i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>';
+  sideMenuProfileAvatar.innerHTML = getDefaultUserAvatarMarkup({ size: 28, color: "rgb(108, 108, 105)" });
 }
 
 function updateSideMenuUserName() {
@@ -437,7 +495,7 @@ if (auth) {
         scheduleAuthRedirect();
       }
       if (profilePicBtn) {
-        profilePicBtn.innerHTML = '<i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>';
+        profilePicBtn.innerHTML = getDefaultUserAvatarMarkup({ size: 42, color: "rgb(108, 108, 105)" });
       }
       return;
     }
@@ -612,6 +670,55 @@ async function loadUserProfileDataFromServer(userId = getCurrentUserId()) {
 
 async function loadCurrentUserProfileDataFromServer(userId = getCurrentUserId()) {
   return loadUserProfileDataFromServer(userId);
+}
+
+const profileHydrationQueue = new Map();
+
+async function hydrateUserProfileFromServer(userId = getCurrentUserId()) {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId || safeUserId === "guest") {
+    return null;
+  }
+
+  if (profileHydrationQueue.has(safeUserId)) {
+    return profileHydrationQueue.get(safeUserId);
+  }
+
+  const existingProfile = getCurrentUserProfileData(safeUserId);
+  const existingPic = getProfilePicForUser(safeUserId);
+  const hydrationPromise = (async () => {
+    try {
+      const response = await fetch(`/api/profile/${encodeURIComponent(safeUserId)}`);
+      if (!response.ok) {
+        return existingProfile;
+      }
+
+      const data = await response.json();
+      const profile = {
+        firstName: data?.firstName || existingProfile.firstName || "",
+        lastName: data?.lastName || existingProfile.lastName || "",
+        dob: data?.dob || existingProfile.dob || "",
+        email: data?.email || existingProfile.email || ""
+      };
+
+      localStorage.setItem(getUserProfileKey(safeUserId), JSON.stringify(profile));
+
+      const recoveredProfilePic = data?.profile_pic || existingPic || null;
+      if (recoveredProfilePic) {
+        localStorage.setItem(getProfilePicKeyForUser(safeUserId), recoveredProfilePic);
+      }
+
+      return profile;
+    } catch (error) {
+      console.warn("Failed to hydrate user profile metadata:", error);
+      return existingProfile;
+    } finally {
+      profileHydrationQueue.delete(safeUserId);
+    }
+  })();
+
+  profileHydrationQueue.set(safeUserId, hydrationPromise);
+  return hydrationPromise;
 }
 
 function getDisplayNameForUser(userId = getCurrentUserId()) {
@@ -882,6 +989,8 @@ const closeUserSheet = document.getElementById("closeUserSheet");
 const profilePicInput = document.getElementById("profilePicInput");
 const profilePicBtn = document.getElementById("profilePicBtn");
 const profileSettingsForm = document.getElementById("profileSettingsForm");
+const followUserBtn = document.getElementById("followUserBtn");
+const userFollowCount = document.getElementById("userFollowCount");
 const PROFILE_PIC_KEY = "bookme_profile_pic";
 const LANGUAGE_KEY = "bookme_language";
 const DEVICE_LANGUAGE_KEY = "bookme_device_language";
@@ -2081,7 +2190,7 @@ function setProfilePicPreview(url, userId = getCurrentUserId()) {
       return;
     }
 
-    profilePicBtn.innerHTML = '<i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>';
+    profilePicBtn.innerHTML = getDefaultUserAvatarMarkup({ size: 42, color: "rgb(108, 108, 105)" });
     return;
   }
 
@@ -2258,7 +2367,7 @@ function initializeMessagePage() {
 
     return `
       <span class="conversation-avatar">
-        <span class="conversation-avatar-fallback"><i class="fa-solid fa-circle-user"></i></span>
+        <span class="conversation-avatar-fallback"><i class="fa-solid fa-circle-user fa-lg" style="color: rgb(108, 108, 105);"></i></span>
       </span>
     `;
   }
@@ -2453,6 +2562,47 @@ function setExclusiveSheetState({ userSheetOpen = false, settingsSheetOpen = fal
 if (userSheetBtn && userSheet) {
   userSheetBtn.addEventListener("click", () => {
     openUserProfileSheet(getCurrentUserId());
+  });
+}
+
+if (followUserBtn) {
+  followUserBtn.addEventListener("click", async () => {
+    const targetUserId = getCurrentUserId() === "guest"
+      ? ""
+      : followUserBtn.dataset.userId || document.getElementById("profileNameDisplay")?.dataset?.userId || getCurrentUserId();
+    const currentUserId = getCurrentUserId();
+
+    if (!targetUserId || currentUserId === "guest") {
+      alert("Please sign in to follow someone.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/users/${encodeURIComponent(targetUserId)}/follow`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: currentUserId })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Unable to update follow state.");
+      }
+
+      const followerCount = Number(data?.follower_count || 0);
+      const isFollowing = Boolean(data?.isFollowing);
+
+      followUserBtn.dataset.following = String(isFollowing);
+      followUserBtn.setAttribute("aria-pressed", String(isFollowing));
+      followUserBtn.innerHTML = `<i class="fa-solid ${isFollowing ? "fa-check" : "fa-plus"} fa-lg" style="color: rgb(0, 0, 0);"></i> ${isFollowing ? "Following" : "Follow"}${followerCount > 0 ? ` • ${followerCount}` : ""}`;
+
+      if (userFollowCount) {
+        userFollowCount.textContent = `${followerCount} follower${followerCount === 1 ? "" : "s"}`;
+      }
+    } catch (error) {
+      console.error("Follow toggle error:", error);
+      alert(error.message || "Unable to follow user.");
+    }
   });
 }
 
@@ -3080,7 +3230,7 @@ function renderCommentNode(comment, depth = 0) {
 
   const avatarMarkup = profilePic
     ? `<img src="${escapeHtml(profilePic)}" alt="${escapeHtml(author)} profile" class="comment-avatar-img" />`
-    : `<span class="comment-avatar-fallback"><i class="fa-solid fa-circle-user"></i></span>`;
+    : `<span class="comment-avatar-fallback"><i class="fa-solid fa-circle-user fa-lg" style="color: rgb(108, 108, 105);"></i></span>`;
 
   const childReplies = Array.isArray(comment?.replies) && comment.replies.length
     ? `<div class="comment-replies">${comment.replies.map((child) => renderCommentNode(child, depth + 1)).join("")}</div>`
@@ -3461,7 +3611,7 @@ function renderUserSearchCard(user = {}) {
   return `
     <button type="button" class="search-post-card search-user-result profile-avatar-trigger" data-user-id="${escapeHtml(String(userId))}" aria-label="Open ${escapeHtml(displayName)} profile">
       <div class="search-caption-row">
-        <span class="search-user-avatar">${avatarUrl ? `<img src="${getCacheBustedImageUrl(avatarUrl)}" alt="${escapeHtml(displayName)} profile" />` : '<i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>'}</span>
+        <span class="search-user-avatar">${avatarUrl ? `<img src="${getCacheBustedImageUrl(avatarUrl)}" alt="${escapeHtml(displayName)} profile" />` : getDefaultUserAvatarMarkup({ size: 24, color: "rgb(108, 108, 105)" })}</span>
         <span class="search-caption">${escapeHtml(displayName)}</span>
       </div>
     </button>
@@ -4090,7 +4240,7 @@ function getCurrentUserAvatarMarkup(userId = getCurrentUserId()) {
     return `<img src="${getCacheBustedImageUrl(avatarUrl)}" alt="Profile picture" />`;
   }
 
-  return '<i class="fa-solid fa-circle-user" style="color: rgb(177, 151, 252);"></i>';
+  return '<i class="fa-solid fa-circle-user fa-lg" style="color: rgb(108, 108, 105);"></i>';
 }
 
 function formatRelativeDateLabel(dateValue) {
@@ -4162,14 +4312,63 @@ function formatPostDateLabel(dateValue) {
   return "";
 }
 
+async function refreshFollowStatus(targetUserId = getCurrentUserId()) {
+  if (!followUserBtn) return;
+
+  const currentUserId = getCurrentUserId();
+  const resolvedTargetId = targetUserId || currentUserId || "guest";
+
+  if (!resolvedTargetId || resolvedTargetId === "guest") {
+    followUserBtn.innerHTML = '<i class="fa-solid fa-plus fa-lg" style="color: rgb(0, 0, 0);"></i> Follow';
+    followUserBtn.setAttribute("aria-pressed", "false");
+    if (userFollowCount) {
+      userFollowCount.textContent = "0 followers";
+    }
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/users/${encodeURIComponent(resolvedTargetId)}/follow-status?user_id=${encodeURIComponent(currentUserId || "")}`, {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to load follow status");
+    }
+
+    const data = await response.json().catch(() => ({}));
+    const followerCount = Number(data?.follower_count || 0);
+    const isFollowing = Boolean(data?.isFollowing);
+
+    followUserBtn.dataset.following = String(isFollowing);
+    followUserBtn.setAttribute("aria-pressed", String(isFollowing));
+    followUserBtn.innerHTML = `<i class="fa-solid ${isFollowing ? "fa-check" : "fa-plus"} fa-lg" style="color: rgb(0, 0, 0);"></i> ${isFollowing ? "Following" : "Follow"}${followerCount > 0 ? ` • ${followerCount}` : ""}`;
+
+    if (userFollowCount) {
+      userFollowCount.textContent = `${followerCount} follower${followerCount === 1 ? "" : "s"}`;
+    }
+  } catch (error) {
+    console.warn("Follow status unavailable:", error);
+  }
+}
+
 async function openUserProfileSheet(userId = getCurrentUserId()) {
   const targetUserId = userId || getCurrentUserId();
 
   if (targetUserId && targetUserId !== "guest") {
     await loadUserProfileDataFromServer(targetUserId);
+    await refreshFollowStatus(targetUserId);
   }
 
   const profileImage = getProfilePicForUser(targetUserId) || (auth?.currentUser?.uid === targetUserId ? auth.currentUser.photoURL : null);
+
+  const profileNameDisplay = document.getElementById("profileNameDisplay");
+  if (profileNameDisplay) {
+    profileNameDisplay.dataset.userId = String(targetUserId || "");
+  }
+  if (followUserBtn) {
+    followUserBtn.dataset.userId = String(targetUserId || "");
+  }
 
   setExclusiveSheetState({ userSheetOpen: true, settingsSheetOpen: false });
 
@@ -4499,6 +4698,14 @@ async function loadPosts() {
     const posts = await response.json();
     const validPosts = Array.isArray(posts) ? posts : [];
     window.__feedPostsCache = validPosts;
+
+    const uniqueUserIds = [...new Set(validPosts
+      .map((post) => String(post?.user_id || "").trim())
+      .filter((userId) => userId && userId !== "guest"))];
+
+    if (uniqueUserIds.length) {
+      await Promise.all(uniqueUserIds.map((userId) => hydrateUserProfileFromServer(userId)));
+    }
 
     if (feedPosts) {
       const visiblePosts = validPosts.filter((post) => !Boolean(post.is_flagged) && Number(post.report_count || 0) < 10);
