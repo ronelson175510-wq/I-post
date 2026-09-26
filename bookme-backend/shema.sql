@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255),
   sex VARCHAR(20),
   dob DATE,
-  profile_pic VARCHAR(255)
+  profile_pic VARCHAR(255),
+  verified TINYINT(1) DEFAULT 0
 );
 
 -- Posts table (text, photos, videos)

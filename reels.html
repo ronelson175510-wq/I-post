@@ -469,9 +469,35 @@
         }
 
         .reel-user-name {
-            font-size: 16px;
-            font-weight: 900;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            font-weight: 800;
             color: #fff;
+            line-height: 1.2;
+        }
+
+        .reel-user-name .verified-user-badge {
+            width: 15px;
+            height: 15px;
+            min-width: 15px;
+            min-height: 15px;
+            border-radius: 50%;
+            background: none;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            vertical-align: middle;
+        }
+
+        .reel-user-name .verified-user-badge svg {
+            width: 30px;
+            height: 30px;
+            display: block;
+            stroke-width: 2.5;
         }
 
         .reel-caption {

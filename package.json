@@ -1,0 +1,16 @@
+{
+  "name": "bookme",
+  "version": "1.0.0",
+  "description": "",
+  "main": ".tmp-summary-check.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2"
+  }
+}

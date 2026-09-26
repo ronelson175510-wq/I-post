@@ -563,7 +563,8 @@ function saveCurrentUserProfileData(data, userId = getCurrentUserId()) {
     lastName: merged.lastName && merged.lastName.trim() ? merged.lastName.trim() : null,
     dob: merged.dob && merged.dob.trim() ? merged.dob.trim() : null,
     email: merged.email && merged.email.trim() ? merged.email.trim() : null,
-    profile_pic: getProfilePicForUser(userId) || auth?.currentUser?.photoURL || null
+    profile_pic: getProfilePicForUser(userId) || auth?.currentUser?.photoURL || null,
+    ...(merged.verified !== undefined ? { verified: Boolean(merged.verified) } : {})
   };
 
   fetch("/api/profile", {
@@ -607,7 +608,8 @@ async function ensureUserProfileRecordOnServer(user = auth?.currentUser) {
     lastName: localProfile.lastName || fallbackName.lastName || "",
     dob: localProfile.dob || "",
     email: localProfile.email || user.email || "",
-    profile_pic: getProfilePicForUser(user.uid) || user.photoURL || null
+    profile_pic: getProfilePicForUser(user.uid) || user.photoURL || null,
+    ...(localProfile.verified !== undefined ? { verified: Boolean(localProfile.verified) } : {})
   };
 
   try {
@@ -649,7 +651,8 @@ async function loadUserProfileDataFromServer(userId = getCurrentUserId()) {
       firstName: data?.firstName || "",
       lastName: data?.lastName || "",
       dob: data?.dob || "",
-      email: data?.email || ""
+      email: data?.email || "",
+      verified: Boolean(data?.verified)
     };
 
     localStorage.setItem(getUserProfileKey(userId), JSON.stringify(profile));
@@ -698,7 +701,8 @@ async function hydrateUserProfileFromServer(userId = getCurrentUserId()) {
         firstName: data?.firstName || existingProfile.firstName || "",
         lastName: data?.lastName || existingProfile.lastName || "",
         dob: data?.dob || existingProfile.dob || "",
-        email: data?.email || existingProfile.email || ""
+        email: data?.email || existingProfile.email || "",
+        verified: Boolean(data?.verified ?? existingProfile.verified ?? false)
       };
 
       localStorage.setItem(getUserProfileKey(safeUserId), JSON.stringify(profile));
@@ -719,6 +723,47 @@ async function hydrateUserProfileFromServer(userId = getCurrentUserId()) {
 
   profileHydrationQueue.set(safeUserId, hydrationPromise);
   return hydrationPromise;
+}
+
+function normalizeVerificationValue(value) {
+  if (typeof value === "string") {
+    return ["1", "true", "yes", "verified"].includes(value.trim().toLowerCase());
+  }
+
+  return Boolean(value);
+}
+
+function isUserVerified(userId = getCurrentUserId()) {
+  const data = getCurrentUserProfileData(userId);
+  const directValue = data?.verified ?? data?.is_verified ?? data?.verified_user ?? false;
+  if (directValue !== undefined && directValue !== null) {
+    return normalizeVerificationValue(directValue);
+  }
+
+  const fallbackState = data?.user_verified ?? false;
+  return normalizeVerificationValue(fallbackState);
+}
+
+function getVerifiedBadgeMarkup() {
+  return `
+    <span class="verified-user-badge" title="Verified user" aria-label="Verified user">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-badge-check preview-icon" aria-hidden="true" focusable="false">
+        <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"></path>
+        <path d="m16 9-5.5 5.5L8 12"></path>
+      </svg>
+    </span>
+  `;
+}
+
+function renderUserNameWithVerification(displayName, userId = getCurrentUserId()) {
+  const resolvedName = String(displayName || "User").trim() || "User";
+  const verified = isUserVerified(userId);
+
+  if (!verified) {
+    return escapeHtml(resolvedName);
+  }
+
+  return `${escapeHtml(resolvedName)}${getVerifiedBadgeMarkup()}`;
 }
 
 function getDisplayNameForUser(userId = getCurrentUserId()) {
@@ -751,22 +796,22 @@ function updateProfileNameDisplay(userId = getCurrentUserId()) {
   const lastName = (data.lastName || "").trim();
   const customDisplayName = [firstName, lastName].filter(Boolean).join(" ");
 
+  let displayName = "User";
+
   if (customDisplayName) {
-    profileNameDisplay.textContent = customDisplayName;
+    displayName = customDisplayName;
+  } else if (auth?.currentUser?.uid === userId && auth.currentUser.displayName) {
+    displayName = auth.currentUser.displayName;
+  } else if (auth?.currentUser?.uid === userId && auth.currentUser.email) {
+    displayName = auth.currentUser.email.split("@")[0];
+  }
+
+  if (isUserVerified(userId)) {
+    profileNameDisplay.innerHTML = `${escapeHtml(displayName)}${getVerifiedBadgeMarkup()}`;
     return;
   }
 
-  if (auth?.currentUser?.uid === userId && auth.currentUser.displayName) {
-    profileNameDisplay.textContent = auth.currentUser.displayName;
-    return;
-  }
-
-  if (auth?.currentUser?.uid === userId && auth.currentUser.email) {
-    profileNameDisplay.textContent = auth.currentUser.email.split("@")[0];
-    return;
-  }
-
-  profileNameDisplay.textContent = "User";
+  profileNameDisplay.textContent = displayName;
 }
 
 function populateProfileSettingsForm(userId = getCurrentUserId()) {
@@ -2829,7 +2874,7 @@ if (searchInputs.length) {
         const sideMenu = document.getElementById("mysidemenu");
         if (!sideMenu) return;
         sideMenu.dataset.state = "open";
-        sideMenu.style.width = "250px";
+        sideMenu.style.width = "350px";
     }
 
     function closeNav() {
@@ -3564,7 +3609,7 @@ function renderSearchCard(post) {
         <button type="button" class="search-user-avatar profile-avatar-trigger" data-user-id="${ownerUserId}" aria-label="View profile">
           ${getCurrentUserAvatarMarkup(ownerUserId)}
         </button>
-        <div class="search-caption">${displayName}</div>
+        <div class="search-caption">${renderUserNameWithVerification(displayName, ownerUserId)}</div>
       </div>
     </div>
   `;
@@ -3612,7 +3657,7 @@ function renderUserSearchCard(user = {}) {
     <button type="button" class="search-post-card search-user-result profile-avatar-trigger" data-user-id="${escapeHtml(String(userId))}" aria-label="Open ${escapeHtml(displayName)} profile">
       <div class="search-caption-row">
         <span class="search-user-avatar">${avatarUrl ? `<img src="${getCacheBustedImageUrl(avatarUrl)}" alt="${escapeHtml(displayName)} profile" />` : getDefaultUserAvatarMarkup({ size: 24, color: "rgb(108, 108, 105)" })}</span>
-        <span class="search-caption">${escapeHtml(displayName)}</span>
+        <span class="search-caption">${renderUserNameWithVerification(displayName, userId)}</span>
       </div>
     </button>
   `;
@@ -3754,6 +3799,7 @@ async function loadReels() {
       const ownerUserId = post?.user_id || getCurrentUserId();
       const avatarMarkup = getCurrentUserAvatarMarkup(ownerUserId);
       const displayName = getDisplayNameForUser(ownerUserId);
+      const verifiedMarkup = renderUserNameWithVerification(displayName, ownerUserId);
       const truncatedCaption = caption.length > 90 ? `${caption.slice(0, 90)}...` : caption;
       const postId = post?.id || "";
 
@@ -3789,7 +3835,7 @@ async function loadReels() {
               <div class="reel-user-avatar">
                 ${avatarMarkup}
               </div>
-              <div class="reel-user-name">${displayName}</div>
+              <div class="reel-user-name">${verifiedMarkup}</div>
             </div>
             <div class="reel-caption" data-full-text="${caption.replace(/"/g, '&quot;')}">
               <span class="reel-caption-text">${truncatedCaption}</span>
@@ -4559,7 +4605,7 @@ function renderFeedPost(post) {
         </button>
         <div class="feed-post-user-block">
           <button type="button" class="feed-post-user profile-avatar-trigger" data-user-id="${ownerUserId}" aria-label="View ${displayName}'s profile">
-            <span class="feed-post-user-name">${displayName}</span>
+            <span class="feed-post-user-name">${renderUserNameWithVerification(displayName, ownerUserId)}</span>
           </button>
           ${postDateLabel ? `<span class="feed-post-date">${postDateLabel}</span>` : ""}
         </div>

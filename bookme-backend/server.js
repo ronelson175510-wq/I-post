@@ -306,77 +306,81 @@ function initializeDatabaseSchema() {
     });
   };
 
-  runSchemaQuery(`
-    CREATE TABLE IF NOT EXISTS reported_contents (
-      id INT PRIMARY KEY AUTO_INCREMENT,
-      post_id INT NOT NULL,
-      reporter_user_id VARCHAR(255) NOT NULL,
-      reason VARCHAR(100) DEFAULT 'spam',
-      details TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE KEY unique_report (post_id, reporter_user_id),
-      FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-      FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `, () => {
-    ensureColumn("posts", "report_count", "INT DEFAULT 0", (err1) => {
-      if (err1) return;
+  ensureColumn("users", "verified", "TINYINT(1) DEFAULT 0", (err0) => {
+    if (err0) return;
 
-      ensureColumn("posts", "is_flagged", "TINYINT(1) DEFAULT 0", (err2) => {
-        if (err2) return;
+    runSchemaQuery(`
+      CREATE TABLE IF NOT EXISTS reported_contents (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        post_id INT NOT NULL,
+        reporter_user_id VARCHAR(255) NOT NULL,
+        reason VARCHAR(100) DEFAULT 'spam',
+        details TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_report (post_id, reporter_user_id),
+        FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+        FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `, () => {
+      ensureColumn("posts", "report_count", "INT DEFAULT 0", (err1) => {
+        if (err1) return;
 
-        ensureColumn("posts", "report_status", "ENUM('active', 'taken_down') DEFAULT 'active'", (err3) => {
-          if (err3) return;
+        ensureColumn("posts", "is_flagged", "TINYINT(1) DEFAULT 0", (err2) => {
+          if (err2) return;
 
-          ensureColumn("posts", "original_name", "VARCHAR(255) NULL", (err4) => {
-            if (err4) return;
+          ensureColumn("posts", "report_status", "ENUM('active', 'taken_down') DEFAULT 'active'", (err3) => {
+            if (err3) return;
 
-            ensureColumn("posts", "saved_filename", "VARCHAR(255) NULL", (err5) => {
-              if (err5) return;
+            ensureColumn("posts", "original_name", "VARCHAR(255) NULL", (err4) => {
+              if (err4) return;
 
-              runSchemaQuery(`
-                CREATE TABLE IF NOT EXISTS comments (
-                  id INT PRIMARY KEY AUTO_INCREMENT,
-                  user_id VARCHAR(255) NOT NULL,
-                  post_id INT NOT NULL,
-                  reply_to INT NULL,
-                  comment TEXT NOT NULL,
-                  like_count INT DEFAULT 0,
-                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                  FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-                  FOREIGN KEY (reply_to) REFERENCES comments(id) ON DELETE CASCADE
-                )
-              `, () => {
-                ensureColumn("comments", "reply_to", "INT NULL", (err6) => {
-                  if (err6) return;
+              ensureColumn("posts", "saved_filename", "VARCHAR(255) NULL", (err5) => {
+                if (err5) return;
 
-                  ensureColumn("comments", "like_count", "INT DEFAULT 0", (err7) => {
-                    if (err7) return;
+                runSchemaQuery(`
+                  CREATE TABLE IF NOT EXISTS comments (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    user_id VARCHAR(255) NOT NULL,
+                    post_id INT NOT NULL,
+                    reply_to INT NULL,
+                    comment TEXT NOT NULL,
+                    like_count INT DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                    FOREIGN KEY (reply_to) REFERENCES comments(id) ON DELETE CASCADE
+                  )
+                `, () => {
+                  ensureColumn("comments", "reply_to", "INT NULL", (err6) => {
+                    if (err6) return;
 
-                    runSchemaQuery(`
-                      CREATE TABLE IF NOT EXISTS comment_likes (
-                        id INT PRIMARY KEY AUTO_INCREMENT,
-                        user_id VARCHAR(255) NOT NULL,
-                        comment_id INT NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE KEY unique_comment_like (user_id, comment_id),
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                        FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
-                      )
-                    `, () => {
+                    ensureColumn("comments", "like_count", "INT DEFAULT 0", (err7) => {
+                      if (err7) return;
+
                       runSchemaQuery(`
-                        CREATE TABLE IF NOT EXISTS follows (
+                        CREATE TABLE IF NOT EXISTS comment_likes (
                           id INT PRIMARY KEY AUTO_INCREMENT,
                           user_id VARCHAR(255) NOT NULL,
-                          following_user_id VARCHAR(255) NOT NULL,
+                          comment_id INT NOT NULL,
                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                          UNIQUE KEY unique_follow (user_id, following_user_id),
+                          UNIQUE KEY unique_comment_like (user_id, comment_id),
                           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                          FOREIGN KEY (following_user_id) REFERENCES users(id) ON DELETE CASCADE
+                          FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
                         )
                       `, () => {
-                        console.log("Database schema initialized.");
+                        runSchemaQuery(`
+                          CREATE TABLE IF NOT EXISTS follows (
+                            id INT PRIMARY KEY AUTO_INCREMENT,
+                            user_id VARCHAR(255) NOT NULL,
+                            following_user_id VARCHAR(255) NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE KEY unique_follow (user_id, following_user_id),
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            FOREIGN KEY (following_user_id) REFERENCES users(id) ON DELETE CASCADE
+                          )
+                        `, () => {
+                          console.log("Database schema initialized.");
+                        });
                       });
                     });
                   });
@@ -390,7 +394,7 @@ function initializeDatabaseSchema() {
   });
 }
 
-function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic }, callback) {
+function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic, verified }, callback) {
   const safeUserId = String(userId || "").trim();
   if (!safeUserId) {
     return callback ? callback(null) : Promise.resolve();
@@ -405,12 +409,11 @@ function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic
   const safeDob = dob && String(dob).trim() ? String(dob).trim() : null;
   const safeEmail = email && String(email).trim() ? String(email).trim() : null;
   const safeProfilePic = profilePic && String(profilePic).trim() ? String(profilePic).trim() : null;
+  const safeVerified = verified !== undefined && verified !== null ? Number(Boolean(verified)) : null;
   const fullName = [safeFirstName, safeLastName].filter(Boolean).join(" ") || null;
 
   const columns = ["id", "name", "email", "profile_pic", "first_name", "last_name", "dob"];
   const values = [safeUserId, fullName, safeEmail, safeProfilePic, safeFirstName, safeLastName, safeDob];
-
-  const placeholders = columns.map(() => "?").join(", ");
   const updates = [
     "name = COALESCE(VALUES(name), name)",
     "email = COALESCE(VALUES(email), email)",
@@ -418,12 +421,19 @@ function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic
     "first_name = COALESCE(VALUES(first_name), first_name)",
     "last_name = COALESCE(VALUES(last_name), last_name)",
     "dob = COALESCE(VALUES(dob), dob)"
-  ].join(", ");
+  ];
 
+  if (safeVerified !== null) {
+    columns.push("verified");
+    values.push(safeVerified);
+    updates.push("verified = VALUES(verified)");
+  }
+
+  const placeholders = columns.map(() => "?").join(", ");
   const query = `
     INSERT INTO users (${columns.join(", ")})
     VALUES (${placeholders})
-    ON DUPLICATE KEY UPDATE ${updates}
+    ON DUPLICATE KEY UPDATE ${updates.join(", ")}
   `;
 
   db.query(query, values, (err) => {
@@ -959,7 +969,7 @@ app.get("/api/profile/:userId", (req, res) => {
   }
 
   db.query(
-    "SELECT id, name, email, first_name, last_name, dob, profile_pic FROM users WHERE id = ? LIMIT 1",
+    "SELECT id, name, email, first_name, last_name, dob, profile_pic, verified FROM users WHERE id = ? LIMIT 1",
     [userId],
     (err, rows) => {
       if (err) {
@@ -985,7 +995,8 @@ app.get("/api/profile/:userId", (req, res) => {
         lastName: row.last_name || "",
         dob: row.dob || "",
         email: row.email || "",
-        profile_pic: row.profile_pic || null
+        profile_pic: row.profile_pic || null,
+        verified: Number(row.verified || 0) === 1
       });
     }
   );
@@ -1128,6 +1139,8 @@ app.post("/api/profile", (req, res) => {
   const dob = String(req.body?.dob || "").trim();
   const email = String(req.body?.email || "").trim();
   const profilePic = String(req.body?.profile_pic || "").trim();
+  const verifiedProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "verified");
+  const verified = verifiedProvided ? req.body?.verified : undefined;
 
   if (!userId) {
     return res.status(400).json({ error: "Missing user id" });
@@ -1146,7 +1159,7 @@ app.post("/api/profile", (req, res) => {
     return res.json({ success: true, profile });
   }
 
-  upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic }, (err) => {
+  upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic, verified }, (err) => {
     if (err) {
       console.error("PROFILE SAVE ERROR:", err);
       return res.status(500).json({ error: err.message });
@@ -1160,7 +1173,8 @@ app.post("/api/profile", (req, res) => {
         lastName,
         dob,
         email,
-        profile_pic: profilePic || null
+        profile_pic: profilePic || null,
+        verified: verified !== undefined && verified !== null ? Number(Boolean(verified)) : undefined
       }
     });
   });
