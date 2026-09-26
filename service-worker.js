@@ -29,21 +29,25 @@ if (isLocalDevelopmentHost()) {
   return;
 }
 
-const CACHE_NAME = "bookme-app-shell-v3";
+const CACHE_NAME = "bookme-app-shell-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./login.html",
   "./message.html",
   "./reels.html",
+  "./search.html",
   "./script.js",
+  "./brand-font.css",
   "./manifest.json",
   "./app-icon.svg"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -66,19 +70,33 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+  const isHtmlRequest = requestLooksLikeHtml(event.request);
 
-      return fetch(event.request)
-        .then((networkResponse) => {
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.ok) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-          return networkResponse;
-        })
-        .catch(() => caches.match("./index.html"));
-    })
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          if (isHtmlRequest) return caches.match("./index.html");
+          return caches.match("./script.js");
+        });
+      })
   );
 });
+
+function requestLooksLikeHtml(request) {
+  const url = new URL(request.url);
+  return (
+    request.mode === "navigate" ||
+    url.pathname.endsWith(".html") ||
+    url.pathname === "/" ||
+    url.pathname === "/index.html"
+  );
+}
