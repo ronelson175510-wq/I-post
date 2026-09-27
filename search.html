@@ -162,6 +162,41 @@ padding: 0;
   
 }
 
+.search-user-result .search-caption,
+.search-post-card .search-caption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-user-result .search-caption .verified-user-badge,
+.search-post-card .search-caption .verified-user-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  min-width: 25px;
+  min-height: 25px;
+  border-radius: 50%;
+  background: white;
+  color: rgb(17, 47, 240);
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.search-user-result .search-caption .verified-user-badge svg,
+.search-post-card .search-caption .verified-user-badge svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  stroke-width: 2.5;
+}
+
 .search-post-card {
   background: none;
   margin-left: -32px;

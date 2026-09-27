@@ -1398,8 +1398,31 @@ font-weight: 590;
   cursor: pointer;
 }
 
+.comment-user-meta .verified-user-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  min-width: 15px;
+  min-height: 15px;
+  border-radius: 50%;
+  background: #0a06ef;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.comment-user-meta .verified-user-badge svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+  stroke-width: 2.4;
+}
+
 .comment-item strong {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: #050505;
   font-size: 16px;
   line-height: 1.25;
@@ -1498,11 +1521,11 @@ font-weight: 590;
   left: 0;
   bottom: -100%;
   width: 100%;
-  height: 95%;
-  max-height: 100vh;
-  background: white;
- border-top-left-radius: 12px;
- border-top-right-radius: 12px;
+  height: 98%;
+  max-height: 130vh;
+  background: rgb(33, 32, 32);
+ border-top-left-radius: 25px;
+ border-top-right-radius: 25px;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
   transition: bottom 0.08s ease;
   z-index: 9999;
@@ -1530,6 +1553,7 @@ font-weight: 590;
   display: flex;
   justify-content: space-between;
   padding: 10px;
+  background: transparent;
 }
 
 .sheet-drag {
@@ -1555,6 +1579,7 @@ font-weight: 590;
   border-radius: 50%;
   box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
   border: none;
+  
   font-size: 24px;
   cursor: pointer;
   z-index: 999;
@@ -1588,17 +1613,19 @@ font-weight: 590;
 #uploadDescription {
   width: 100%;
   border: none;
-  min-height: 62px;
+  min-height: 12px;
   resize: none;
-  margin-top: -22px;
-  border-radius: 10px;
+  margin-top: -42px;
+  border-radius: 25px;
  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  background: #ffffff;
-  color: black;
+  background: rgb(33, 32, 32);
+  color: rgb(49, 49, 49);
   padding: 10px 12px;
-  font-size: 15px;  
+  font-size: 20px;  
+  font-style: italic;
+  font-weight: 600;
   line-height: 1.4;
- border: 1.3px solid rgb(89, 88, 88);
+ border: none;
  
 }
 
@@ -2374,7 +2401,7 @@ width: 96%;
   justify-content: center;
   min-height: 22px;
   padding: 2px 58px 0;
-  background: transparent !important;
+  background: none !important;
   border-bottom: none !important;
   box-shadow: none !important;
 }
@@ -2384,7 +2411,7 @@ width: 96%;
 #uploadSheet .sheet-header,
 #writePostSheet .sheet-header,
 #searchSheet .sheet-header {
-  background: transparent;
+  background: none;
   border-bottom: none;
 }
 
@@ -2407,7 +2434,7 @@ width: 96%;
 #userSheet .close-btn {
   position: absolute;
   right: 14px;
-  top: 10px;
+  top: -20px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(17, 17, 17, 0.08);
   color: #111;
@@ -2508,10 +2535,11 @@ width: 96%;
   justify-content: center;
   width: 20px;
   height: 20px;
-  
+ 
   border-radius: 50%;
-  background: rgb(36, 104, 250);
+  background: rgb(19, 91, 247);
   color: white;
+
   
  
   flex-shrink: 0;
@@ -3140,7 +3168,7 @@ width: 96%;
       <div class="upload-description-group">
         <label for="uploadDescription" class="upload-description-label"></label>
         
-       <textarea id="uploadDescription" data-i18n-placeholder="uploadDescription" placeholder='Speak your mind and tag someone...' rows="3"></textarea>
+       <textarea id="uploadDescription" data-i18n-placeholder="uploadDescription" placeholder='Type something here...' rows="3"></textarea>
        
        
        
@@ -3203,7 +3231,7 @@ width: 96%;
 <!-- User Page Slide-Up Sheet -->
 <div id="userSheet" class="user-sheet">
   <div class="sheet-header">
-    <span class="sheet-drag"></span>
+  
     <button id="closeUserSheet" class="close-btn" type="button">×</button>
   </div>
 

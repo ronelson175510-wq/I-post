@@ -1268,7 +1268,7 @@ const TRANSLATIONS = {
     openReels: "Open reels",
     commentsHeader: "Comments",
     noCommentsYet: "No comments yet.",
-    uploadDescription: "Speak your mind or tag someone...",
+    uploadDescription: "Type something here...",
     upload: "Upload",
     submit: "<i class='fa-solid fa-circle-arrow-right fa-lg' style='color: rgb(255, 255, 255);'></i>",
     saveSettings: "Save profile",
@@ -2624,7 +2624,7 @@ if (followUserBtn) {
 
       followUserBtn.dataset.following = String(isFollowing);
       followUserBtn.setAttribute("aria-pressed", String(isFollowing));
-      followUserBtn.innerHTML = `<i class="fa-solid ${isFollowing ? "fa-check" : "fa-plus"} fa-lg" style="color: rgb(0, 0, 0);"></i> ${isFollowing ? "Following" : "Follow"}${followerCount > 0 ? ` • ${followerCount}` : ""}`;
+      followUserBtn.innerHTML = `<i class="fa-solid ${isFollowing ? "fa-check" : "fa-plus"} fa-lg" style="color: rgb(0, 0, 0);"></i> ${isFollowing ? "Following" : "Follow"}`;
 
       if (userFollowCount) {
         userFollowCount.textContent = `${followerCount} follower${followerCount === 1 ? "" : "s"}`;
@@ -3272,7 +3272,7 @@ function renderCommentNode(comment, depth = 0) {
         <div class="comment-user-row">
           <div class="comment-avatar profile-avatar-trigger" data-user-id="${escapeHtml(authorId || getCurrentUserId())}">${avatarMarkup}</div>
           <div class="comment-user-meta profile-avatar-trigger" data-user-id="${escapeHtml(authorId || getCurrentUserId())}">
-            <strong>${escapeHtml(author)}</strong>
+            <strong>${renderUserNameWithVerification(author, authorId)}</strong>
             <span class="comment-date">${escapeHtml(formattedDate)}</span>
           </div>
         </div>
@@ -4353,7 +4353,7 @@ async function refreshFollowStatus(targetUserId = getCurrentUserId()) {
 
     followUserBtn.dataset.following = String(isFollowing);
     followUserBtn.setAttribute("aria-pressed", String(isFollowing));
-    followUserBtn.innerHTML = `<i class="fa-solid ${isFollowing ? "fa-check" : "fa-plus"} fa-lg" style="color: rgb(0, 0, 0);"></i> ${isFollowing ? "Following" : "Follow"}${followerCount > 0 ? ` • ${followerCount}` : ""}`;
+    followUserBtn.innerHTML = `<i class="fa-solid ${isFollowing ? "fa-check" : "fa-plus"} fa-lg" style="color: rgb(0, 0, 0);"></i> ${isFollowing ? "Following" : "Follow"}`;
 
     if (userFollowCount) {
       userFollowCount.textContent = `${followerCount} follower${followerCount === 1 ? "" : "s"}`;
@@ -4841,8 +4841,10 @@ if (submitCommentBtn && commentInput && commentsSheet) {
           likeCount: Number(currentState.likeCount || 0),
           replyCount: currentReplyCount + 1
         });
-        clearCommentReplyMode();
       }
+
+      commentInput.value = "";
+      clearCommentReplyMode();
 
       const commentCountBadge = document.querySelector(`.comment-btn[data-post-id="${CSS.escape(String(postId))}"] .comment-count`);
       if (commentCountBadge) {
@@ -4859,7 +4861,6 @@ if (submitCommentBtn && commentInput && commentsSheet) {
         }
       }
 
-      commentInput.value = "";
       if (feedPosts) {
         await loadPosts();
       }
