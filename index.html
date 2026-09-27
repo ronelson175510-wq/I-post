@@ -14,7 +14,8 @@
     <link rel="stylesheet" href="./brand-font.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script>
-      window.BOOKME_API_BASE_URL = "https://www.chat-mini.com";
+      const isLocalDevHost = ["localhost", "127.0.0.1"].includes(window.location.hostname) || window.location.hostname.endsWith(".local");
+      window.BOOKME_API_BASE_URL = window.BOOKME_API_BASE_URL || (isLocalDevHost ? window.location.origin : "https://chat-mini.com");
     </script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -348,8 +349,8 @@
 
 
 .auth-btn {
-  margin-top: -60px;
-  width: 88%;
+  margin-top: -80px;
+  width: 50%;
   text-align: center;
       display: flex;
     align-items: center;
@@ -478,7 +479,7 @@
     border-radius: 25px;
     transition: all 0.25s ease;
     background: rgba(255, 255, 255, 0.04);
-    border: 1.7px solid rgba(6, 6, 6, 0.06);
+    border: none ;
     cursor: pointer;
     font-family: inherit;
     width: calc(60% - 32px);
@@ -564,10 +565,9 @@
 }
 
 #themeToggleBtn {
-  display: flex;
-  align-items: center;
-  
-  gap: 26px;
+  white-space: nowrap;
+  flex-direction: row;
+  gap: 6px;
   padding: 14px 20px 14px 24px;
   margin: 10px 16px;
   width: calc(60% - 32px);
@@ -581,6 +581,9 @@
   border: 1.7px solid rgba(6, 6, 6, 0.06);
   cursor: pointer;
   text-align: left;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .menu-legal {
@@ -590,7 +593,7 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
-    width: 100%;
+    width: 65%;
     font-size: 12px;
     font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     line-height: 1.5;
@@ -1871,9 +1874,8 @@ background: rgba(255, 255, 255, 0.08);
 
 .feed-caption {
   margin: -10px 9px 10px;
-  
   margin-top: 5px;
-width: 96%;
+  width: 96%;
   font-weight: 500;
   color: #080808;
   line-height: 1.35;
@@ -1894,6 +1896,31 @@ width: 96%;
   text-align: left;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.feed-post-card .video-shell + .feed-caption {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 58px;
+  z-index: 4;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(4px);
+  width: auto;
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+.feed-post-card .video-shell + .feed-caption .feed-caption-text {
+  color: #ffffff;
+  line-height: 1.45;
+}
+
+.feed-post-card .video-shell + .feed-caption .feed-read-more-btn {
+  color: #ffffff;
 }
 
 .feed-read-more-btn {

@@ -11,6 +11,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
-        value: https://www.chat-mini.com
+        value: https://chat-mini.com
       - key: PUBLIC_BASE_URL
-        value: https://www.chat-mini.com
+        value: https://chat-mini.com

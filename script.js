@@ -3158,7 +3158,7 @@ if (postSubmitBtn && postTextArea && writePostSheet) {
       postSubmitBtn.disabled = true;
       postSubmitBtn.textContent = "Posting...";
 
-      const response = await fetch("/api/text-post", {
+      const response = await apiFetch("/api/text-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3593,7 +3593,7 @@ async function renderUserSheetMedia(userId, filterType = "all") {
   });
 
   try {
-    const response = await fetch("/api/posts");
+    const response = await apiFetch("/api/posts");
     if (!response.ok) {
       throw new Error("Unable to load user posts");
     }
@@ -3680,11 +3680,108 @@ function renderUserSearchCard(user = {}) {
   return `
     <button type="button" class="search-post-card search-user-result profile-avatar-trigger" data-user-id="${escapeHtml(String(userId))}" aria-label="Open ${escapeHtml(displayName)} profile">
       <div class="search-caption-row">
+        <i class="search-user-icon fa-solid fa-magnifying-glass fa-flip-horizontal fa-lg" style="color: rgb(253, 236, 42);"></i>
         <span class="search-user-avatar">${avatarUrl ? `<img src="${getCacheBustedImageUrl(avatarUrl)}" alt="${escapeHtml(displayName)} profile" />` : getDefaultUserAvatarMarkup({ size: 24, color: "rgb(108, 108, 105)" })}</span>
-        <span class="search-caption">${renderUserNameWithVerification(displayName, userId)}</span>
+        <span class="search-caption">
+          <span class="search-user-name-text">${renderUserNameWithVerification(displayName, userId)}</span>
+        </span>
       </div>
     </button>
   `;
+}
+
+async function persistRecentSearch(query = "", userMatch = null) {
+  const userId = (auth && auth.currentUser && auth.currentUser.uid) || (getCurrentUserId && getCurrentUserId()) || "";
+  const trimmed = String(query || "").trim();
+
+  if (!trimmed || !userId || userId === "guest") {
+    return;
+  }
+
+  const matchedUserId = userMatch && (userMatch.user_id || userMatch.id) ? String(userMatch.user_id || userMatch.id) : "";
+  const matchedUserName = userMatch
+    ? (userMatch.name || [userMatch.first_name, userMatch.last_name].filter(Boolean).join(" ") || userMatch.email || "User")
+    : "";
+  const matchedUserAvatar = userMatch
+    ? (userMatch.profile_pic || getProfilePicForUser(matchedUserId) || "")
+    : "";
+
+  try {
+    await apiFetch("/api/recent-searches", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: userId,
+        query: trimmed,
+        searched_user_id: matchedUserId || null,
+        searched_user_name: matchedUserName || null,
+        searched_user_avatar: matchedUserAvatar || null
+      })
+    });
+  } catch (error) {
+    console.warn("Recent search save failed:", error);
+  }
+}
+
+async function loadRecentSearchSuggestions() {
+  const container = document.getElementById("recentSearchSuggestions");
+  if (!container) return;
+
+  const userId = (auth && auth.currentUser && auth.currentUser.uid) || (getCurrentUserId && getCurrentUserId()) || "";
+  if (!userId || userId === "guest") {
+    container.innerHTML = "";
+    return;
+  }
+
+  try {
+    const response = await apiFetch(`/api/recent-searches?user_id=${encodeURIComponent(userId)}`);
+    if (!response.ok) {
+      throw new Error("Failed to load recent searches");
+    }
+
+    const data = await response.json();
+    const recentSearches = Array.isArray(data?.recentSearches) ? data.recentSearches : [];
+
+    if (!recentSearches.length) {
+      container.innerHTML = "";
+      return;
+    }
+
+    const items = recentSearches.slice(0, 10).map((search) => {
+      const item = typeof search === "string" ? { query: search, searched_user_name: search } : search;
+      const displayName = String(item.searched_user_name || item.name || item.query || "Recent search").trim();
+      const avatarUrl = item.searched_user_avatar || item.profile_pic || item.avatar || getProfilePicForUser(item.searched_user_id || item.user_id || "");
+      const queryValue = String(item.query || displayName).trim();
+
+      return `
+        <button type="button" class="recent-search-pill" data-search="${escapeHtml(queryValue)}">
+          <i class="fa-solid fa-magnifying-glass fa-flip-horizontal fa-lg" style="color: rgb(255, 212, 59);"></i>
+          <span class="recent-search-avatar">
+            ${avatarUrl ? `<img src="${getCacheBustedImageUrl(avatarUrl)}" alt="${escapeHtml(displayName)}" />` : getDefaultUserAvatarMarkup({ size: 20, color: "rgb(108, 108, 105)" })}
+          </span>
+          <span class="recent-search-name">${escapeHtml(displayName)}</span>
+          <span class="recent-search-menu" aria-label="More options">
+            <i class="fa-solid fa-ellipsis-vertical" style="color: rgb(4, 4, 4);"></i>
+          </span>
+        </button>
+      `;
+    }).join("");
+
+    container.innerHTML = items;
+    container.querySelectorAll(".recent-search-pill").forEach((button) => {
+      button.addEventListener("click", () => {
+        const value = button.dataset.search || "";
+        const searchInput = document.getElementById("searchInput");
+        if (searchInput) {
+          searchInput.value = value;
+        }
+        runSearch(value);
+      });
+    });
+  } catch (error) {
+    console.warn("Recent search suggestions unavailable:", error);
+    container.innerHTML = "";
+  }
 }
 
 async function runSearch(query = "") {
@@ -3694,13 +3791,14 @@ async function runSearch(query = "") {
 
   if (!trimmedQuery) {
     try {
-      const response = await fetch("/api/search?q=");
+      const response = await apiFetch("/api/search?q=");
       if (!response.ok) {
         throw new Error("Failed to load default search results");
       }
       const data = await response.json();
       const posts = Array.isArray(data?.posts) ? data.posts : [];
       renderSearchSheet(posts);
+      await loadRecentSearchSuggestions();
       return;
     } catch (error) {
       console.warn("Default search render failed:", error);
@@ -3710,7 +3808,7 @@ async function runSearch(query = "") {
   }
 
   try {
-    const response = await fetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}`);
+    const response = await apiFetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}`);
     if (!response.ok) {
       throw new Error("Search request failed");
     }
@@ -3725,6 +3823,8 @@ async function runSearch(query = "") {
 
     if (!combinedCards) {
       searchResults.innerHTML = '<div class="search-empty-state">No people found.</div>';
+      await persistRecentSearch(trimmedQuery, null);
+      await loadRecentSearchSuggestions();
       return;
     }
 
@@ -3736,6 +3836,9 @@ async function runSearch(query = "") {
       video.loop = true;
       video.playsInline = true;
     });
+
+    await persistRecentSearch(trimmedQuery, users[0] || null);
+    await loadRecentSearchSuggestions();
   } catch (error) {
     console.error("Search failed:", error);
     searchResults.innerHTML = '<div class="search-empty-state">Search is temporarily unavailable.</div>';
@@ -3747,6 +3850,12 @@ if (searchResults) {
   const searchInput = document.getElementById("searchInput");
   const searchPageButton = document.getElementById("searchIconBtn");
   const searchBackButton = document.getElementById("searchBackBtn");
+
+  if (auth && typeof auth.onAuthStateChanged === "function") {
+    auth.onAuthStateChanged(() => {
+      loadRecentSearchSuggestions();
+    });
+  }
 
   const triggerSearchFromPage = (value = "") => {
     const trimmed = String(value || "").trim();
@@ -3797,7 +3906,7 @@ async function loadReels() {
   if (!reelsContainer) return;
 
   try {
-    const response = await fetch("/api/posts");
+    const response = await apiFetch("/api/posts");
     if (!response.ok) {
       throw new Error("Failed to load reels");
     }
@@ -4632,8 +4741,8 @@ function renderFeedPost(post) {
           ${postDateLabel ? `<span class="feed-post-date">${postDateLabel}</span>` : ""}
         </div>
       </div>
-      ${renderCaptionMarkup(caption)}
       ${mediaWrap}
+      ${renderCaptionMarkup(caption)}
 
       <div class="feed-actions actions">
 
@@ -4873,7 +4982,7 @@ if (submitCommentBtn && commentInput && commentsSheet) {
       submitCommentBtn.disabled = true;
       submitCommentBtn.textContent = activeReplyCommentId ? "Replying..." : "Posting...";
 
-      const response = await fetch("/api/comments", {
+      const response = await apiFetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",

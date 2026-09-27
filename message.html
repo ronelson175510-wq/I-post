@@ -12,7 +12,8 @@
     <title>Message Page</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script>
-      window.BOOKME_API_BASE_URL = "https://www.chat-mini.com";
+      const isLocalDevHost = ["localhost", "127.0.0.1"].includes(window.location.hostname) || window.location.hostname.endsWith(".local");
+      window.BOOKME_API_BASE_URL = window.BOOKME_API_BASE_URL || (isLocalDevHost ? window.location.origin : "https://chat-mini.com");
     </script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>

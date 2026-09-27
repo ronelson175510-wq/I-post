@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
@@ -5,6 +7,7 @@ const path = require("path");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const { db, isDbEnabled } = require("./db");
+const { sanitizeRecentSearchQuery } = require("./recentSearches");
 
 const app = express();
 cloudinary.config({
@@ -160,12 +163,19 @@ async function uploadMediaFile(file, folderName = "uploads") {
     return null;
   }
 
-  const localPublicUrl = `${getPublicBaseUrl()}/uploads/${file.filename}`;
+  const normalizedFolder = String(folderName || "")
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "")
+    .replace(/^uploads\/?/i, "")
+    .replace(/\/+$/, "")
+    .trim();
+  const relativeUploadPath = normalizedFolder ? `/${normalizedFolder}/${file.filename}` : `/${file.filename}`;
+  const localPublicUrl = `${getPublicBaseUrl()}/uploads${relativeUploadPath}`;
 
   if (isCloudinaryConfigured()) {
     try {
       const result = await cloudinary.uploader.upload(file.path, {
-        folder: folderName.replace(/\\/g, "/"),
+        folder: normalizedFolder || "uploads",
         resource_type: "auto"
       });
 
@@ -181,7 +191,8 @@ async function uploadMediaFile(file, folderName = "uploads") {
 
   try {
     if (fs.existsSync(file.path)) {
-      const destinationDir = path.join(uploadsDir, folderName.replace(/\//g, path.sep));
+      const destinationParts = normalizedFolder ? normalizedFolder.split("/").filter(Boolean) : [];
+      const destinationDir = path.join(uploadsDir, ...destinationParts);
       fs.mkdirSync(destinationDir, { recursive: true });
       const destinationPath = path.join(destinationDir, file.filename);
       fs.copyFileSync(file.path, destinationPath);
@@ -379,7 +390,31 @@ function initializeDatabaseSchema() {
                             FOREIGN KEY (following_user_id) REFERENCES users(id) ON DELETE CASCADE
                           )
                         `, () => {
-                          console.log("Database schema initialized.");
+                          runSchemaQuery(`
+                            CREATE TABLE IF NOT EXISTS recent_searches (
+                              id INT PRIMARY KEY AUTO_INCREMENT,
+                              user_id VARCHAR(255) NOT NULL,
+                              query VARCHAR(255) NOT NULL,
+                              searched_user_id VARCHAR(255) NULL,
+                              searched_user_name VARCHAR(255) NULL,
+                              searched_user_avatar VARCHAR(500) NULL,
+                              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                              INDEX idx_recent_search_user_created (user_id, created_at DESC),
+                              INDEX idx_recent_search_query (query),
+                              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                            )
+                          `, () => {
+                            ensureColumn("recent_searches", "searched_user_id", "VARCHAR(255) NULL", (err8) => {
+                              if (err8) return;
+                              ensureColumn("recent_searches", "searched_user_name", "VARCHAR(255) NULL", (err9) => {
+                                if (err9) return;
+                                ensureColumn("recent_searches", "searched_user_avatar", "VARCHAR(500) NULL", (err10) => {
+                                  if (err10) return;
+                                  console.log("Database schema initialized.");
+                                });
+                              });
+                            });
+                          });
                         });
                       });
                     });
@@ -452,15 +487,24 @@ function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic
 function getLocalUploadPathFromMediaUrl(mediaUrl) {
   if (!mediaUrl) return null;
 
+  const resolveFromPathname = (pathname) => {
+    if (!pathname || !pathname.startsWith("/uploads/")) return null;
+
+    const relativePath = pathname.slice("/uploads".length).replace(/^\/+/, "");
+    if (!relativePath) return null;
+
+    return path.join(uploadsDir, ...relativePath.split("/").filter(Boolean));
+  };
+
   if (mediaUrl.startsWith("/uploads/")) {
-    return path.join(uploadsDir, path.basename(mediaUrl));
+    return resolveFromPathname(mediaUrl);
   }
 
   try {
     const parsed = new URL(mediaUrl);
     const expectedOrigin = getPublicBaseUrl();
-    if (parsed.origin === expectedOrigin && parsed.pathname.startsWith("/uploads/")) {
-      return path.join(uploadsDir, path.basename(parsed.pathname));
+    if (parsed.origin === expectedOrigin) {
+      return resolveFromPathname(parsed.pathname);
     }
   } catch (error) {
     return null;
@@ -575,17 +619,6 @@ const upload = multer({
 app.use("/uploads", express.static(uploadsDir));
 app.use(express.static(projectRoot));
 
-app.use((req, res, next) => {
-  if (req.path.startsWith("/api/")) {
-    return res.status(404).json({
-      error: "API route not found",
-      path: req.originalUrl
-    });
-  }
-
-  next();
-});
-
 app.get("/", (req, res) => {
   res.sendFile(path.join(projectRoot, "index.html"));
 });
@@ -694,6 +727,103 @@ app.post("/api/profile-picture", upload.single("profilePic"), async (req, res) =
     console.error("PROFILE PIC UPLOAD ERROR:", error);
     return res.status(500).json({ error: error.message || "Failed to upload profile picture" });
   }
+});
+
+app.post("/api/recent-searches", (req, res) => {
+  if (!isDbEnabled()) {
+    return res.json({ recentSearches: [] });
+  }
+
+  const userId = String(req.body?.user_id || req.query?.user_id || "").trim();
+  const rawQuery = String(req.body?.query || req.query?.query || "").trim();
+  const query = sanitizeRecentSearchQuery(rawQuery);
+  const searchedUserId = String(req.body?.searched_user_id || req.query?.searched_user_id || "").trim() || null;
+  const searchedUserName = String(req.body?.searched_user_name || req.query?.searched_user_name || "").trim() || null;
+  const searchedUserAvatar = String(req.body?.searched_user_avatar || req.query?.searched_user_avatar || "").trim() || null;
+
+  if (!userId || !query) {
+    return res.status(400).json({ error: "Missing user id or search query" });
+  }
+
+  db.query(
+    `
+      INSERT INTO recent_searches (user_id, query, searched_user_id, searched_user_name, searched_user_avatar)
+      VALUES (?, ?, ?, ?, ?)
+    `,
+    [userId, query, searchedUserId, searchedUserName, searchedUserAvatar],
+    (err) => {
+      if (err) {
+        console.error("RECENT SEARCH INSERT ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      db.query(
+        `
+          SELECT id, query, searched_user_id, searched_user_name, searched_user_avatar
+          FROM recent_searches
+          WHERE user_id = ?
+          ORDER BY created_at DESC, id DESC
+          LIMIT 10
+        `,
+        [userId],
+        (listErr, rows) => {
+          if (listErr) {
+            console.error("RECENT SEARCH LIST ERROR:", listErr);
+            return res.status(500).json({ error: listErr.message });
+          }
+
+          return res.json({
+            recentSearches: (rows || []).map((row) => ({
+              id: row.id,
+              query: row.query,
+              searched_user_id: row.searched_user_id,
+              searched_user_name: row.searched_user_name,
+              searched_user_avatar: row.searched_user_avatar
+            }))
+          });
+        }
+      );
+    }
+  );
+});
+
+app.get("/api/recent-searches", (req, res) => {
+  if (!isDbEnabled()) {
+    return res.json({ recentSearches: [] });
+  }
+
+  const userId = String(req.query?.user_id || "").trim();
+
+  if (!userId) {
+    return res.json({ recentSearches: [] });
+  }
+
+  db.query(
+    `
+      SELECT id, query, searched_user_id, searched_user_name, searched_user_avatar
+      FROM recent_searches
+      WHERE user_id = ?
+      ORDER BY created_at DESC, id DESC
+      LIMIT 10
+    `,
+    [userId],
+    (err, rows) => {
+      if (err) {
+        console.error("RECENT SEARCH FETCH ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      return res.json({
+        recentSearches: (rows || []).map((row) => ({
+          id: row.id,
+          query: row.query,
+          searched_user_id: row.searched_user_id,
+          searched_user_name: row.searched_user_name,
+          searched_user_avatar: row.searched_user_avatar
+        }))
+      });
+    }
+  );
 });
 
 app.get("/api/search", (req, res) => {
