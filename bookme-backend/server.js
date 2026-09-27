@@ -575,6 +575,17 @@ const upload = multer({
 app.use("/uploads", express.static(uploadsDir));
 app.use(express.static(projectRoot));
 
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({
+      error: "API route not found",
+      path: req.originalUrl
+    });
+  }
+
+  next();
+});
+
 app.get("/", (req, res) => {
   res.sendFile(path.join(projectRoot, "index.html"));
 });

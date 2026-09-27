@@ -29,7 +29,7 @@ if (isLocalDevelopmentHost()) {
   return;
 }
 
-const CACHE_NAME = "bookme-app-shell-v5";
+const CACHE_NAME = "bookme-app-shell-v6";
 const APP_SHELL = [
   "./",
   "./index.html",

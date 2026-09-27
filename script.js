@@ -6,6 +6,63 @@ const firebaseConfig = {
   appId: "1:376744576799:web:f913314bbe68364f8b522a"
 };
 
+const BOOKME_API_BASE_URL = (() => {
+  const configured = (
+    window.BOOKME_API_BASE_URL ||
+    window.BOOKME_BACKEND_URL ||
+    window.__BOOKME_API_BASE__ ||
+    window.location.origin
+  );
+  return String(configured || window.location.origin).replace(/\/$/, "");
+})();
+
+function getApiUrl(path = "") {
+  const safePath = String(path || "").trim();
+  if (!safePath) {
+    return BOOKME_API_BASE_URL;
+  }
+
+  if (/^https?:\/\//i.test(safePath)) {
+    return safePath.replace(/\/$/, "");
+  }
+
+  if (safePath.startsWith("/api/")) {
+    return `${BOOKME_API_BASE_URL}${safePath}`;
+  }
+
+  return `${BOOKME_API_BASE_URL}/${safePath.replace(/^\//, "")}`;
+}
+
+const originalFetch = window.fetch.bind(window);
+function apiFetch(input, init) {
+  if (typeof input === "string") {
+    return originalFetch(getApiUrl(input), init);
+  }
+
+  if (input instanceof Request && typeof input.url === "string") {
+    const requestUrl = input.url;
+    if (requestUrl.startsWith(`${window.location.origin}/api/`) || requestUrl.includes("/api/")) {
+      const url = new URL(requestUrl);
+      const redirectedRequest = new Request(getApiUrl(`${url.pathname}${url.search}`), {
+        method: input.method,
+        headers: input.headers,
+        body: input.body,
+        credentials: input.credentials,
+        mode: input.mode,
+        cache: input.cache,
+        redirect: input.redirect,
+        referrer: input.referrer,
+        integrity: input.integrity
+      });
+      return originalFetch(redirectedRequest, init);
+    }
+  }
+
+  return originalFetch(input, init);
+}
+
+window.fetch = apiFetch;
+
 if (window.firebase && firebase.apps && firebase.apps.length === 0) {
   firebase.initializeApp(firebaseConfig);
 }
@@ -552,7 +609,7 @@ function saveCurrentUserProfileData(data, userId = getCurrentUserId()) {
     ...(merged.verified !== undefined ? { verified: Boolean(merged.verified) } : {})
   };
 
-  fetch("/api/profile", {
+  apiFetch("/api/profile", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(profilePayload)
@@ -598,7 +655,7 @@ async function ensureUserProfileRecordOnServer(user = auth?.currentUser) {
   };
 
   try {
-    const response = await fetch("/api/profile", {
+    const response = await apiFetch("/api/profile", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -2262,7 +2319,7 @@ if (profilePicBtn && profilePicInput) {
     formData.append("user_id", userId);
 
     try {
-      const response = await fetch("/api/profile-picture", {
+      const response = await apiFetch("/api/profile-picture", {
         method: "POST",
         body: formData
       });
@@ -3951,7 +4008,7 @@ async function submitUploadedFiles() {
       submitFilesBtn.innerHTML = '<i class="fa-solid fa-circle-arrow-right fa-lg" style="color: rgb(255, 255, 255);"></i>';
     }
 
-    const response = await fetch("/api/posts", {
+    const response = await apiFetch("/api/posts", {
       method: "POST",
       body: formData
     });
