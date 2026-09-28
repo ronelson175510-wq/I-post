@@ -826,6 +826,57 @@ app.get("/api/recent-searches", (req, res) => {
   );
 });
 
+app.delete("/api/recent-searches/:id", (req, res) => {
+  if (!isDbEnabled()) {
+    return res.json({ ok: true, deleted: 0 });
+  }
+
+  const recentSearchId = Number(req.params?.id || "");
+  const userId = String(req.query?.user_id || req.body?.user_id || "").trim();
+
+  if (!Number.isFinite(recentSearchId) || !userId) {
+    return res.status(400).json({ error: "Missing recent search id or user id" });
+  }
+
+  db.query(
+    `DELETE FROM recent_searches WHERE id = ? AND user_id = ?`,
+    [recentSearchId, userId],
+    (err, result) => {
+      if (err) {
+        console.error("RECENT SEARCH DELETE ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      return res.json({ ok: true, deleted: result?.affectedRows || 0 });
+    }
+  );
+});
+
+app.delete("/api/recent-searches", (req, res) => {
+  if (!isDbEnabled()) {
+    return res.json({ ok: true, deleted: 0 });
+  }
+
+  const userId = String(req.query?.user_id || req.body?.user_id || "").trim();
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  db.query(
+    `DELETE FROM recent_searches WHERE user_id = ?`,
+    [userId],
+    (err, result) => {
+      if (err) {
+        console.error("RECENT SEARCH CLEAR ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      return res.json({ ok: true, deleted: result?.affectedRows || 0 });
+    }
+  );
+});
+
 app.get("/api/search", (req, res) => {
   const searchTerm = String(req.query?.q || "").trim();
 

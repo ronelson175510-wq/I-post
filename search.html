@@ -355,6 +355,78 @@ padding: 0;
   padding: 4px 2px;
   cursor: pointer;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recent-search-action-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background: #fff;
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.18);
+  padding: 18px 16px 22px;
+  transform: translateY(110%);
+  transition: transform 0.25s ease;
+}
+
+.recent-search-action-sheet.show {
+  transform: translateY(0);
+}
+
+.recent-search-action-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 12px;
+}
+
+.recent-search-action-sheet button {
+  width: 100%;
+  border: none;
+  background: #111;
+  color: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.recent-search-action-sheet .cancel-search-action {
+  margin-top: 10px;
+  background: #f3f3f3;
+  color: #111;
+}
+
+.recent-search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 8px;
+}
+
+.recent-search-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.clear-recent-searches-btn {
+  border: none;
+  background: transparent;
+  color: #111;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 0;
 }
 
 .search-post-card .search-user-avatar i {
@@ -392,8 +464,20 @@ padding: 0;
         <i class="fa-solid fa-magnifying-glass"></i>
       </button>
     </div>
-    <h3 style="font-size: 16px;">Suggested searches</h3>
+    <div class="recent-search-header">
+      <h3>Suggested searches</h3>
+      <button id="clearRecentSearchesBtn" class="clear-recent-searches-btn" type="button">Clear all</button>
+    </div>
     <div id="recentSearchSuggestions" class="recent-search-suggestions"></div>
+
+    <div id="recentSearchActionSheet" class="recent-search-action-sheet" aria-hidden="true">
+      <div class="recent-search-action-sheet-header">
+        <span>Suggested search</span>
+        <button class="recent-search-action-close cancel-search-action" type="button">Close</button>
+      </div>
+      <button id="deleteRecentSearchBtn" type="button">Delete suggested search</button>
+      <button class="recent-search-action-close cancel-search-action" type="button">Cancel</button>
+    </div>
     
     <div id="searchResults" class="search-video-grid"></div>
 </div>

@@ -67,6 +67,99 @@ if (window.firebase && firebase.apps && firebase.apps.length === 0) {
   firebase.initializeApp(firebaseConfig);
 }
 
+const uploadToastStyleId = "bookme-upload-toast-style";
+let uploadToastTimer = null;
+
+function ensureUploadToast() {
+  let toast = document.getElementById("bookme-upload-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "bookme-upload-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    document.body.appendChild(toast);
+  }
+
+  let styleTag = document.getElementById(uploadToastStyleId);
+  if (!styleTag) {
+    styleTag = document.createElement("style");
+    styleTag.id = uploadToastStyleId;
+    styleTag.textContent = `
+      #bookme-upload-toast {
+        position: fixed;
+        left: 50%;
+        bottom: 26px;
+        transform: translate(-50%, 18px);
+        background: rgba(17, 17, 17, 0.96);
+        color: #ffffff;
+        border: none;
+        border-radius: 25px;
+        padding: 12px 18px;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        text-align: center;
+        line-height: 1.35;
+        max-width: min(80vw, 320px);
+        min-width: 150px;
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+        z-index: 99999;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      #bookme-upload-toast .toast-checkmark {
+        width: 18px;
+        height: 18px;
+        display: inline-block;
+        flex-shrink: 0;
+      }
+
+      #bookme-upload-toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+    `;
+    document.head.appendChild(styleTag);
+  }
+
+  return toast;
+}
+
+function showUploadToast(message = "Uploaded") {
+  const toast = ensureUploadToast();
+  toast.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="toast-checkmark" aria-hidden="true">
+      <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/>
+      <path d="m16 9-5.5 5.5L8 12"/>
+    </svg>
+    <span>${String(message || "").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>
+  `;
+  toast.classList.add("show");
+
+  if (uploadToastTimer) {
+    clearTimeout(uploadToastTimer);
+  }
+
+  uploadToastTimer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2200);
+}
+
+const originalWindowAlert = window.alert.bind(window);
+window.alert = function(message) {
+  try {
+    showUploadToast(String(message || ""));
+  } catch (error) {
+    originalWindowAlert(message);
+  }
+};
+
 if ("serviceWorker" in navigator) {
   const isLocalDevelopmentHost = () => {
     const host = window.location.hostname;
@@ -3030,6 +3123,21 @@ if (searchInputs.length) {
       syncDesktopSideMenuState();
     });
 
+    var dropdown = document.getElementsByClassName("dropdown-btn");
+var i;
+
+for (i = 0; i < dropdown.length; i++) {
+  dropdown[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var dropdownContent = this.nextElementSibling;
+    if (dropdownContent.style.display === "block") {
+      dropdownContent.style.display = "none";
+    } else {
+      dropdownContent.style.display = "block";
+    }
+  });
+}
+
 // read more js
 const readMoreBtn = document.getElementById("readMoreIpost");
 const ipostText = document.getElementById("ipostText");
@@ -3251,6 +3359,7 @@ if (postSubmitBtn && postTextArea && writePostSheet) {
 
       postTextArea.value = "";
       writePostSheet.classList.remove("show");
+      showUploadToast("Post uploaded");
       await loadPosts();
     } catch (error) {
       console.error("Text post error:", error);
@@ -3783,6 +3892,7 @@ async function persistRecentSearch(query = "", userMatch = null) {
     : "";
 
   try {
+    setRecentSearchesCleared(userId, false);
     await apiFetch("/api/recent-searches", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -3799,6 +3909,122 @@ async function persistRecentSearch(query = "", userMatch = null) {
   }
 }
 
+let activeRecentSearchId = null;
+
+function getRecentSearchCacheKey(userId = "") {
+  return `bookme_recent_searches_${String(userId || "guest")}`;
+}
+
+function setRecentSearchCache(userId = "", recentSearches = []) {
+  try {
+    localStorage.setItem(getRecentSearchCacheKey(userId), JSON.stringify(Array.isArray(recentSearches) ? recentSearches : []));
+  } catch (error) {
+    console.warn("Failed to save recent search cache:", error);
+  }
+}
+
+function clearRecentSearchCache(userId = "") {
+  try {
+    localStorage.removeItem(getRecentSearchCacheKey(userId));
+  } catch (error) {
+    console.warn("Failed to clear recent search cache:", error);
+  }
+}
+
+function getRecentSearchesClearedKey(userId = "") {
+  return `bookme_recent_searches_cleared_${String(userId || "guest")}`;
+}
+
+function setRecentSearchesCleared(userId = "", cleared = true) {
+  try {
+    if (cleared) {
+      localStorage.setItem(getRecentSearchesClearedKey(userId), "true");
+      return;
+    }
+    localStorage.removeItem(getRecentSearchesClearedKey(userId));
+  } catch (error) {
+    console.warn("Failed to update recent search clear state:", error);
+  }
+}
+
+async function clearAllRecentSearchSuggestions() {
+  const userId = (auth && auth.currentUser && auth.currentUser.uid) || (getCurrentUserId && getCurrentUserId()) || "";
+  if (!userId || userId === "guest") return;
+
+  const container = document.getElementById("recentSearchSuggestions");
+  if (container) {
+    container.innerHTML = "";
+  }
+  setRecentSearchesCleared(userId, true);
+  clearRecentSearchCache(userId);
+
+  try {
+    const response = await apiFetch(`/api/recent-searches?user_id=${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" }
+    });
+
+    if (!response.ok) {
+      throw new Error("Clear failed");
+    }
+
+    closeRecentSearchActionSheet();
+    await loadRecentSearchSuggestions();
+  } catch (error) {
+    console.warn("Unable to clear recent searches:", error);
+    if (container) {
+      container.innerHTML = "";
+    }
+  }
+}
+
+function openRecentSearchActionSheet(searchId) {
+  const sheet = document.getElementById("recentSearchActionSheet");
+  if (!sheet) return;
+
+  activeRecentSearchId = searchId;
+  sheet.classList.add("show");
+  sheet.setAttribute("aria-hidden", "false");
+}
+
+function closeRecentSearchActionSheet() {
+  const sheet = document.getElementById("recentSearchActionSheet");
+  if (!sheet) return;
+
+  sheet.classList.remove("show");
+  sheet.setAttribute("aria-hidden", "true");
+  activeRecentSearchId = null;
+}
+
+async function deleteRecentSearchSuggestion(searchId) {
+  if (!searchId) return;
+
+  const userId = (auth && auth.currentUser && auth.currentUser.uid) || (getCurrentUserId && getCurrentUserId()) || "";
+  if (!userId || userId === "guest") {
+    closeRecentSearchActionSheet();
+    return;
+  }
+
+  try {
+    const response = await apiFetch(`/api/recent-searches/${encodeURIComponent(searchId)}?user_id=${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" }
+    });
+
+    if (!response.ok) {
+      throw new Error("Delete failed");
+    }
+
+    closeRecentSearchActionSheet();
+    await loadRecentSearchSuggestions();
+  } catch (error) {
+    console.warn("Unable to delete recent search suggestion:", error);
+    closeRecentSearchActionSheet();
+  }
+}
+
 async function loadRecentSearchSuggestions() {
   const container = document.getElementById("recentSearchSuggestions");
   if (!container) return;
@@ -3806,20 +4032,93 @@ async function loadRecentSearchSuggestions() {
   const userId = (auth && auth.currentUser && auth.currentUser.uid) || (getCurrentUserId && getCurrentUserId()) || "";
   if (!userId || userId === "guest") {
     container.innerHTML = "";
+    clearRecentSearchCache(userId);
     return;
   }
 
+  if (localStorage.getItem(getRecentSearchesClearedKey(userId)) === "true") {
+    container.innerHTML = "";
+    closeRecentSearchActionSheet();
+    return;
+  }
+
+  const cachedRecentSearches = (() => {
+    try {
+      const raw = localStorage.getItem(getRecentSearchCacheKey(userId));
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  })();
+
+  if (cachedRecentSearches.length) {
+    const cacheMarkup = cachedRecentSearches.slice(0, 10).map((search) => {
+      const item = typeof search === "string" ? { query: search, searched_user_name: search } : search;
+      const displayName = String(item.searched_user_name || item.name || item.query || "Recent search").trim();
+      const avatarUrl = item.searched_user_avatar || item.profile_pic || item.avatar || getProfilePicForUser(item.searched_user_id || item.user_id || "");
+      const queryValue = String(item.query || displayName).trim();
+      const searchId = item.id || "";
+      const matchedUserId = String(item.searched_user_id || item.user_id || "").trim();
+
+      return `
+        <div class="recent-search-pill" data-search="${escapeHtml(queryValue)}" data-search-id="${escapeHtml(String(searchId))}">
+          <button type="button" class="recent-search-pill-inner" data-search="${escapeHtml(queryValue)}" data-user-id="${escapeHtml(matchedUserId)}" style="display: flex; align-items: center; gap: 10px; flex: 1; border: none; background: transparent; padding: 0; cursor: pointer; text-align: left;">
+            <i class="fa-solid fa-magnifying-glass fa-flip-horizontal fa-lg" style="color: rgb(255, 212, 59);"></i>
+            <span class="recent-search-avatar">
+              ${avatarUrl ? `<img src="${getCacheBustedImageUrl(avatarUrl)}" alt="${escapeHtml(displayName)}" />` : getDefaultUserAvatarMarkup({ size: 20, color: "rgb(108, 108, 105)" })}
+            </span>
+            <span class="recent-search-name">${escapeHtml(displayName)}</span>
+          </button>
+          <button type="button" class="recent-search-menu" data-search-id="${escapeHtml(String(searchId))}" aria-label="More options">
+            <i class="fa-solid fa-ellipsis-vertical" style="color: rgb(4, 4, 4);"></i>
+          </button>
+        </div>
+      `;
+    }).join("");
+
+    container.innerHTML = cacheMarkup;
+    container.querySelectorAll(".recent-search-pill-inner").forEach((button) => {
+      button.addEventListener("click", () => {
+        const value = button.dataset.search || "";
+        const targetUserId = String(button.dataset.userId || "").trim();
+        const searchInput = document.getElementById("searchInput");
+        if (searchInput) {
+          searchInput.value = value;
+        }
+
+        if (targetUserId) {
+          openUserProfileSheet(targetUserId);
+          return;
+        }
+
+        runSearch(value);
+      });
+    });
+    container.querySelectorAll(".recent-search-menu").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openRecentSearchActionSheet(button.dataset.searchId || "");
+      });
+    });
+  }
+
   try {
-    const response = await apiFetch(`/api/recent-searches?user_id=${encodeURIComponent(userId)}`);
+    const response = await apiFetch(`/api/recent-searches?user_id=${encodeURIComponent(userId)}`, {
+      cache: "no-store"
+    });
     if (!response.ok) {
       throw new Error("Failed to load recent searches");
     }
 
     const data = await response.json();
     const recentSearches = Array.isArray(data?.recentSearches) ? data.recentSearches : [];
+    setRecentSearchCache(userId, recentSearches);
 
     if (!recentSearches.length) {
       container.innerHTML = "";
+      closeRecentSearchActionSheet();
       return;
     }
 
@@ -3828,36 +4127,76 @@ async function loadRecentSearchSuggestions() {
       const displayName = String(item.searched_user_name || item.name || item.query || "Recent search").trim();
       const avatarUrl = item.searched_user_avatar || item.profile_pic || item.avatar || getProfilePicForUser(item.searched_user_id || item.user_id || "");
       const queryValue = String(item.query || displayName).trim();
+      const searchId = item.id || "";
+      const matchedUserId = String(item.searched_user_id || item.user_id || "").trim();
 
       return `
-        <button type="button" class="recent-search-pill" data-search="${escapeHtml(queryValue)}">
-          <i class="fa-solid fa-magnifying-glass fa-flip-horizontal fa-lg" style="color: rgb(255, 212, 59);"></i>
-          <span class="recent-search-avatar">
-            ${avatarUrl ? `<img src="${getCacheBustedImageUrl(avatarUrl)}" alt="${escapeHtml(displayName)}" />` : getDefaultUserAvatarMarkup({ size: 20, color: "rgb(108, 108, 105)" })}
-          </span>
-          <span class="recent-search-name">${escapeHtml(displayName)}</span>
-          <span class="recent-search-menu" aria-label="More options">
+        <div class="recent-search-pill" data-search="${escapeHtml(queryValue)}" data-search-id="${escapeHtml(String(searchId))}">
+          <button type="button" class="recent-search-pill-inner" data-search="${escapeHtml(queryValue)}" data-user-id="${escapeHtml(matchedUserId)}" style="display: flex; align-items: center; gap: 10px; flex: 1; border: none; background: transparent; padding: 0; cursor: pointer; text-align: left;">
+            <i class="fa-solid fa-magnifying-glass fa-flip-horizontal fa-lg" style="color: rgb(255, 212, 59);"></i>
+            <span class="recent-search-avatar">
+              ${avatarUrl ? `<img src="${getCacheBustedImageUrl(avatarUrl)}" alt="${escapeHtml(displayName)}" />` : getDefaultUserAvatarMarkup({ size: 20, color: "rgb(108, 108, 105)" })}
+            </span>
+            <span class="recent-search-name">${escapeHtml(displayName)}</span>
+          </button>
+          <button type="button" class="recent-search-menu" data-search-id="${escapeHtml(String(searchId))}" aria-label="More options">
             <i class="fa-solid fa-ellipsis-vertical" style="color: rgb(4, 4, 4);"></i>
-          </span>
-        </button>
+          </button>
+        </div>
       `;
     }).join("");
 
     container.innerHTML = items;
-    container.querySelectorAll(".recent-search-pill").forEach((button) => {
+    container.querySelectorAll(".recent-search-pill-inner").forEach((button) => {
       button.addEventListener("click", () => {
         const value = button.dataset.search || "";
+        const targetUserId = String(button.dataset.userId || "").trim();
         const searchInput = document.getElementById("searchInput");
         if (searchInput) {
           searchInput.value = value;
         }
+
+        if (targetUserId) {
+          openUserProfileSheet(targetUserId);
+          return;
+        }
+
         runSearch(value);
+      });
+    });
+
+    container.querySelectorAll(".recent-search-menu").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openRecentSearchActionSheet(button.dataset.searchId || "");
       });
     });
   } catch (error) {
     console.warn("Recent search suggestions unavailable:", error);
     container.innerHTML = "";
+    closeRecentSearchActionSheet();
   }
+}
+
+const recentSearchActionSheet = document.getElementById("recentSearchActionSheet");
+if (recentSearchActionSheet) {
+  recentSearchActionSheet.querySelectorAll(".recent-search-action-close").forEach((button) => {
+    button.addEventListener("click", () => closeRecentSearchActionSheet());
+  });
+
+  const deleteRecentSearchBtn = document.getElementById("deleteRecentSearchBtn");
+  if (deleteRecentSearchBtn) {
+    deleteRecentSearchBtn.addEventListener("click", () => {
+      deleteRecentSearchSuggestion(activeRecentSearchId);
+    });
+  }
+}
+
+const clearRecentSearchesBtn = document.getElementById("clearRecentSearchesBtn");
+if (clearRecentSearchesBtn) {
+  clearRecentSearchesBtn.addEventListener("click", () => {
+    clearAllRecentSearchSuggestions();
+  });
 }
 
 async function runSearch(query = "") {
@@ -4219,7 +4558,7 @@ async function submitUploadedFiles() {
     const uploadedPost = data.post || (Array.isArray(data.posts) ? data.posts[0] : null);
     const uploadedCount = Array.isArray(uploadedPost?.media_urls) ? uploadedPost.media_urls.length : 1;
     const label = uploadedCount > 1 ? `${uploadedCount}-slide upload` : (uploadedPost?.content || caption || "uploaded file");
-    alert(`Upload successful: ${label}`);
+    showUploadToast(label ? `Uploaded: ${label}` : "Upload successful");
 
     resetUploadForm();
     await loadPosts();

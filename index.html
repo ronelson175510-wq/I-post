@@ -433,6 +433,61 @@
    
 }
 
+.dropdown-btn {
+    width: calc(70% - 42px);
+    margin: 10px 16px 0;
+    padding: 14px 20px 14px 24px;
+    border: none;
+    background: transparent;
+    color: black;
+    text-align: left;
+    font-size: 21px;
+    font-family: times new roman, serif;
+    border-radius: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.dropdown-btn:hover,
+.dropdown-btn.active {
+    background: linear-gradient(90deg, rgba(177, 151, 252, 0.24), rgba(255, 255, 255, 0.06));
+    transform: translateX(4px);
+    border-radius: 25px;
+    border: 1px solid rgba(177, 151, 252, 0.5);
+    box-shadow: 0 8px 18px rgba(177, 151, 252, 0.15);
+}
+
+.dropdown-container {
+   display: none;
+   font-family: times new roman, serif;
+   font-size: 18px;
+   background-color: transparent;
+   padding: 0 16px 8px;
+   margin-left: 0;
+}
+
+.dropdown-container a {
+    width: 100%;
+    margin: 6px 0;
+    padding: 10px 12px;
+    font-size: 18px;
+    border-radius: 14px;
+}
+
+.dropdown-btn .fa-caret-down {
+  float: none;
+  padding-right: 0;
+  transition: transform 0.2s ease;
+}
+
+.dropdown-btn.active .fa-caret-down {
+  transform: rotate(180deg);
+}
+
 .sidemenu a:hover,
 .menu-settings-btn:hover {
     background: linear-gradient(90deg, rgba(177, 151, 252, 0.24), rgba(255, 255, 255, 0.06));
@@ -2246,12 +2301,13 @@ background: rgba(255, 255, 255, 0.08);
 
 .feed-post-card .feed-actions {
   margin-top: 0;
-  margin-right: 106px;
+  gap: 4px;
+  margin-right: 10px;
   background: none;
   border-top: none;
   float: right;
   padding: 8px 10px 10px;
-  width: 75%;
+  width: 100%;
   border-bottom: none;
   margin-bottom: 0;
 }
@@ -3152,8 +3208,15 @@ background: rgba(255, 255, 255, 0.08);
       <a href="#" data-i18n="bookmarks"><i class="fa-solid fa-bookmark fa-sm" style="color: rgb(2, 2, 2);"></i>Saved</a>
       <a href="message.html" data-i18n="chat"><i class="fa-solid fa-comment fa-sm" style="color: rgb(7, 7, 7);"></i>Chat</a>
       <button id="settingsBtn" class="menu-settings-btn" type="button" data-i18n="settings"><i class="fa-solid fa-cog fa-sm" style="color: rgb(7, 7, 7);"></i>Settings</button>
+      <button class="dropdown-btn" type="button">Legals
+        <i class="fa fa-caret-down"></i>
+      </button>
+      <div class="dropdown-container">
+        <a href="privacypoliciy.html">Privacy Policy</a>
+        <a href="termsofservice.html">Terms of Service</a>
+        
+      </div>
      
-      
       
     </div>
 
@@ -3169,10 +3232,7 @@ background: rgba(255, 255, 255, 0.08);
  <div class="menu-auth-actions">
          <button class="auth-btn sign-out-btn" type="button" data-i18n="signOut"><i class="fa-solid fa-arrow-right-from-bracket fa-sm" style="color: rgb(7, 7, 7);"></i>Sign out</button>
       </div>
-  <div class="menu-legal">
-    <p data-i18n="privacyPolicy">Privacy Policy</p>
-    <p data-i18n="termsOfService">Terms of Service</p>
-  </div>
+  
 </div>
 
 
