@@ -2365,10 +2365,9 @@ function initializeMessagePage() {
   const chatBackBtn = document.getElementById("chatBackBtn");
   const conversationPanel = document.getElementById("conversationPanel");
   const chatWindow = document.getElementById("chatWindow");
-  const pageHeader = document.querySelector(".header");
-  const pageHeaderTitle = document.querySelector(".header-title");
-  const pageHeaderIcons = document.querySelector(".header-icons");
-  const pageHeaderBack = document.querySelector(".header-back-icon");
+  const messageSearchInput = document.getElementById("messageSearchInput");
+  const messageSearchToggleBtn = document.getElementById("messageSearchToggleBtn");
+  const deleteConversationBtn = document.getElementById("deleteConversationBtn");
 
   if (!conversationList || !chatWindow || !messageList) {
     return;
@@ -2387,12 +2386,16 @@ function initializeMessagePage() {
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith("bookme_user_profile_")) {
           const userId = key.replace("bookme_user_profile_", "");
-          if (userId && userId !== "guest") users.add(userId);
+          if (userId && userId !== "guest") {
+            users.add(userId);
+          }
         }
 
         if (key.startsWith("bookme_display_name_")) {
           const userId = key.replace("bookme_display_name_", "");
-          if (userId && userId !== "guest") users.add(userId);
+          if (userId && userId !== "guest") {
+            users.add(userId);
+          }
         }
       });
     } catch (error) {
@@ -2400,7 +2403,9 @@ function initializeMessagePage() {
     }
 
     ["guest", "michael"].forEach((user) => {
-      if (user) users.add(user);
+      if (user) {
+        users.add(user);
+      }
     });
 
     return [...users];
@@ -2415,28 +2420,36 @@ function initializeMessagePage() {
     }
   })();
 
-  const conversations = Object.fromEntries(
-    getKnownUsers().map((user) => [
-      user,
-      Array.isArray(existingMessages[user]) ? existingMessages[user] : [
-        user === currentUserId ? { text: "Hi there! How can I help?", mine: false } : null
-      ].filter(Boolean)
-    ])
-  );
-
-  if (!conversations[currentUserId]) {
-    conversations[currentUserId] = [{ text: "Hi there! How can I help?", mine: false }];
+  const conversations = {};
+  if (currentUserId && currentUserId !== "guest") {
+    conversations[currentUserId] = [];
   }
 
-  if (!conversations.guest) {
-    conversations.guest = [{ text: "Welcome back.", mine: false }];
-  }
+  delete conversations.guest;
+  delete conversations.michael;
 
-  if (!conversations.michael) {
-    conversations.michael = [{ text: "Let me know when you are ready.", mine: false }];
+  try {
+    localStorage.setItem(sessionKey, JSON.stringify(conversations));
+  } catch (error) {
+    console.warn("Unable to clear previous message state:", error);
   }
 
   let activeConversation = null;
+  let currentSearchTerm = "";
+
+  function saveConversations() {
+    try {
+      localStorage.setItem(sessionKey, JSON.stringify(conversations));
+    } catch (error) {
+      console.warn("Unable to save conversations:", error);
+    }
+  }
+
+  function getConversationDisplayName(userKey) {
+    if (!userKey) return "Conversation";
+    if (userKey === currentUserId) return currentUserDisplayName || "Me";
+    return (typeof getDisplayNameForUser === "function" ? getDisplayNameForUser(userKey) : "") || userKey;
+  }
 
   function getConversationAvatarMarkup(userKey) {
     let avatarUrl = null;
@@ -2449,7 +2462,7 @@ function initializeMessagePage() {
     }
 
     if (avatarUrl) {
-      return `<span class="conversation-avatar"><img src="${getCacheBustedImageUrl(avatarUrl)}" alt="${userKey} profile picture" /></span>`;
+      return `<span class="conversation-avatar"><img src="${getCacheBustedImageUrl(avatarUrl)}" alt="${getConversationDisplayName(userKey)} profile picture" /></span>`;
     }
 
     return `
@@ -2459,75 +2472,95 @@ function initializeMessagePage() {
     `;
   }
 
+  function getLastMessagePreview(userKey) {
+    const thread = conversations[userKey] || [];
+    if (!thread.length) {
+      return "No messages yet";
+    }
+
+    const lastMessage = [...thread].reverse().find((entry) => typeof entry?.text === "string" && entry.text.trim());
+    return lastMessage ? lastMessage.text.trim() : "No messages yet";
+  }
+
   function syncView() {
-    const isListOnly = !activeConversation;
-    const isMobile = window.innerWidth <= 640;
+    const hasActiveConversation = Boolean(activeConversation && conversations[activeConversation]);
 
-    if (pageHeader) {
-      pageHeader.style.display = isListOnly ? "block" : "none";
-    }
-
-    if (pageHeaderIcons) {
-      pageHeaderIcons.style.display = isListOnly ? "flex" : "none";
-    }
-
-    if (pageHeaderBack) {
-      pageHeaderBack.style.display = isListOnly ? "block" : "none";
-    }
-
-    if (pageHeaderTitle) {
-      pageHeaderTitle.textContent = isListOnly ? "Chats" : ((typeof getDisplayNameForUser === "function" ? getDisplayNameForUser(activeConversation) : "") || activeConversation || "Conversation");
-    }
-
-    if (isListOnly) {
+    if (hasActiveConversation) {
+      conversationPanel.style.display = "block";
+      conversationPanel.style.width = "34%";
+      chatWindow.style.display = "flex";
+      if (chatBackBtn) chatBackBtn.style.display = "block";
+    } else {
       conversationPanel.style.display = "block";
       conversationPanel.style.width = "100%";
       chatWindow.style.display = "none";
-      if (chatBackBtn) {
-        chatBackBtn.style.display = "none";
-      }
-      if (chatRecipientName) {
-        chatRecipientName.textContent = "Select a conversation";
-      }
-      return;
+      if (chatBackBtn) chatBackBtn.style.display = "none";
     }
 
-    conversationPanel.style.display = "none";
-    chatWindow.style.display = "flex";
-    chatWindow.style.width = "100%";
-
-    if (chatBackBtn) {
-      chatBackBtn.style.display = "block";
-    }
-
-    if (conversationPanel) {
-      conversationPanel.style.width = "34%";
+    if (chatRecipientName) {
+      chatRecipientName.textContent = hasActiveConversation ? getConversationDisplayName(activeConversation) : "Select a conversation";
     }
   }
 
   function renderConversations() {
-    const users = Object.keys(conversations);
-    conversationList.innerHTML = users.map((user) => {
-      const fallbackLabel = user === currentUserId ? currentUserDisplayName : (typeof getDisplayNameForUser === "function" ? getDisplayNameForUser(user) : user);
-      const label = fallbackLabel || user;
+    const filteredUsers = Object.keys(conversations)
+      .filter((user) => user !== currentUserId)
+      .filter((user) => {
+        const search = currentSearchTerm.trim().toLowerCase();
+        if (!search) return true;
+
+        const name = getConversationDisplayName(user).toLowerCase();
+        const matchedText = (conversations[user] || []).some((entry) => String(entry?.text || "").toLowerCase().includes(search));
+        return name.includes(search) || matchedText;
+      })
+      .sort((a, b) => getConversationDisplayName(a).localeCompare(getConversationDisplayName(b)));
+
+    if (!filteredUsers.length) {
+      conversationList.innerHTML = `
+        <div style="padding: 14px 8px; color: #666; font-size: 14px; text-align: center;">
+          No matches found.
+        </div>
+      `;
+      return;
+    }
+
+    conversationList.innerHTML = filteredUsers.map((user) => {
+      const label = getConversationDisplayName(user);
+      const preview = getLastMessagePreview(user);
       return `
-        <button class="conversation-item ${user === activeConversation ? "active" : ""}" type="button" data-user="${user}">
-          <span class="meta">
-            ${getConversationAvatarMarkup(user)}
-            <span>${label}</span>
-          </span>
-        </button>
+        <div class="conversation-item ${user === activeConversation ? "active" : ""}">
+          <button type="button" class="conversation-select-btn" data-user="${user}">
+            <span class="conversation-meta">
+              ${getConversationAvatarMarkup(user)}
+              <span class="conversation-text-wrap">
+                <span class="conversation-name">${escapeHtml(label)}</span>
+                <span class="conversation-preview">${escapeHtml(preview)}</span>
+              </span>
+            </span>
+          </button>
+          <button type="button" class="delete-conversation-btn" data-user="${user}" aria-label="Delete conversation with ${escapeHtml(label)}">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
       `;
     }).join("");
 
-    conversationList.querySelectorAll(".conversation-item").forEach((button) => {
+    conversationList.querySelectorAll(".conversation-select-btn").forEach((button) => {
       button.addEventListener("click", () => {
         activeConversation = button.dataset.user;
-        chatRecipientName.textContent = activeConversation;
         renderConversations();
         renderMessages();
         syncView();
         messageInput?.focus();
+      });
+    });
+
+    conversationList.querySelectorAll(".delete-conversation-btn").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const user = button.dataset.user;
+        if (!user) return;
+        deleteConversation(user);
       });
     });
   }
@@ -2535,33 +2568,64 @@ function initializeMessagePage() {
   function renderMessages() {
     if (!activeConversation) {
       messageList.innerHTML = "";
-      if (chatRecipientName) {
-        chatRecipientName.textContent = "Select a conversation";
-      }
       return;
     }
 
     const thread = conversations[activeConversation] || [];
-    messageList.innerHTML = thread.map((entry) => `
-      <div class="message-bubble ${entry.mine ? "mine" : ""}">${entry.text}</div>
+    messageList.innerHTML = thread.map((entry, index) => `
+      <div class="message-row ${entry.mine ? "mine" : ""}">
+        <div class="message-bubble">
+          <span class="message-text">${escapeHtml(entry.text || "")}</span>
+          ${entry.mine ? `
+            <button type="button" class="message-delete-btn" data-message-index="${index}" aria-label="Delete sent message">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          ` : ""}
+        </div>
+      </div>
     `).join("");
 
     if (chatRecipientName) {
-      const label = (typeof getDisplayNameForUser === "function" ? getDisplayNameForUser(activeConversation) : "") || activeConversation;
-      chatRecipientName.textContent = label;
+      chatRecipientName.textContent = getConversationDisplayName(activeConversation);
     }
+
+    messageList.querySelectorAll(".message-delete-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        const messageIndex = Number(button.dataset.messageIndex);
+        if (Number.isNaN(messageIndex)) return;
+
+        const threadList = conversations[activeConversation] || [];
+        threadList.splice(messageIndex, 1);
+        conversations[activeConversation] = threadList;
+        saveConversations();
+        renderMessages();
+        renderConversations();
+      });
+    });
   }
 
   function appendMessage(text, isMine = false) {
+    if (!activeConversation) return;
     const thread = conversations[activeConversation] || [];
     thread.push({ text, mine: isMine });
     conversations[activeConversation] = thread;
-    try {
-      localStorage.setItem(sessionKey, JSON.stringify(conversations));
-    } catch (error) {
-      console.warn("Unable to save message thread:", error);
-    }
+    saveConversations();
     renderMessages();
+    renderConversations();
+  }
+
+  function deleteConversation(userKey) {
+    if (!userKey || !conversations[userKey]) return;
+    delete conversations[userKey];
+    saveConversations();
+
+    if (activeConversation === userKey) {
+      activeConversation = null;
+    }
+
+    renderConversations();
+    renderMessages();
+    syncView();
   }
 
   if (messagePlusBtn && messageFooterMenu) {
@@ -2591,11 +2655,32 @@ function initializeMessagePage() {
   if (sendMessageBtn && messageInput) {
     sendMessageBtn.addEventListener("click", () => {
       const text = messageInput.value.trim();
-      if (!text) return;
+      if (!text || !activeConversation) return;
 
       appendMessage(text, true);
       messageInput.value = "";
       messageInput.focus();
+    });
+  }
+
+  if (deleteConversationBtn) {
+    deleteConversationBtn.addEventListener("click", () => {
+      if (!activeConversation) return;
+      deleteConversation(activeConversation);
+    });
+  }
+
+  if (messageSearchToggleBtn && messageSearchInput) {
+    messageSearchToggleBtn.addEventListener("click", () => {
+      messageSearchInput.focus();
+      messageSearchInput.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+
+  if (messageSearchInput) {
+    messageSearchInput.addEventListener("input", (event) => {
+      currentSearchTerm = event.target.value || "";
+      renderConversations();
     });
   }
 
@@ -2616,15 +2701,6 @@ function initializeMessagePage() {
   renderConversations();
   renderMessages();
   syncView();
-  if (chatRecipientName) {
-    chatRecipientName.textContent = "Select a conversation";
-  }
-  if (chatBackBtn) {
-    chatBackBtn.style.display = "none";
-  }
-  if (pageHeaderTitle) {
-    pageHeaderTitle.textContent = "Chats";
-  }
   window.__bookmeMessagePageInitialized = true;
   window.__bookmeMessagePageUserId = currentUserId;
 }

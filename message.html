@@ -19,76 +19,55 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="script.js" defer></script>
     <style>
-
-   body{
- margin: 0;
-  overflow-x: hidden;
-overflow: auto;
-min-height: 100vh;
-            
-           
-        }
-
-    
-
-
-        body::-webkit-scrollbar{
-            display: none;
-        }
-
-        
+        * { box-sizing: border-box; }
 
         body {
+            margin: 0;
             background: #f3f3f3;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            font-family: "Segoe UI", Arial, sans-serif;
         }
 
-     
+        body::-webkit-scrollbar { display: none; }
 
-        .header{
+        .header {
             background: linear-gradient(135deg, #ffffff 0%, #f7f7f7 100%);
-            left: 0;
-            right: 0;
-            padding: 8px 12px;
+            padding: 12px 14px;
             display: flex;
             align-items: center;
-            justify-content: flex-start;
-            gap: 10px;
+            justify-content: space-between;
+            gap: 12px;
             border-bottom: 1px solid rgba(17, 17, 17, 0.08);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             position: sticky;
             top: 0;
             z-index: 30;
-            min-height: 48px;
-        }  
-
-        .header-title{
-            color: rgb(17, 17, 17);
-            font-family: 'Times New Roman', Times, serif;
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            text-align: left;
-            margin: 0;
-            position: relative;
-            flex: 1;
-            line-height: 1.2;
+            min-height: 58px;
         }
 
-        .header-icons{
+        .header-title {
+            color: rgb(17, 17, 17);
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            line-height: 1.2;
+            flex: 1;
+        }
+
+        .header-icons {
             display: flex;
             align-items: center;
             justify-content: flex-end;
             gap: 8px;
-            margin-left: auto;
             flex-shrink: 0;
         }
 
         .header-action-btn {
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             border: 1px solid rgba(17, 17, 17, 0.08);
             border-radius: 10px;
             background: #f5f5f5;
@@ -97,7 +76,6 @@ min-height: 100vh;
             justify-content: center;
             cursor: pointer;
             padding: 0;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
             transition: transform 0.18s ease, box-shadow 0.18s ease;
         }
 
@@ -106,18 +84,43 @@ min-height: 100vh;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
         }
 
-        .header-back-icon{
-            float: left;
-            margin-left: 12px;
-            margin-top: -3px;
-            position: relative;
-            gap: 15px;
+        .message-search-wrap {
+            background: #ffffff;
+            border-bottom: 1px solid rgba(17, 17, 17, 0.08);
+            padding: 10px 12px 12px;
+            position: sticky;
+            top: 58px;
+            z-index: 20;
         }
 
-           .chat-shell {
+        .message-search-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f5f5f5;
+            border: 1px solid rgba(17, 17, 17, 0.08);
+            border-radius: 14px;
+            padding: 10px 12px;
+        }
+
+        .message-search-box i {
+            color: rgb(102, 102, 102);
+            font-size: 14px;
+        }
+
+        .message-search-box input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            color: #111;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .chat-shell {
             display: flex;
             width: 100%;
-            min-height: calc(100vh - 120px);
+            min-height: calc(100vh - 150px);
             background: #f5f5f5;
         }
 
@@ -140,7 +143,7 @@ min-height: 100vh;
         .conversation-list {
             display: flex;
             flex-direction: column;
-            gap: 0;
+            gap: 8px;
             margin: 0;
             padding: 0;
         }
@@ -150,40 +153,94 @@ min-height: 100vh;
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            margin: 0;
-            padding: 0;
-            background: white;
-            border: 1px solid #e4e4e4;
-            border-left: none;
-            border-right: none;
             width: 100%;
-            height: 60px;
+            padding: 8px 8px 8px 6px;
+            background: #ffffff;
+            border: 1px solid #e8e8e8;
+            border-radius: 14px;
             box-sizing: border-box;
             cursor: pointer;
-            font-family: 'Times New Roman', Times, serif;
-            font-weight: 600;
-            font-size: 16px;
-            color: #111111;
             text-align: left;
         }
 
-       
-        .conversation-item .meta {
+        .conversation-item.active {
+            background: #f3f0ff;
+            border-color: rgba(122, 92, 243, 0.3);
+        }
+
+        .conversation-select-btn {
             display: flex;
             align-items: center;
             gap: 10px;
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 0;
+            cursor: pointer;
+            text-align: left;
+            color: inherit;
+        }
+
+        .conversation-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .conversation-text-wrap {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .conversation-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #111;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .conversation-preview {
+            font-size: 12px;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
+        .delete-conversation-btn,
+        .message-delete-btn {
+            border: none;
+            background: transparent;
+            color: rgb(91, 91, 91);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            border-radius: 8px;
+        }
+
+        .delete-conversation-btn:hover,
+        .message-delete-btn:hover {
+            background: rgba(17, 17, 17, 0.06);
         }
 
         .conversation-avatar {
-            width: 48px;
-            height: 48px;
+            width: 46px;
+            height: 46px;
             border-radius: 50%;
             overflow: hidden;
             background: #f0f0f0;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-
             flex-shrink: 0;
         }
 
@@ -210,17 +267,27 @@ min-height: 100vh;
             display: flex;
             flex-direction: column;
             background: #ffffff;
-            min-height: calc(100vh - 120px);
+            min-height: calc(100vh - 150px);
+            display: none;
         }
 
         .chat-header {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 10px;
             padding: 12px 14px;
             border-bottom: 1px solid #ebebeb;
             background: #fdfdfd;
             font-weight: 700;
+        }
+
+        .chat-header-main {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
         }
 
         .chat-back-btn {
@@ -229,6 +296,23 @@ min-height: 100vh;
             border: none;
             font-size: 20px;
             cursor: pointer;
+            color: #111;
+            padding: 4px 6px;
+        }
+
+        .chat-recipient-name {
+            font-size: 16px;
+            color: #111;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
         }
 
         .message-list-wrap {
@@ -246,21 +330,41 @@ min-height: 100vh;
             min-height: 160px;
         }
 
+        .message-row {
+            display: flex;
+            width: 100%;
+        }
+
+        .message-row.mine {
+            justify-content: flex-end;
+        }
+
         .message-bubble {
             max-width: 72%;
-            padding: 10px 14px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding: 10px 12px;
             border-radius: 18px 18px 18px 6px;
             background: #ffffff;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
             color: #111111;
             line-height: 1.4;
-            align-self: flex-start;
         }
 
-        .message-bubble.mine {
-            align-self: flex-end;
+        .message-row.mine .message-bubble {
             background: #dff3ff;
             border-radius: 18px 18px 6px 18px;
+        }
+
+        .message-text {
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .message-delete-btn {
+            opacity: 0.7;
+            padding: 4px;
         }
 
         .message-composer {
@@ -297,7 +401,7 @@ min-height: 100vh;
             cursor: pointer;
         }
 
-        .footer{
+        .footer {
             border-top: 1.5px solid black;
             border-top-left-radius: 12px;
             border-top-right-radius: 12px;
@@ -349,15 +453,12 @@ min-height: 100vh;
             border-radius: 10px;
         }
 
-        .searchplus-btn{
-             width: 48px;
+        .searchplus-btn {
+            width: 48px;
             height: 48px;
             border: 2px solid transparent;
             border-radius: 50%;
-            background:
-                linear-gradient(#000000, #0b0b0b) padding-box,
-                linear-gradient(135deg, #7c3aed, #00ff00, #fd0303, #38bdf8, #0000ff) border-box;
-            
+            background: linear-gradient(#000000, #0b0b0b) padding-box, linear-gradient(135deg, #7c3aed, #00ff00, #fd0303, #38bdf8, #0000ff) border-box;
             background-clip: padding-box, border-box;
             display: flex;
             align-items: center;
@@ -372,35 +473,60 @@ min-height: 100vh;
             box-sizing: border-box;
         }
 
-       
+        @media (max-width: 640px) {
+            .chat-shell {
+                display: block;
+            }
 
+            .conversation-panel {
+                width: 100%;
+                min-width: 0;
+                border-right: none;
+            }
+
+            .chat-window {
+                min-height: calc(100vh - 170px);
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-title" data-i18n="chatHeader">
-            Chats
-        </div>
+    <header class="header">
+        <div class="header-title" data-i18n="chatHeader">Messages</div>
         <div class="header-icons">
-            <button class="header-action-btn" type="button" aria-label="Search">
-                <i class="fa-solid fa-magnifying-glass-plus fa-lg" style="color: rgb(110, 109, 109);"></i>
+            <button class="header-action-btn" id="messageSearchToggleBtn" type="button" aria-label="Search messages">
+                <i class="fa-solid fa-magnifying-glass fa-lg" style="color: rgb(110, 109, 109);"></i>
             </button>
             <button class="header-action-btn" type="button" aria-label="Open menu">
                 <i class="fa-solid fa-bars-staggered fa-lg" style="color: rgb(17, 17, 17);"></i>
             </button>
         </div>
+    </header>
+
+    <div class="message-search-wrap">
+        <div class="message-search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input id="messageSearchInput" type="text" placeholder="Search messages or users" aria-label="Search messages or users" />
+        </div>
     </div>
 
     <div class="chat-shell">
         <aside class="conversation-panel" id="conversationPanel">
-            <div class="chat-list-header" data-i18n="recentConversations">Recent Conversations</div>
+            <div class="chat-list-header" data-i18n="recentConversations">Recent conversations</div>
             <div id="conversationList" class="conversation-list" aria-label="Conversations"></div>
         </aside>
 
         <main class="chat-window" id="chatWindow">
             <div class="chat-header">
-                <button class="chat-back-btn" id="chatBackBtn" type="button" aria-label="Back to conversations">←</button>
-                <span id="chatRecipientName">ronelson175510</span>
+                <div class="chat-header-main">
+                    <button class="chat-back-btn" id="chatBackBtn" type="button" aria-label="Back to conversations">←</button>
+                    <span class="chat-recipient-name" id="chatRecipientName">Select a conversation</span>
+                </div>
+                <div class="chat-header-actions">
+                    <button class="delete-conversation-btn" id="deleteConversationBtn" type="button" aria-label="Delete conversation">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="message-list-wrap">
@@ -422,9 +548,8 @@ min-height: 100vh;
         </div>
 
         <button class="searchplus-btn" id="messagePlusBtn" type="button" aria-label="Open message actions">
-             <i class="fa-solid fa-plus fa-xl" style="color: rgb(245, 245, 245);"></i>
+            <i class="fa-solid fa-plus fa-xl" style="color: rgb(245, 245, 245);"></i>
         </button>
     </div>
-
 </body>
 </html>
