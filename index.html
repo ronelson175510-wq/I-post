@@ -341,16 +341,24 @@
   display: flex;
   flex-direction: column;
   padding-top: 18px;
+  width: 250px;
+  margin-left: 18px;
   gap: 3px;
   overflow: visible;
   margin-bottom: 0;
+  background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgb(255, 255, 255);
+            border-radius: 25px;
+            box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
   
 }
 
 
 .auth-btn {
   margin-top: -80px;
-  width: 50%;
+  width: 80%;
   text-align: center;
       display: flex;
     align-items: center;
@@ -360,7 +368,7 @@
     text-decoration: none;
     font-size: 21px;
     color: #f0eef7;
-    border-radius: 14px;
+    border-radius: 25px;
     transition: all 0.25s ease;
     background: rgba(255, 255, 255, 0.04);
    
@@ -374,10 +382,10 @@
 
 
 .sign-out-btn {
-  text-align: center;
-  background: rgb(246, 226, 8);
+  text-align: left;
+  background: rgb(7, 7, 7);
  border: 1.5px solid rgb(197, 196, 196);
-  color: #0a0a0a;
+  color: #fefcfc;
 }
 
 
@@ -419,7 +427,8 @@
     font-size: 21px;
     font-family: times new roman, serif;
     color: black;
-    border-radius: 25px;
+    
+   
     transition: all 0.25s ease;
    
 }
@@ -428,6 +437,8 @@
 .menu-settings-btn:hover {
     background: linear-gradient(90deg, rgba(177, 151, 252, 0.24), rgba(255, 255, 255, 0.06));
     transform: translateX(4px);
+    border-radius: 25px;
+    border: 1px solid rgba(177, 151, 252, 0.5);
     box-shadow: 0 8px 18px rgba(177, 151, 252, 0.15);
 }
 
@@ -468,22 +479,22 @@
 }
 
 .menu-settings-btn {
-    display: flex;
+     display: flex;
+    
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     padding: 14px 20px 14px 24px;
     margin: 10px 16px;
+    width: calc(70% - 42px);
     text-decoration: none;
     font-size: 21px;
-    color: #060606;
-    border-radius: 25px;
+    font-family: times new roman, serif;
+    color: black;
+    
+    border: none;
+    background: none;
+    
     transition: all 0.25s ease;
-    background: rgba(255, 255, 255, 0.04);
-    border: none ;
-    cursor: pointer;
-    font-family: inherit;
-    width: calc(60% - 32px);
-    text-align: left;
 }
 
 .sidemenu-profile {
@@ -498,13 +509,16 @@
     text-decoration: none;
     font-size: 21px;
     color: #060606;
-    border-radius: 25px;
+    
     transition: all 0.25s ease;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1.7px solid rgba(6, 6, 6, 0.06);
-    cursor: pointer;
+      background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgb(255, 255, 255);
+            border-radius: 25px;
+            box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
     font-family: inherit;
-    width: calc(100% - 32px);
+     width: calc(88% - 42px);
     text-align: left;
 }
 
@@ -552,7 +566,7 @@
   background: transparent;
   border: none;
   color: #060606;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 700;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   cursor: pointer;
@@ -570,15 +584,18 @@
   gap: 6px;
   padding: 14px 20px 14px 24px;
   margin: 10px 16px;
-  width: calc(60% - 32px);
+  width: calc(88% - 32px);
   text-decoration: none;
   font-size: 16px;
   font-family: "Times New Roman", Times, serif;
   color: #111111;
-  border-radius: 25px;
-  transition: all 0.25s ease;
-  background: rgba(17, 17, 17, 0.04);
-  border: 1.7px solid rgba(6, 6, 6, 0.06);
+  background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgb(255, 255, 255);
+            border-radius: 25px;
+            box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
+  
   cursor: pointer;
   text-align: left;
   display: inline-flex;
@@ -1529,7 +1546,7 @@ font-weight: 590;
   width: 100%;
   height: 98%;
   max-height: 130vh;
-  background: rgb(33, 32, 32);
+  background: white;
  border-top-left-radius: 25px;
  border-top-right-radius: 25px;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
@@ -1611,27 +1628,29 @@ font-weight: 590;
   color: black;
   margin: 0 0 6px;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  background-color:none;
+  background-color: white;
+  border: 1px solid rgba(177, 151, 252, 0.5);
   resize: auto;
   
 }
 
 #uploadDescription {
   width: 100%;
-  border: none;
+  
   min-height: 12px;
   resize: none;
-  margin-top: -42px;
+  margin-top: -22px;
   border-radius: 25px;
  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  background: rgb(33, 32, 32);
-  color: rgb(49, 49, 49);
+  background: white;
+  border: 1px solid rgba(177, 151, 252, 0.5);
+  color: rgb(9, 9, 9);
   padding: 10px 12px;
-  font-size: 20px;  
+  font-size: 16px;  
   font-style: italic;
   font-weight: 600;
   line-height: 1.4;
- border: none;
+  border: 1px solid rgba(31, 31, 31, 0.5);
  
 }
 
@@ -1787,7 +1806,7 @@ background: rgba(255, 255, 255, 0.08);
   height: 43px;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid rgba(231, 241, 41, 0.08);
+  border: 1px solid rgba(44, 44, 44, 0.08);
  margin-left: -11px;
   display: flex;
   align-items: center;
@@ -1854,7 +1873,7 @@ background: rgba(255, 255, 255, 0.08);
   margin-left: -22px;
   font-weight: 760;
    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-               
+   z-index: 9999;            
   letter-spacing: 0.02em;
   line-height: 1.2;
   padding: 5px 10px;
@@ -2174,11 +2193,9 @@ background: rgba(255, 255, 255, 0.08);
   overflow: visible;
   position: relative;
   height: auto;
+  padding-bottom: 9px;
   border-bottom: 2px solid rgba(17, 17, 17, 0.12);
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
-  padding-bottom: 49px;
-  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.08);
+
 }
 
 .feed-post-card .post-menu-wrapper {
@@ -2288,7 +2305,7 @@ background: rgba(255, 255, 255, 0.08);
   position: relative;
   display: block;
   width: calc(100% - 0px);
-  margin-top: 0;
+  margin-top: -55px;
   overflow: hidden;
   border-radius: 0;
   
@@ -2332,13 +2349,13 @@ background: rgba(255, 255, 255, 0.08);
 
 .video-mute-toggle {
   position: absolute;
-  margin-left: 9px;
-  top: 14px;
+  margin-left: 3px;
+  top: 54px;
   width: 42px;
   height: 42px;
   border: 2px solid rgba(255,255,255,0.7);
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.52);
+  background: none;
   color: #fff;
   font-size: 18px;
   display: flex;
@@ -3135,23 +3152,23 @@ background: rgba(255, 255, 255, 0.08);
       <a href="#" data-i18n="bookmarks"><i class="fa-solid fa-bookmark fa-sm" style="color: rgb(2, 2, 2);"></i>Saved</a>
       <a href="message.html" data-i18n="chat"><i class="fa-solid fa-comment fa-sm" style="color: rgb(7, 7, 7);"></i>Chat</a>
       <button id="settingsBtn" class="menu-settings-btn" type="button" data-i18n="settings"><i class="fa-solid fa-cog fa-sm" style="color: rgb(7, 7, 7);"></i>Settings</button>
-      <button id="themeToggleBtn" class="theme-toggle-btn" type="button" aria-label="Toggle dark mode" aria-pressed="false">
-        <span class="theme-toggle-label">Dark mode</span>
-        <span class="theme-toggle-switch" aria-hidden="true">
-          <span class="theme-toggle-knob"></span>
-        </span>
-      </button>
-      <br>
-       <div class="menu-auth-actions">
-         <button class="auth-btn sign-out-btn" type="button" data-i18n="signOut"><i class="fa-solid fa-arrow-right-from-bracket fa-sm" style="color: rgb(7, 7, 7);"></i>Sign out</button>
-      </div>
+     
+      
+      
     </div>
 
     
 
-
+ <button id="themeToggleBtn" class="theme-toggle-btn" type="button" aria-label="Toggle dark mode" aria-pressed="false">
+        <span class="theme-toggle-label">Dark mode</span>
+        <span class="theme-toggle-switch" aria-hidden="true">
+        <span class="theme-toggle-knob"></span>
+        </span>
+      </button>
  
-
+ <div class="menu-auth-actions">
+         <button class="auth-btn sign-out-btn" type="button" data-i18n="signOut"><i class="fa-solid fa-arrow-right-from-bracket fa-sm" style="color: rgb(7, 7, 7);"></i>Sign out</button>
+      </div>
   <div class="menu-legal">
     <p data-i18n="privacyPolicy">Privacy Policy</p>
     <p data-i18n="termsOfService">Terms of Service</p>
