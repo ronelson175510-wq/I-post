@@ -576,22 +576,17 @@ function updateSideMenuUserName() {
   const lastName = (data.lastName || "").trim();
   const customName = [firstName, lastName].filter(Boolean).join(" ");
 
+  let displayName = "User";
+
   if (customName) {
-    sideMenuUserName.textContent = customName;
-    return;
+    displayName = customName;
+  } else if (auth?.currentUser?.displayName) {
+    displayName = auth.currentUser.displayName;
+  } else if (auth?.currentUser?.email) {
+    displayName = auth.currentUser.email.split("@")[0];
   }
 
-  if (auth?.currentUser?.displayName) {
-    sideMenuUserName.textContent = auth.currentUser.displayName;
-    return;
-  }
-
-  if (auth?.currentUser?.email) {
-    sideMenuUserName.textContent = auth.currentUser.email.split("@")[0];
-    return;
-  }
-
-  sideMenuUserName.textContent = "User";
+  sideMenuUserName.innerHTML = renderUserNameWithVerification(displayName, userId);
 }
 
 function redirectToLogin() {
@@ -4029,6 +4024,15 @@ async function loadRecentSearchSuggestions() {
   const container = document.getElementById("recentSearchSuggestions");
   if (!container) return;
 
+  const searchInput = document.getElementById("searchInput");
+  const hasActiveSearch = !!(searchInput && String(searchInput.value || "").trim());
+  if (hasActiveSearch) {
+    container.innerHTML = "";
+    closeRecentSearchActionSheet();
+    updateRecentSuggestionsVisibility(searchInput.value || "");
+    return;
+  }
+
   const userId = (auth && auth.currentUser && auth.currentUser.uid) || (getCurrentUserId && getCurrentUserId()) || "";
   if (!userId || userId === "guest") {
     container.innerHTML = "";
@@ -4053,8 +4057,10 @@ async function loadRecentSearchSuggestions() {
     }
   })();
 
-  if (cachedRecentSearches.length) {
-    const cacheMarkup = cachedRecentSearches.slice(0, 10).map((search) => {
+  const dedupedCachedRecentSearches = dedupeRecentSearchList(cachedRecentSearches);
+
+  if (dedupedCachedRecentSearches.length) {
+    const cacheMarkup = dedupedCachedRecentSearches.slice(0, 10).map((search) => {
       const item = typeof search === "string" ? { query: search, searched_user_name: search } : search;
       const displayName = String(item.searched_user_name || item.name || item.query || "Recent search").trim();
       const avatarUrl = item.searched_user_avatar || item.profile_pic || item.avatar || getProfilePicForUser(item.searched_user_id || item.user_id || "");
@@ -4114,15 +4120,16 @@ async function loadRecentSearchSuggestions() {
 
     const data = await response.json();
     const recentSearches = Array.isArray(data?.recentSearches) ? data.recentSearches : [];
-    setRecentSearchCache(userId, recentSearches);
+    const dedupedRecentSearches = dedupeRecentSearchList(recentSearches);
+    setRecentSearchCache(userId, dedupedRecentSearches);
 
-    if (!recentSearches.length) {
+    if (!dedupedRecentSearches.length) {
       container.innerHTML = "";
       closeRecentSearchActionSheet();
       return;
     }
 
-    const items = recentSearches.slice(0, 10).map((search) => {
+    const items = dedupedRecentSearches.slice(0, 10).map((search) => {
       const item = typeof search === "string" ? { query: search, searched_user_name: search } : search;
       const displayName = String(item.searched_user_name || item.name || item.query || "Recent search").trim();
       const avatarUrl = item.searched_user_avatar || item.profile_pic || item.avatar || getProfilePicForUser(item.searched_user_id || item.user_id || "");
@@ -4199,10 +4206,44 @@ if (clearRecentSearchesBtn) {
   });
 }
 
+function dedupeRecentSearchList(entries = []) {
+  const seen = new Set();
+
+  return (Array.isArray(entries) ? entries : []).filter((entry) => {
+    const item = typeof entry === "string" ? { query: entry } : (entry || {});
+    const query = String(item.query || item.searched_user_name || item.name || "").trim().toLowerCase();
+    const matchedUserId = String(item.searched_user_id || item.user_id || "").trim().toLowerCase();
+    const userId = String(item.user_id || "").trim();
+    const cacheKey = matchedUserId ? `user:${userId || ""}:${matchedUserId}` : `query:${userId || ""}:${query}`;
+
+    if ((!query && !matchedUserId) || seen.has(cacheKey)) {
+      return false;
+    }
+
+    seen.add(cacheKey);
+    return true;
+  });
+}
+
+function updateRecentSuggestionsVisibility(value = "") {
+  const header = document.querySelector(".recent-search-header");
+  const container = document.getElementById("recentSearchSuggestions");
+  const hasText = String(value || "").trim().length > 0;
+
+  if (header) {
+    header.style.display = hasText ? "none" : "flex";
+  }
+
+  if (container) {
+    container.style.display = hasText ? "none" : "block";
+  }
+}
+
 async function runSearch(query = "") {
   if (!searchResults) return;
 
   const trimmedQuery = String(query || "").trim();
+  updateRecentSuggestionsVisibility(trimmedQuery);
 
   if (!trimmedQuery) {
     try {
@@ -4239,7 +4280,6 @@ async function runSearch(query = "") {
     if (!combinedCards) {
       searchResults.innerHTML = '<div class="search-empty-state">No people found.</div>';
       await persistRecentSearch(trimmedQuery, null);
-      await loadRecentSearchSuggestions();
       return;
     }
 
@@ -4253,7 +4293,6 @@ async function runSearch(query = "") {
     });
 
     await persistRecentSearch(trimmedQuery, users[0] || null);
-    await loadRecentSearchSuggestions();
   } catch (error) {
     console.error("Search failed:", error);
     searchResults.innerHTML = '<div class="search-empty-state">Search is temporarily unavailable.</div>';
@@ -4293,22 +4332,30 @@ if (searchResults) {
     });
   }
 
+  updateRecentSuggestionsVisibility(searchInput ? searchInput.value || "" : "");
+
   if (searchInput) {
     searchInput.addEventListener("input", (event) => {
-      triggerSearchFromPage(event.target.value || "");
+      const typedValue = event.target.value || "";
+      updateRecentSuggestionsVisibility(typedValue);
+      triggerSearchFromPage(typedValue);
     });
 
     searchInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
-        triggerSearchFromPage(searchInput.value || "");
+        const typedValue = searchInput.value || "";
+        updateRecentSuggestionsVisibility(typedValue);
+        triggerSearchFromPage(typedValue);
       }
     });
   }
 
   if (searchPageButton && searchInput) {
     searchPageButton.addEventListener("click", () => {
-      triggerSearchFromPage(searchInput.value || "");
+      const typedValue = searchInput.value || "";
+      updateRecentSuggestionsVisibility(typedValue);
+      triggerSearchFromPage(typedValue);
     });
   }
 
@@ -4348,6 +4395,10 @@ async function loadReels() {
       const verifiedMarkup = renderUserNameWithVerification(displayName, ownerUserId);
       const truncatedCaption = caption.length > 90 ? `${caption.slice(0, 90)}...` : caption;
       const postId = post?.id || "";
+      const likeCount = Number(post?.likes_count ?? post?.like_count ?? 0);
+      const commentCount = Number(post?.comment_count ?? post?.comments_count ?? post?.commentCount ?? 0);
+      const isLikedByCurrentUser = Boolean(post?.liked_by_current_user || post?.liked === true);
+      const isSavedByCurrentUser = Boolean(post?.saved_by_current_user || post?.saved === true);
 
       return `
         <div class="reel-item" data-post-id="${postId}">
@@ -4362,17 +4413,19 @@ async function loadReels() {
           </div>
 
           <div class="reel-actions" aria-label="Reel actions">
-            <button class="reel-action-btn like-btn" type="button" aria-label="Like reel">
-              <i class="fa-solid fa-thumbs-up" style="color: rgba(242, 224, 22, 0.9);"></i>
+            <button class="reel-action-btn like-btn ${isLikedByCurrentUser ? "liked" : ""}" type="button" aria-label="Like reel" data-post-id="${postId}" data-liked="${isLikedByCurrentUser ? "true" : "false"}">
+              <i class="${isLikedByCurrentUser ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color: ${isLikedByCurrentUser ? "rgb(255, 93, 93)" : "rgba(242, 224, 22, 0.9)"};"></i>
+              <span class="reel-action-count">${likeCount}</span>
             </button>
             <button class="reel-action-btn comment-btn" type="button" aria-label="Open comments" data-post-id="${postId}">
               <i class="fa-regular fa-comment" style="color: rgba(242, 224, 22, 0.9)"></i>
+              <span class="reel-action-count">${commentCount}</span>
             </button>
-            <button class="reel-action-btn comment-btn" type="button" aria-label="Open comments" data-post-id="${postId}">
-             <i class="fa-regular fa-bookmark" style="color: rgb(123, 117, 117);"></i>
+            <button class="reel-action-btn save-btn ${isSavedByCurrentUser ? "saved" : ""}" type="button" aria-label="Save reel" data-post-id="${postId}" data-saved="${isSavedByCurrentUser ? "true" : "false"}">
+              <i class="${isSavedByCurrentUser ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"}" style="color: ${isSavedByCurrentUser ? "rgb(242, 224, 22)" : "rgb(123, 117, 117)"};"></i>
             </button>
-            <button class="reel-action-btn menu-btn post-menu-toggle" type="button" aria-label="More options">
-              <i class="fa-solid fa-ellipsis" style="color: rgba(242, 224, 22, 0.9);"></i>
+            <button class="reel-action-btn share-btn" type="button" aria-label="Share reel" data-post-id="${postId}">
+              <i class="fa-solid fa-share-nodes" style="color: rgba(242, 224, 22, 0.9);"></i>
             </button>
           </div>
 
@@ -4440,7 +4493,172 @@ async function loadReels() {
   }
 }
 
+function getSavedPostIds() {
+  try {
+    const rawValue = localStorage.getItem("bookme-saved-posts");
+    const parsed = rawValue ? JSON.parse(rawValue) : [];
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function setSavedPostIds(postIds = []) {
+  localStorage.setItem("bookme-saved-posts", JSON.stringify(Array.from(new Set(postIds.map(String)))));
+}
+
+async function toggleSavedPost(postId = "") {
+  if (!postId) return;
+
+  const currentUserId = getCurrentUserId();
+  if (!currentUserId || currentUserId === "guest") {
+    alert("Please sign in to save posts.");
+    return;
+  }
+
+  const savedSet = new Set(getSavedPostIds());
+  const isSaved = savedSet.has(String(postId));
+
+  if (isSaved) {
+    savedSet.delete(String(postId));
+  } else {
+    savedSet.add(String(postId));
+  }
+
+  setSavedPostIds([...savedSet]);
+  document.querySelectorAll(`.save-btn[data-post-id="${CSS.escape(String(postId))}"]`).forEach((button) => {
+    const icon = button.querySelector("i");
+    const isNowSaved = savedSet.has(String(postId));
+    button.dataset.saved = String(isNowSaved);
+    button.classList.toggle("saved", isNowSaved);
+    if (icon) {
+      icon.className = isNowSaved ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark";
+      icon.style.color = isNowSaved ? "rgb(242, 224, 22)" : "rgb(123, 117, 117)";
+    }
+  });
+
+  if (Array.isArray(window.__feedPostsCache)) {
+    const cachedPost = window.__feedPostsCache.find((entry) => String(entry.id) === String(postId));
+    if (cachedPost) {
+      cachedPost.saved_by_current_user = !isSaved;
+      cachedPost.saved = !isSaved;
+    }
+  }
+
+  showUploadToast(isSaved ? "Removed from saved" : "Saved");
+}
+
+async function sharePost(postId = "") {
+  if (!postId) return;
+
+  const url = `${window.location.origin}/reels.html?videoId=${encodeURIComponent(postId)}`;
+
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: "Bookme reel",
+        text: "Watch this reel on Bookme",
+        url
+      });
+      showUploadToast("Shared");
+      return;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(url);
+      showUploadToast("Link copied");
+      return;
+    }
+
+    window.prompt("Copy this link:", url);
+  } catch (error) {
+    console.warn("Share failed:", error);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(url);
+        showUploadToast("Link copied");
+      } catch (copyError) {
+        console.warn("Clipboard copy failed:", copyError);
+      }
+    }
+  }
+}
+
 if (document.getElementById("reelsContainer")) {
+  const reelsContainer = document.getElementById("reelsContainer");
+  reelsContainer.addEventListener("click", async (event) => {
+    const shareButton = event.target.closest(".share-btn");
+    if (shareButton) {
+      event.stopPropagation();
+      await sharePost(shareButton.dataset.postId || "");
+      return;
+    }
+
+    const saveButton = event.target.closest(".save-btn");
+    if (saveButton) {
+      event.stopPropagation();
+      await toggleSavedPost(saveButton.dataset.postId || "");
+      return;
+    }
+
+    const commentButton = event.target.closest(".comment-btn");
+    if (commentButton) {
+      event.stopPropagation();
+      openCommentsSheet(commentButton.dataset.postId || "");
+      return;
+    }
+
+    const likeButton = event.target.closest(".like-btn");
+    if (likeButton) {
+      event.stopPropagation();
+
+      const postId = likeButton.dataset.postId;
+      const currentUserId = getCurrentUserId();
+      if (!postId) return;
+      if (!currentUserId || currentUserId === "guest") {
+        alert("Please sign in to like posts.");
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/posts/${encodeURIComponent(postId)}/like`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: currentUserId })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to update like.");
+        }
+
+        const icon = likeButton.querySelector("i");
+        const countEl = likeButton.querySelector(".reel-action-count");
+        const isLiked = Boolean(data?.liked);
+        if (icon) {
+          icon.className = isLiked ? "fa-solid fa-heart" : "fa-regular fa-heart";
+          icon.style.color = isLiked ? "rgb(255, 93, 93)" : "rgba(242, 224, 22, 0.9)";
+        }
+        if (countEl) {
+          countEl.textContent = String(data?.likeCount ?? 0);
+        }
+        likeButton.dataset.liked = String(isLiked);
+        likeButton.classList.toggle("liked", isLiked);
+      } catch (error) {
+        console.error("Reel like toggle error:", error);
+        alert(error.message || "Unable to update like.");
+      }
+      return;
+    }
+
+    const clickedVideoShell = event.target.closest(".video-shell");
+    if (clickedVideoShell && clickedVideoShell.dataset.postId) {
+      const postId = clickedVideoShell.dataset.postId;
+      const targetUrl = `reels.html?videoId=${encodeURIComponent(postId)}`;
+      window.location.href = targetUrl;
+    }
+  });
+
   loadReels();
 }
 
@@ -4466,17 +4684,42 @@ function resetUploadForm() {
   if (previewContainer) previewContainer.innerHTML = "";
 }
 
+const MAX_UPLOAD_ITEMS = 3;
+
+function validateUploadFiles(files = []) {
+  const selectedFiles = Array.from(files || []);
+  if (!selectedFiles.length) {
+    return { valid: false, error: "Please choose a file first." };
+  }
+
+  const imageCount = selectedFiles.filter((file) => file.type.startsWith("image/")).length;
+  const videoCount = selectedFiles.filter((file) => file.type.startsWith("video/")).length;
+
+  if (videoCount > 1) {
+    return { valid: false, error: "You can upload only 1 video per post." };
+  }
+
+  if (imageCount + videoCount > MAX_UPLOAD_ITEMS) {
+    return { valid: false, error: `You can upload up to ${MAX_UPLOAD_ITEMS} items per post. Choose up to 3 images or 1 video.` };
+  }
+
+  return { valid: true, files: selectedFiles };
+}
+
 function handleMediaSelection() {
   if (!mediaInput || !previewContainer) return;
 
   const files = Array.from(mediaInput.files || []);
+  const validation = validateUploadFiles(files);
 
-  if (!files.length) {
+  if (!validation.valid) {
     previewContainer.innerHTML = "";
+    mediaInput.value = "";
+    alert(validation.error);
     return;
   }
 
-  previewContainer.innerHTML = files
+  previewContainer.innerHTML = validation.files
     .map(file => {
       const objectUrl = URL.createObjectURL(file);
 
@@ -4510,8 +4753,9 @@ async function submitUploadedFiles() {
   }
 
   const files = Array.from(mediaInput.files || []);
-  if (!files.length) {
-    alert("Please choose a file first.");
+  const validation = validateUploadFiles(files);
+  if (!validation.valid) {
+    alert(validation.error);
     return;
   }
 
@@ -4520,7 +4764,7 @@ async function submitUploadedFiles() {
 
   const formData = new FormData();
   const currentUserId = getCurrentUserId();
-  files.forEach((file) => {
+  validation.files.forEach((file) => {
     formData.append("file", file);
   });
   formData.append("content", caption);

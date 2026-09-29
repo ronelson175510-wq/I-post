@@ -7,7 +7,7 @@ const path = require("path");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const { db, isDbEnabled } = require("./db");
-const { sanitizeRecentSearchQuery } = require("./recentSearches");
+const { sanitizeRecentSearchQuery, dedupeRecentSearchEntries } = require("./recentSearches");
 
 const app = express();
 cloudinary.config({
@@ -729,6 +729,8 @@ app.post("/api/profile-picture", upload.single("profilePic"), async (req, res) =
   }
 });
 
+const { sanitizeRecentSearchQuery, dedupeRecentSearchEntries } = require("./recentSearches");
+
 app.post("/api/recent-searches", (req, res) => {
   if (!isDbEnabled()) {
     return res.json({ recentSearches: [] });
@@ -747,40 +749,60 @@ app.post("/api/recent-searches", (req, res) => {
 
   db.query(
     `
-      INSERT INTO recent_searches (user_id, query, searched_user_id, searched_user_name, searched_user_avatar)
-      VALUES (?, ?, ?, ?, ?)
+      DELETE FROM recent_searches
+      WHERE user_id = ?
+        AND query = ?
+        AND COALESCE(searched_user_id, '') = ?
     `,
-    [userId, query, searchedUserId, searchedUserName, searchedUserAvatar],
-    (err) => {
-      if (err) {
-        console.error("RECENT SEARCH INSERT ERROR:", err);
-        return res.status(500).json({ error: err.message });
-      }
-
+    [userId, query, searchedUserId || ""],
+    () => {
       db.query(
         `
-          SELECT id, query, searched_user_id, searched_user_name, searched_user_avatar
-          FROM recent_searches
-          WHERE user_id = ?
-          ORDER BY created_at DESC, id DESC
-          LIMIT 10
+          INSERT INTO recent_searches (user_id, query, searched_user_id, searched_user_name, searched_user_avatar)
+          VALUES (?, ?, ?, ?, ?)
         `,
-        [userId],
-        (listErr, rows) => {
-          if (listErr) {
-            console.error("RECENT SEARCH LIST ERROR:", listErr);
-            return res.status(500).json({ error: listErr.message });
+        [userId, query, searchedUserId, searchedUserName, searchedUserAvatar],
+        (err) => {
+          if (err) {
+            console.error("RECENT SEARCH INSERT ERROR:", err);
+            return res.status(500).json({ error: err.message });
           }
 
-          return res.json({
-            recentSearches: (rows || []).map((row) => ({
-              id: row.id,
-              query: row.query,
-              searched_user_id: row.searched_user_id,
-              searched_user_name: row.searched_user_name,
-              searched_user_avatar: row.searched_user_avatar
-            }))
-          });
+          db.query(
+            `
+              SELECT id, query, searched_user_id, searched_user_name, searched_user_avatar
+              FROM recent_searches
+              WHERE user_id = ?
+              ORDER BY created_at DESC, id DESC
+              LIMIT 10
+            `,
+            [userId],
+            (listErr, rows) => {
+              if (listErr) {
+                console.error("RECENT SEARCH LIST ERROR:", listErr);
+                return res.status(500).json({ error: listErr.message });
+              }
+
+              const dedupedRows = dedupeRecentSearchEntries((rows || []).map((row) => ({
+                id: row.id,
+                user_id: userId,
+                query: row.query,
+                searched_user_id: row.searched_user_id,
+                searched_user_name: row.searched_user_name,
+                searched_user_avatar: row.searched_user_avatar
+              })));
+
+              return res.json({
+                recentSearches: dedupedRows.map((row) => ({
+                  id: row.id,
+                  query: row.query,
+                  searched_user_id: row.searched_user_id,
+                  searched_user_name: row.searched_user_name,
+                  searched_user_avatar: row.searched_user_avatar
+                }))
+              });
+            }
+          );
         }
       );
     }
@@ -813,8 +835,17 @@ app.get("/api/recent-searches", (req, res) => {
         return res.status(500).json({ error: err.message });
       }
 
+      const dedupedRows = dedupeRecentSearchEntries((rows || []).map((row) => ({
+        id: row.id,
+        user_id: userId,
+        query: row.query,
+        searched_user_id: row.searched_user_id,
+        searched_user_name: row.searched_user_name,
+        searched_user_avatar: row.searched_user_avatar
+      })));
+
       return res.json({
-        recentSearches: (rows || []).map((row) => ({
+        recentSearches: dedupedRows.map((row) => ({
           id: row.id,
           query: row.query,
           searched_user_id: row.searched_user_id,
@@ -1372,13 +1403,24 @@ app.post("/api/profile", (req, res) => {
   });
 });
 
-app.post("/api/posts", upload.array("file", 20), async (req, res) => {
+app.post("/api/posts", upload.array("file", 3), async (req, res) => {
   const user_id = req.body.user_id || "anonymous";
   const commonContent = (req.body.content || "").trim();
   const files = Array.isArray(req.files) ? req.files : [];
 
   if (!files.length) {
     return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  const imageCount = files.filter((file) => file?.mimetype?.startsWith("image/")).length;
+  const videoCount = files.filter((file) => file?.mimetype?.startsWith("video/")).length;
+
+  if (videoCount > 1) {
+    return res.status(400).json({ error: "You can upload only 1 video per post." });
+  }
+
+  if (imageCount + videoCount > 3) {
+    return res.status(400).json({ error: "You can upload up to 3 items per post. Choose up to 3 images or 1 video." });
   }
 
   try {
