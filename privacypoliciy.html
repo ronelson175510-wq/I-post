@@ -10,14 +10,44 @@
             line-height: 1.6;
             font-size: 16px;
             background-color: #f9f9f9;
-            margin: 12px;
-            padding: 0;
-            overflow-y: auto;
+            margin: 0;
+            padding: 20px 16px 36px;
             color: #111;
         }
 
+        body::-webkit-scrollbar {
+            display: none;
+        }
+
+        .header {
+            width: 100vw;
+            height: 50px;
+            font-size: 24px;
+            font-weight: bold;
+            margin-left: calc(50% - 50vw);
+            margin-right: calc(50% - 50vw);
+            margin-top: calc(50% - 50vh);
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            color: white;
+            background-color: rgb(45, 45, 45);
+        }
+
+        .header-title{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            float: left;
+            height: 100%;
+            margin-left: 16px;
+
+        }
+
         .contact-btn {
-            background: transparent;
+            background: rgb(241, 241, 12);
             color: inherit;
             border: 1px solid rgba(17, 17, 17, 0.28);
             border-radius: 10px;
@@ -43,7 +73,60 @@
     </style>
 </head>
 <body >
-    <script>
+   <div class="header">
+     <div class="header-title">Privacy Policy</div>
+   </div>
+    <p><strong>We respect your privacy.</strong> We collect only the information needed to create and manage your account and provide the service.
+                This may include: <ul>
+                    <li style="font-weight: bold;">your name</li>
+                    <li style="font-weight: bold;">email address</li>
+                    <li style="font-weight: bold;">profile picture</li>
+                    <li style="font-weight: bold;">the content or media you upload</li>
+                </ul>
+            </p>
+                <p>We use your information to operate the app, maintain security, and improve your experience.
+                We do not sell personal data. We may share limited data with trusted providers required to run the app.
+                You can request account updates or deletion when supported by the platform.</p>
+
+                <h2>Cookies policy</h2>
+                <p>We use cookies to enhance your experience and provide personalized content.
+                You can manage your cookie preferences through your browser settings.
+                By continuing to use the app, you consent to our use of cookies as described above. </p>
+                <p>For more details, please contact us via email at team@chat-mini.com or join our live chat by clicking at this button 
+                    <button class="contact-btn" type="button" onclick="window.open('https://tawk.to/chat/6a9c86d527a69434428b7d76/1k1pmtctb?layout=modern', '_blank', 'noopener,noreferrer');">Contact us</button>.</p>
+
+                <h2>Contents policy</h2>
+                <p>All content posted on CHAT-MINI must comply with our community guidelines. Prohibited content includes, but is not limited to:
+                    <ul>
+                        <li style="font-weight: bold;">hate speech</li>
+                        <li style="font-weight: bold;">harassment</li>
+                        <li style="font-weight: bold;">explicit sexual material</li>
+                        <li style="font-weight: bold;">illegal activities</li>
+                    </ul></p>
+                <p>Using other users' content without permission is strictly prohibited and may result in account suspension or legal action. 
+                We also want to make it clear that it is prohibited to use someone intellectual property without permission, including copyrighted material, trademarks, and other proprietary content like musics, movies, and videos.
+                    If reported, such content will be removed and repeated violations may lead to account restriction. We are not responsible for any consequences arising from such violations. Repeated violations of these rules 
+                    may result in account suspension or termination.</p>
+
+                <h2>Account policy</h2>
+                <p>Users are responsible for maintaining the security of their accounts and for all activities that occur under their accounts.
+                Account suspension or termination may occur for violations of our terms, community guidelines, or repeated policy breaches.
+                Users should report any suspicious activity or security breaches to the platform immediately.</p>
+                <p>Activities such as:
+                    <ul>
+                        <li style="font-weight: bold;">Using someone's name or identity</li>
+                        <li style="font-weight: bold;">Creating fake names or aliases</li>
+                        <li style="font-weight: bold;">Giving false information</li>
+                        <li style="font-weight: bold;">Using fake credentials to create an account or impersonate someone without permission</li>
+                    </ul>
+                    Using someone's name or identity, creating fake names or aliases, giving false information, and also using fake credentials to create an account or impersonate someone without permission is strictly prohibited and may result in account suspension or legal action. We are not responsible for any consequences arising from such violations.</p>
+                <p>Failure to comply with account security measures may result in account suspension or termination.</p>
+
+                <h2> Ads policy</h2>
+                <p> We have the right to run advertisements on our platform including third-party ads, and users may encounter ads while using our services. Users should not attempt to interfere with or block the display of ads. Violations of this policy may result in account suspension or termination.</p>
+                <p> Users should be aware that ads may be targeted based on their activity and preferences.</p>
+
+                 <script>
         function applyLegalThemeFromStorage() {
             const savedTheme = localStorage.getItem('bookme-theme');
             const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -55,35 +138,5 @@
         applyLegalThemeFromStorage();
         window.addEventListener('storage', applyLegalThemeFromStorage);
     </script>
-    <p><strong>We respect your privacy.</strong> We collect only the information needed to create and manage your account and provide the service.</p>
-                <p>This may include your name, email address, profile picture, and the content or media you upload.</p>
-                <p>We use your information to operate the app, maintain security, and improve your experience.</p>
-                <p>We do not sell personal data. We may share limited data with trusted providers required to run the app.</p>
-                <p>You can request account updates or deletion when supported by the platform.</p>
-                <h2>Cookies policy:</h2>
-                <p>We use cookies to enhance your experience and provide personalized content.</p>
-                <p>You can manage your cookie preferences through your browser settings.</p>
-                <p>By continuing to use the app, you consent to our use of cookies as described above.</p>
-                <p>For more details, please refer to our full Privacy Policy or contact us via email at team@chat-mini.com or join our live chat by clicking at this button 
-                    <button class="contact-btn" type="button" onclick="window.open('https://tawk.to/chat/6a9c86d527a69434428b7d76/1k1pmtctb?layout=modern', '_blank', 'noopener,noreferrer');">Contact us</button>.</p>
-
-                <h2>Contents policy</h2>
-                <p>All content posted on CHAT-MINI must comply with our community guidelines. Prohibited content includes, but is not limited to, hate speech, harassment, explicit sexual material, and illegal activities.</p>
-                <p>Using other users' content without permission is strictly prohibited and may result in account suspension or legal action. </p>
-                <p> We also want to make it clear that it is prohibited to use someone intellectual property without permission, including copyrighted material, trademarks, and other proprietary content like musics, movies, and videos.
-                     If reported, such content will be removed and repeated violations may lead to account restriction. We are not responsible for any consequences arising from such violations.</p>
-
-                <p>Repeated violations of these rules may result in account suspension or termination.</p>
-
-                <h2>Account policy</h2>
-                <p>Users are responsible for maintaining the security of their accounts and for all activities that occur under their accounts.</p>
-                <p>Account suspension or termination may occur for violations of our terms, community guidelines, or repeated policy breaches.</p>
-                <p>Users should report any suspicious activity or security breaches to the platform immediately.</p>
-                <p>Activities like: Using someone's name or identity, creating fake names or aliases, giving false information, and also using fake credentials to create an account or impersonate someone without permission is strictly prohibited and may result in account suspension or legal action. We are not responsible for any consequences arising from such violations.</p>
-                <p>Failure to comply with account security measures may result in account suspension or termination.</p>
-
-                <h2> Ads policy</h2>
-                <p> We have the right to run advertisements on our platform including third-party ads, and users may encounter ads while using our services. Users should not attempt to interfere with or block the display of ads. Violations of this policy may result in account suspension or termination.</p>
-                <p> Users should be aware that ads may be targeted based on their activity and preferences.</p>
 </body>
 </html>

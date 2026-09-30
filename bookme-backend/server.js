@@ -185,7 +185,11 @@ async function uploadMediaFile(file, folderName = "uploads") {
 
       return result?.secure_url || result?.url || localPublicUrl;
     } catch (error) {
-      console.warn("Cloudinary upload failed, falling back to local storage:", error.message);
+      const cloudinaryFailure = new Error(
+        `Cloudinary upload failed for ${file.originalname || file.filename}: ${error?.message || "Unknown Cloudinary error"}`
+      );
+      console.error(cloudinaryFailure.message);
+      throw cloudinaryFailure;
     }
   }
 
