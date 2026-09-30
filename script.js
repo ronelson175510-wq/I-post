@@ -286,6 +286,18 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
       color: var(--app-text);
     }
 
+    body.dark-mode #searchInput,
+    body.dark-mode .search-input-btn,
+    body.dark-mode .search-back-btn {
+      background: rgba(17, 24, 39, 0.9);
+      border-color: rgba(255, 255, 255, 0.08);
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .search-input-btn {
+      background: rgba(17, 24, 39, 0.96);
+    }
+
     body.dark-mode .sidemenu a,
     body.dark-mode .sidemenu .menu-settings-btn,
     body.dark-mode .theme-toggle-btn,
@@ -330,6 +342,11 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
       background-color: var(--surface);
       color: var(--app-text);
       border-color: var(--panel-border);
+    }
+
+    body.dark-mode #settingsSheet .sheet-header {
+      background: #000000 !important;
+      border-bottom-color: rgba(255, 255, 255, 0.08) !important;
     }
 
     body.dark-mode .feed-caption,
@@ -389,6 +406,120 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
     body.dark-mode select {
       background-color: var(--surface-strong);
       border-color: var(--panel-border);
+    }
+
+    body.dark-mode .upload-sheet {
+      background-color: #111827;
+      color: #f3f4f6;
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+
+    #uploadDescription::placeholder,
+    #uploadDescription::-webkit-input-placeholder,
+    #uploadDescription::-moz-placeholder,
+    #uploadDescription:-ms-input-placeholder {
+      color: transparent !important;
+      opacity: 0 !important;
+    }
+
+    body.dark-mode #uploadDescription {
+      background-color: rgba(255, 255, 255, 0.04);
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+      color: #ffffff;
+    }
+
+    body.dark-mode #uploadDescription::placeholder,
+    body.dark-mode #uploadDescription::-webkit-input-placeholder,
+    body.dark-mode #uploadDescription::-moz-placeholder,
+    body.dark-mode #uploadDescription:-ms-input-placeholder {
+      color: transparent !important;
+      opacity: 0 !important;
+    }
+
+    body.dark-mode .upload-limit-note {
+      color: rgba(255, 255, 255, 0.55) !important;
+    }
+
+    body.dark-mode .upload-sheet .sheet-content,
+    body.dark-mode .upload-sheet .sheet-header {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+
+    body.dark-mode .recent-search-pill {
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .recent-search-name {
+      color: #ffffff !important;
+    }
+
+    body.dark-mode .comments-sheet {
+      background-color: #111827;
+      border-top-color: rgba(255, 255, 255, 0.08);
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .comments-sheet .comments-header h3,
+    body.dark-mode .comments-sheet .comment-user-meta strong,
+    body.dark-mode .comments-sheet .comment-text,
+    body.dark-mode .comments-sheet .comment-empty,
+    body.dark-mode .comments-sheet .comment-date {
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .comment-user-line {
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .comments-sheet .comment-input-wrap {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    body.dark-mode .comments-sheet .comment-input {
+      background: transparent;
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .comments-sheet .comment-input::placeholder {
+      color: #c7d2fe;
+    }
+
+    body.dark-mode .comments-sheet .comment-item {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.08);
+      box-shadow: none;
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .comments-sheet .comment-thread.is-reply .comment-item {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    body.dark-mode .comments-sheet .comment-action-btn {
+      color: #d1d5db;
+    }
+
+    body.dark-mode .comments-sheet .comment-like-btn.liked {
+      color: #f472b6;
+    }
+
+    body.dark-mode .comments-sheet .close-btn,
+    body.dark-mode .comments-sheet .sheet-drag,
+    body.dark-mode .comments-sheet #submitCommentBtn {
+      color: #f3f4f6;
+    }
+
+    body.dark-mode .comments-sheet #submitCommentBtn {
+      background: #f3f4f6;
+      color: #111827;
     }
 
     button#themeToggleBtn.theme-toggle-btn {
@@ -3509,8 +3640,10 @@ function renderCommentNode(comment, depth = 0) {
         <div class="comment-user-row">
           <div class="comment-avatar profile-avatar-trigger" data-user-id="${escapeHtml(authorId || getCurrentUserId())}">${avatarMarkup}</div>
           <div class="comment-user-meta profile-avatar-trigger" data-user-id="${escapeHtml(authorId || getCurrentUserId())}">
-            <strong>${renderUserNameWithVerification(author, authorId)}</strong>
-            <span class="comment-date">${escapeHtml(formattedDate)}</span>
+            <div class="comment-user-line">
+              <strong>${renderUserNameWithVerification(author, authorId)}</strong>
+              <span class="comment-date">${escapeHtml(formattedDate)}</span>
+            </div>
           </div>
         </div>
         <div class="comment-text">${escapeHtml(text)}</div>

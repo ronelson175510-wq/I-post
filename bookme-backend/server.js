@@ -729,8 +729,6 @@ app.post("/api/profile-picture", upload.single("profilePic"), async (req, res) =
   }
 });
 
-const { sanitizeRecentSearchQuery, dedupeRecentSearchEntries } = require("./recentSearches");
-
 app.post("/api/recent-searches", (req, res) => {
   if (!isDbEnabled()) {
     return res.json({ recentSearches: [] });

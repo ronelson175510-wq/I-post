@@ -13,10 +13,33 @@
             margin: 12px;
             padding: 0;
             overflow-y: auto;
+            color: #111;
+        }
+
+        body.dark-mode {
+            background-color: #0d1117;
+            color: #f3f4f6;
+        }
+
+        body.dark-mode p,
+        body.dark-mode strong {
+            color: #f3f4f6;
         }
     </style>
 </head>
 <body>
+    <script>
+        function applyLegalThemeFromStorage() {
+            const savedTheme = localStorage.getItem('bookme-theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const isDark = savedTheme ? savedTheme === 'dark' : prefersDark;
+            document.body.classList.toggle('dark-mode', isDark);
+            document.body.style.colorScheme = isDark ? 'dark' : 'light';
+        }
+
+        applyLegalThemeFromStorage();
+        window.addEventListener('storage', applyLegalThemeFromStorage);
+    </script>
      <p><strong>Welcome to CHAT-MINI.</strong> By using this app, you agree to use it responsibly and lawfully.</p>
                 <p>You are responsible for the content you post, the accuracy of your information, and your interactions with other users.</p>
                 <p>We may remove content that violates our rules, including abusive, harmful, or inappropriate material.</p>

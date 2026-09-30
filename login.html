@@ -432,6 +432,32 @@
             -ms-overflow-style: none;
         }
 
+        body.dark-mode .legal-sheet {
+            background: rgba(12, 17, 26, 0.98);
+            box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.45);
+        }
+
+        body.dark-mode .legal-sheet-header h3,
+        body.dark-mode .legal-close-btn,
+        body.dark-mode .legal-content,
+        body.dark-mode .legal-content p,
+        body.dark-mode .legal-content h2,
+        body.dark-mode .legal-content strong,
+        body.dark-mode .terms-of-service a {
+            color: #f3f4f6;
+        }
+
+        body.dark-mode .legal-content p,
+        body.dark-mode .legal-content h2 {
+            opacity: 0.96;
+        }
+
+        body.dark-mode .contact-btn {
+            background: transparent;
+            color: #f3f4f6;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
         .legal-sheet::-webkit-scrollbar {
             display: none;
         }
@@ -481,12 +507,11 @@
         }
 
         .contact-btn {
-    
   flex: 1;
   padding: 12px;
-  background: rgb(238, 242, 5);
+  background: transparent;
   color: rgb(0, 0, 0);
-  border: none;
+  border: 1px solid rgba(17, 17, 17, 0.2);
   border-radius: 12px;
   font-size: 16px;
   cursor: pointer;
@@ -616,6 +641,17 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
     <script>
+        function applyLegalThemeFromStorage() {
+            const savedTheme = localStorage.getItem('bookme-theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const isDark = savedTheme ? savedTheme === 'dark' : prefersDark;
+            document.body.classList.toggle('dark-mode', isDark);
+            document.body.style.colorScheme = isDark ? 'dark' : 'light';
+        }
+
+        applyLegalThemeFromStorage();
+        window.addEventListener('storage', applyLegalThemeFromStorage);
+
         const firebaseConfig = {
             apiKey: "AIzaSyBAnPo7WP5SeFoz-hSKWil6v0tWI1oUeCw",
             authDomain: "my-book-d3907.firebaseapp.com",
