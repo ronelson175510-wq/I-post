@@ -303,12 +303,19 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
     body.dark-mode .theme-toggle-btn,
     body.dark-mode .menu-legal p,
     body.dark-mode .menu-auth-actions button,
-    body.dark-mode .report-menu-label,
-    body.dark-mode .report-menu-item,
     body.dark-mode .sidemenu-profile button,
     body.dark-mode .sidemenu-main a,
     body.dark-mode .sidemenu-main button {
       color: var(--menu-text);
+    }
+
+    body.dark-mode .report-menu-label,
+    body.dark-mode .report-menu-item,
+    body.dark-mode .post-report-btn,
+    body.dark-mode .see-more-like-this,
+    body.dark-mode .post-delete-btn,
+    body.dark-mode .text-post-delete-btn {
+      color: #111111 !important;
     }
 
     body.dark-mode .sidemenu {
@@ -596,6 +603,30 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
 body.dark-mode .side-menu-user-name-btn,
 body.dark-mode #sideMenuUserName {
   color: #ffffff !important;
+}
+
+body.dark-mode .see-more-btn,
+body.dark-mode .feed-read-more-btn,
+body.dark-mode .reel-read-more-btn,
+body.dark-mode .readmore-btn,
+body.dark-mode .text-only-post .feed-read-more-btn,
+.dark-mode .see-more-btn,
+.dark-mode .feed-read-more-btn,
+.dark-mode .reel-read-more-btn,
+.dark-mode .readmore-btn {
+  background: none !important;
+  color: white !important;
+  padding: 4px 10px !important;
+  box-shadow: none !important;
+}
+
+body.dark-mode .see-more-like-this,
+body.dark-mode .see-more-like-this:hover,
+.dark-mode .see-more-like-this {
+  background: transparent !important;
+  color: #111111 !important;
+  padding: 10px 12px !important;
+  box-shadow: none !important;
 }
   `;
   document.head.appendChild(styleTag);
