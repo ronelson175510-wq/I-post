@@ -158,7 +158,7 @@
             display: flex;
             align-items: center;
             position: absolute;
-            left: 48%;
+            left: 40%;
             transform: translateX(-50%);
             margin-top: -20px;
             
@@ -305,7 +305,9 @@
 
         .notification-bell {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .notify-bubble {
@@ -323,16 +325,178 @@
   font-family: 'Roboto', sans-serif;
 }
 
-
 #notifyBell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgb(255, 255, 255);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
 #notifyBell:hover {
-  transform: scale(1.15);
+  transform: translateY(-1px) scale(1.04);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
+#notification {
+  position: fixed;
+  right: 18px;
+  bottom: 22px;
+  max-width: min(84vw, 320px);
+  background: rgba(17, 17, 17, 0.96);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 99999;
+}
+
+#notification.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.notification-sheet {
+  position: fixed;
+  left: 0;
+  bottom: -100%;
+  width: 100%;
+  height: 99%;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
+  transition: bottom 0.35s ease;
+  z-index: 99999;
+}
+
+.notification-sheet.show {
+  bottom: 0;
+}
+
+.notification-sheet-header {
+  position: relative;
+  padding-top: 8px;
+}
+
+.notification-sheet-content {
+  padding: 0 18px 18px;
+  height: calc(100% - 52px);
+  overflow-y: auto;
+}
+
+.notification-sheet-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.notification-sheet-header-row h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #111;
+}
+
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 10px;
+  background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgb(255, 255, 255);
+            border-radius: 10px;
+            font-family: 'Times New Roman', Times, serif;
+            box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
+}
+
+.notification-item.unread {
+  background: #f8f5ff;
+  border-color: rgba(118, 96, 255, 0.35);
+}
+
+.notification-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #e6e6ff, #d9f0ff);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #111;
+}
+
+.notification-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.notification-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.notification-topline strong {
+  font-size: 0.95rem;
+  color: #111;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-time {
+  font-size: 0.72rem;
+  color: #676767;
+  white-space: nowrap;
+}
+
+.notification-message {
+  color: #2d2d2d;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.notification-empty {
+  padding: 18px 8px;
+  text-align: center;
+  color: #666;
+  font-size: 0.95rem;
+}
 
 /* sidemenu css */
 
@@ -1981,7 +2145,7 @@ background: rgba(255, 255, 255, 0.08);
   width: 96%;
   font-weight: 640;
   color: #080808;
-  line-height: 1.35;
+  line-height: 1.95;
   font-size: 15px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   display: block;
@@ -2136,7 +2300,7 @@ background: rgba(255, 255, 255, 0.08);
   font-weight: 640;
   font-size: 15px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  line-height: 1.35;
+  line-height: 1.95;
   color: #1b1b1b;
   white-space: normal;
   display: block;
@@ -3210,6 +3374,12 @@ background: rgba(255, 255, 255, 0.08);
         </div>
 
         <div class="header-icons">
+          <div class="notification-bell">
+            <button id="notifyBell" type="button" aria-label="Notifications">
+              <i class="fa-solid fa-bell fa-xl" style="color: rgb(104, 93, 104);"></i>
+              <span id="notifyCount" class="notify-bubble">0</span>
+            </button>
+          </div>
           <div class="search-icon">
             <a href="search.html" aria-label="Search"><i class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(104, 93, 104);"></i></a>
           </div>
@@ -3217,8 +3387,20 @@ background: rgba(255, 255, 255, 0.08);
         </div>
     </div>
 
-    
+    <div id="notification" aria-live="polite" aria-atomic="true">New notification</div>
 
+    <div id="notificationSheet" class="notification-sheet" aria-live="polite">
+      <div class="sheet-header notification-sheet-header">
+        <span class="sheet-drag"></span>
+        <button id="closeNotificationSheet" class="close-btn" type="button" aria-label="Close notifications">×</button>
+      </div>
+      <div class="notification-sheet-content">
+        <div class="notification-sheet-header-row">
+          <h3>Notifications</h3>
+        </div>
+        <div id="notificationList" class="notification-list"></div>
+      </div>
+    </div>
 
     <div id="feedPosts" class="feed-posts" aria-live="polite"></div>
 
@@ -3241,10 +3423,8 @@ background: rgba(255, 255, 255, 0.08);
     
 
     <div class="sidemenu-main">
-     <a href="#" id="reportSheetBtn" class="report-menu-item">
-       <span class="report-menu-icon"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></span>
-       <span class="report-menu-label" data-i18n="report">Report</span>
-     </a>
+     
+      
       <a href="#" data-i18n="friends"><i class="fa-solid fa-user-group fa-sm" style="color: rgb(7, 7, 7);"></i>Friends</a>
       <a href="#" data-i18n="bookmarks"><i class="fa-solid fa-bookmark fa-sm" style="color: rgb(2, 2, 2);"></i>Saved</a>
       <a href="message.html" data-i18n="chat"><i class="fa-solid fa-comment fa-sm" style="color: rgb(7, 7, 7);"></i>Chat</a>

@@ -807,6 +807,8 @@ if (auth) {
     ensureUserProfileRecordOnServer(user);
     loadCurrentUserProfileDataFromServer(user.uid).then(() => populateProfileSettingsForm(user.uid));
     populateProfileSettingsForm(user.uid);
+    startNotificationPolling();
+    loadNotificationCount();
 
     if (feedPosts || searchResults) {
       loadPosts();
@@ -1058,6 +1060,28 @@ function renderUserNameWithVerification(displayName, userId = getCurrentUserId()
   return `${escapeHtml(resolvedName)}${getVerifiedBadgeMarkup()}`;
 }
 
+function getCurrentUserDisplayNameForApi() {
+  const currentUserId = getCurrentUserId();
+  const data = getCurrentUserProfileData(currentUserId);
+  const firstName = (data.firstName || "").trim();
+  const lastName = (data.lastName || "").trim();
+  const customDisplayName = [firstName, lastName].filter(Boolean).join(" ");
+
+  if (customDisplayName) {
+    return customDisplayName;
+  }
+
+  if (auth?.currentUser?.displayName) {
+    return auth.currentUser.displayName;
+  }
+
+  if (auth?.currentUser?.email) {
+    return auth.currentUser.email.split("@")[0];
+  }
+
+  return "User";
+}
+
 function getDisplayNameForUser(userId = getCurrentUserId()) {
   const data = getCurrentUserProfileData(userId);
   const firstName = (data.firstName || "").trim();
@@ -1169,40 +1193,198 @@ updateSideMenuUserName();
 const bell = document.getElementById("notifyBell");
 const bubble = document.getElementById("notifyCount");
 const notification = document.getElementById("notification");
+const notificationSheet = document.getElementById("notificationSheet");
+const notificationList = document.getElementById("notificationList");
 
-let count = 0;
-
-function addNotification(message = "New simulated notification!") {
-  if (!bubble || !notification) return;
-
-  count++;
-
-  if (count > 90) {
-    bubble.textContent = "90+";
-  } else {
-    bubble.textContent = count;
-  }
-
-  bubble.style.display = "block";
-  notification.textContent = message;
-  notification.classList.add("show");
-
-  setTimeout(() => {
-    notification.classList.remove("show");
-  }, 3000);
+function escapeHtml(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
-if (bell && bubble) {
-  bell.addEventListener("click", () => {
-    count = 0;
+function formatNotificationTime(value = "") {
+  if (!value) return "now";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "now";
+
+  const diffMs = Date.now() - date.getTime();
+  const diffSeconds = diffMs / 1000;
+
+  if (diffSeconds < 60) return "now";
+
+  const diffMinutes = diffSeconds / 60;
+  if (diffMinutes < 60) {
+    const roundedMinutes = Math.max(1, Math.round(diffMinutes));
+    return roundedMinutes === 1 ? "1 minute ago" : `${roundedMinutes} minutes ago`;
+  }
+
+  const diffHours = diffMinutes / 60;
+  if (diffHours < 24) {
+    const roundedHours = Math.max(1, Math.round(diffHours));
+    return roundedHours === 1 ? "1 hour ago" : `${roundedHours} hours ago`;
+  }
+
+  const diffDays = diffHours / 24;
+  if (diffDays < 2) return "yesterday";
+  if (diffDays < 30) {
+    const roundedDays = Math.max(2, Math.round(diffDays));
+    return `${roundedDays} days ago`;
+  }
+
+  const diffMonths = diffDays / 30;
+  if (diffMonths < 12) {
+    const roundedMonths = Math.max(1, Math.round(diffMonths));
+    return roundedMonths === 1 ? "1 month ago" : `${roundedMonths} months ago`;
+  }
+
+  return "last year";
+}
+
+function setNotificationBadge(count = 0) {
+  if (!bubble) return;
+  const safeCount = Number(count || 0);
+  if (safeCount <= 0) {
+    bubble.textContent = "0";
     bubble.style.display = "none";
+    return;
+  }
+  bubble.textContent = safeCount > 99 ? "99+" : String(safeCount);
+  bubble.style.display = "block";
+}
+
+function startNotificationPolling() {
+  if (window.__notificationPollingStarted) return;
+  window.__notificationPollingStarted = true;
+  loadNotificationCount();
+  window.setInterval(() => {
+    loadNotificationCount();
+  }, 15000);
+}
+
+async function loadNotificationCount() {
+  const userId = getCurrentUserId();
+  if (!userId || userId === "guest") {
+    setNotificationBadge(0);
+    return;
+  }
+
+  try {
+    const response = await apiFetch(`/api/notifications/unread-count?user_id=${encodeURIComponent(userId)}`);
+    if (!response.ok) return;
+    const data = await response.json();
+    setNotificationBadge(Number(data?.unread_count || 0));
+  } catch (error) {
+    console.warn("Failed to load notifications count:", error);
+  }
+}
+
+function renderNotificationList(rows = []) {
+  if (!notificationList) return;
+
+  if (!Array.isArray(rows) || !rows.length) {
+    notificationList.innerHTML = '<div class="notification-empty">No notifications yet.</div>';
+    return;
+  }
+
+  notificationList.innerHTML = rows.map((item) => {
+    const actorId = item.actor_user_id || item.actor_id || null;
+    const rawActorName = String(item.actor_name || "").trim();
+    const genericActorNames = new Set(["User", "user", "Someone", "someone", "Anonymous", "anonymous"]);
+    const resolvedActorName = (!rawActorName || genericActorNames.has(rawActorName)) && actorId
+      ? getDisplayNameForUser(actorId)
+      : (rawActorName || item.actor_user_id || "User");
+    const actorName = escapeHtml(resolvedActorName || "User");
+    const message = escapeHtml(item.message || "New notification");
+    const avatar = item.actor_profile_pic || "";
+    const time = formatNotificationTime(item.created_at);
+    const unread = Number(item.is_read || 0) === 0 ? "unread" : "";
+    const avatarMarkup = avatar
+      ? `<img src="${escapeHtml(avatar)}" alt="${actorName}">`
+      : `<span>${escapeHtml(actorName).charAt(0).toUpperCase() || "U"}</span>`;
+
+    return `
+      <div class="notification-item ${unread}" data-id="${escapeHtml(String(item.id || ""))}">
+        <div class="notification-avatar">${avatarMarkup}</div>
+        <div class="notification-copy">
+          <div class="notification-topline">
+            <strong>${actorName}</strong>
+            <span class="notification-time">${time}</span>
+          </div>
+          <div class="notification-message">${message}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function loadNotifications() {
+  const userId = getCurrentUserId();
+  if (!userId || userId === "guest") {
+    renderNotificationList([]);
+    setNotificationBadge(0);
+    return;
+  }
+
+  try {
+    const response = await apiFetch(`/api/notifications?user_id=${encodeURIComponent(userId)}`);
+    if (!response.ok) {
+      renderNotificationList([]);
+      return;
+    }
+
+    const rows = await response.json();
+    renderNotificationList(Array.isArray(rows) ? rows : []);
+
+    const markReadResponse = await apiFetch("/api/notifications/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId })
+    });
+
+    if (markReadResponse.ok) {
+      setNotificationBadge(0);
+    }
+    await loadNotificationCount();
+  } catch (error) {
+    console.warn("Failed to load notifications:", error);
+    renderNotificationList([]);
+  }
+}
+
+if (bell && notificationSheet) {
+  bell.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (notificationSheet && typeof openSheet === "function") {
+      openSheet(notificationSheet);
+    }
+    await loadNotifications();
+  });
+}
+
+if (notificationSheet) {
+  notificationSheet.addEventListener("click", (event) => {
+    if (event.target === notificationSheet) {
+      closeSheet(notificationSheet);
+    }
+  });
+}
+
+const closeNotificationSheet = document.getElementById("closeNotificationSheet");
+if (closeNotificationSheet && notificationSheet) {
+  closeNotificationSheet.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeSheet(notificationSheet);
   });
 }
 
 if (bell || bubble || notification) {
-  setInterval(() => {
-    addNotification("Simulated booking alert!");
-  }, 7000);
+  startNotificationPolling();
 }
 
 // search.js
@@ -1218,7 +1400,7 @@ function closeSheet(sheet) {
 }
 
 function getAllSheets() {
-  return [searchSheet, writePostSheet, uploadSheet].filter(Boolean);
+  return [searchSheet, writePostSheet, uploadSheet, notificationSheet].filter(Boolean);
 }
 
 function openSheet(targetSheet) {
@@ -2994,7 +3176,10 @@ if (followUserBtn) {
       const response = await fetch(`/api/users/${encodeURIComponent(targetUserId)}/follow`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: currentUserId })
+        body: JSON.stringify({
+          user_id: currentUserId,
+          name: getCurrentUserDisplayNameForApi()
+        })
       });
 
       const data = await response.json().catch(() => ({}));
@@ -3004,6 +3189,7 @@ if (followUserBtn) {
 
       const followerCount = Number(data?.follower_count || 0);
       const isFollowing = Boolean(data?.isFollowing);
+      await loadNotificationCount();
 
       followUserBtn.dataset.following = String(isFollowing);
       followUserBtn.setAttribute("aria-pressed", String(isFollowing));
@@ -4716,6 +4902,7 @@ async function sharePost(postId = "") {
   if (!postId) return;
 
   const url = `${window.location.origin}/reels.html?videoId=${encodeURIComponent(postId)}`;
+  const currentUserId = getCurrentUserId();
 
   try {
     if (navigator.share) {
@@ -4724,6 +4911,24 @@ async function sharePost(postId = "") {
         text: "Watch this reel on Bookme",
         url
       });
+    }
+
+    if (currentUserId && currentUserId !== "guest") {
+      try {
+        await apiFetch(`/api/posts/${encodeURIComponent(postId)}/share`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: currentUserId,
+            name: getCurrentUserDisplayNameForApi()
+          })
+        });
+      } catch (error) {
+        console.warn("Share notification request failed:", error);
+      }
+    }
+
+    if (navigator.share) {
       showUploadToast("Shared");
       return;
     }
@@ -4788,7 +4993,10 @@ if (document.getElementById("reelsContainer")) {
         const response = await fetch(`/api/posts/${encodeURIComponent(postId)}/like`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: currentUserId })
+          body: JSON.stringify({
+            user_id: currentUserId,
+            name: getCurrentUserDisplayNameForApi()
+          })
         });
 
         const data = await response.json().catch(() => ({}));
@@ -4799,6 +5007,7 @@ if (document.getElementById("reelsContainer")) {
         const icon = likeButton.querySelector("i");
         const countEl = likeButton.querySelector(".reel-action-count");
         const isLiked = Boolean(data?.liked);
+        await loadNotificationCount();
         if (icon) {
           icon.className = isLiked ? "fa-solid fa-heart" : "fa-regular fa-heart";
           icon.style.color = isLiked ? "rgb(255, 93, 93)" : "rgba(242, 224, 22, 0.9)";
@@ -5812,6 +6021,7 @@ if (submitCommentBtn && commentInput && commentsSheet) {
         body: JSON.stringify({
           post_id: Number(postId),
           user_id: getCurrentUserId(),
+          name: getCurrentUserDisplayNameForApi(),
           content: activeReplyCommentId ? `@${activeReplyCommentName}: ${commentText}` : commentText,
           reply_to: activeReplyCommentId ? Number(activeReplyCommentId) : null
         })
@@ -5834,6 +6044,7 @@ if (submitCommentBtn && commentInput && commentsSheet) {
 
       commentInput.value = "";
       clearCommentReplyMode();
+      await loadNotificationCount();
 
       const commentCountBadge = document.querySelector(`.comment-btn[data-post-id="${CSS.escape(String(postId))}"] .comment-count`);
       if (commentCountBadge) {
@@ -5891,7 +6102,10 @@ if (feedPosts) {
         const response = await fetch(`/api/posts/${encodeURIComponent(postId)}/like`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: currentUserId })
+          body: JSON.stringify({
+            user_id: currentUserId,
+            name: getCurrentUserDisplayNameForApi()
+          })
         });
 
         const data = await response.json().catch(() => ({}));
@@ -5902,6 +6116,7 @@ if (feedPosts) {
         const icon = likeButton.querySelector("i");
         const countEl = likeButton.querySelector(".like-count");
         const isLiked = Boolean(data?.liked);
+        await loadNotificationCount();
         if (icon) {
           icon.className = isLiked ? "fa-solid fa-heart fa-xl" : "fa-regular fa-heart fa-xl";
           icon.style.color = isLiked ? "rgb(255, 93, 93)" : "rgb(101, 101, 100)";

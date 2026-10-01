@@ -77,5 +77,20 @@ CREATE TABLE IF NOT EXISTS comment_likes (
   FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
 );
 
--- If the table already exists, columns may still need to be added in the live database.
--- Use the app's schema initializer to add missing columns safely on MySQL/Aiven.
+
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  recipient_user_id VARCHAR(255) NOT NULL,
+  actor_user_id VARCHAR(255) NOT NULL,
+  type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL,
+  target_type ENUM('user', 'post', 'comment') NOT NULL,
+  target_id VARCHAR(255) NULL,
+  message TEXT NOT NULL,
+  is_read TINYINT(1) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
+  INDEX idx_notifications_unread (recipient_user_id, is_read),
+  FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
+);

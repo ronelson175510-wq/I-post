@@ -268,22 +268,78 @@ function ensureUserRecord(userId, fields = {}, callback) {
     INSERT INTO users (id, name, email, profile_pic)
     VALUES (?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
-      name = VALUES(name),
-      email = VALUES(email),
+      name = IFNULL(VALUES(name), name),
+      email = IFNULL(VALUES(email), email),
       profile_pic = IFNULL(VALUES(profile_pic), profile_pic)
   `;
 
   db.query(query, [safeUserId, name, email, profilePic], (err) => {
-    if (callback) {
-      callback(err);
+    if (err) {
+      if (callback) {
+        callback(err);
+      }
       return;
     }
 
-    if (err) {
-      return Promise.reject(err);
+    maybeCreateWelcomeNotification(safeUserId);
+
+    if (callback) {
+      callback(null);
+      return;
     }
+
     return Promise.resolve();
   });
+}
+
+function extractActorNameFromMessage(message = "") {
+  const raw = String(message || "").trim();
+  if (!raw) {
+    return "User";
+  }
+
+  const match = raw.match(/^(.+?)(?:\s+(?:liked|commented|shared|started|followed|replied))(?:\s+.*)?$/i);
+  if (match && match[1] && match[1] !== "Someone" && match[1] !== "User") {
+    return match[1];
+  }
+
+  return raw.startsWith("Welcome to") ? "User" : (raw.split(" ")[0] || "User");
+}
+
+function maybeCreateWelcomeNotification(userId, callback = null) {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId || !db) {
+    if (callback) callback(null);
+    return Promise.resolve(null);
+  }
+
+  db.query(
+    "SELECT id FROM notifications WHERE recipient_user_id = ? AND actor_user_id = ? AND type = 'welcome' LIMIT 1",
+    [safeUserId, safeUserId],
+    (selectErr, rows) => {
+      if (selectErr) {
+        console.warn("WELCOME CHECK ERROR:", selectErr.message);
+        if (callback) callback(selectErr);
+        return;
+      }
+
+      if (rows && rows.length) {
+        if (callback) callback(null);
+        return;
+      }
+
+      db.query(
+        "INSERT INTO notifications (recipient_user_id, actor_user_id, type, target_type, target_id, message) VALUES (?, ?, 'welcome', 'user', ?, ?)",
+        [safeUserId, safeUserId, safeUserId, "Welcome to Chat-mini! Start following creators and sharing your moments."],
+        (insertErr) => {
+          if (insertErr) {
+            console.warn("WELCOME NOTIFICATION ERROR:", insertErr.message);
+          }
+          if (callback) callback(insertErr || null);
+        }
+      );
+    }
+  );
 }
 
 function initializeDatabaseSchema() {
@@ -414,7 +470,31 @@ function initializeDatabaseSchema() {
                                 if (err9) return;
                                 ensureColumn("recent_searches", "searched_user_avatar", "VARCHAR(500) NULL", (err10) => {
                                   if (err10) return;
-                                  console.log("Database schema initialized.");
+
+                                  runSchemaQuery(`
+                                    CREATE TABLE IF NOT EXISTS notifications (
+                                      id INT PRIMARY KEY AUTO_INCREMENT,
+                                      recipient_user_id VARCHAR(255) NOT NULL,
+                                      actor_user_id VARCHAR(255) NOT NULL,
+                                      type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL,
+                                      target_type ENUM('user', 'post', 'comment') NOT NULL,
+                                      target_id VARCHAR(255) NULL,
+                                      message TEXT NOT NULL,
+                                      is_read TINYINT(1) DEFAULT 0,
+                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                      INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
+                                      INDEX idx_notifications_unread (recipient_user_id, is_read),
+                                      FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                                      FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
+                                    )
+                                  `, () => {
+                                    runSchemaQuery(`
+                                      ALTER TABLE notifications
+                                      MODIFY COLUMN type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL
+                                    `, () => {
+                                      console.log("Database schema initialized.");
+                                    });
+                                  });
                                 });
                               });
                             });
@@ -476,14 +556,20 @@ function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic
   `;
 
   db.query(query, values, (err) => {
-    if (callback) {
-      callback(err);
+    if (err) {
+      if (callback) {
+        callback(err);
+      }
       return;
     }
 
-    if (err) {
-      return Promise.reject(err);
+    maybeCreateWelcomeNotification(safeUserId);
+
+    if (callback) {
+      callback(null);
+      return;
     }
+
     return Promise.resolve();
   });
 }
@@ -1345,6 +1431,29 @@ app.post("/api/users/:userId/follow", (req, res) => {
           const followingCount = Number(followingRows?.[0]?.following_count || 0);
           const nextFollowingState = !isFollowing;
 
+          if (!isFollowing) {
+            ensureUserRecord(viewerUserId, {
+              name: req.body?.name,
+              email: req.body?.email,
+              profile_pic: req.body?.profile_pic
+            }, (profileErr) => {
+              if (profileErr) {
+                console.warn("FOLLOW PROFILE ENSURE ERROR:", profileErr.message);
+              }
+
+              insertNotification({
+                recipient_user_id: targetUserId,
+                actor_user_id: viewerUserId,
+                type: "follow",
+                target_type: "user",
+                target_id: viewerUserId,
+                message: `${req.body?.name || "Someone"} started following you.`
+              }).catch((notificationErr) => {
+                console.warn("FOLLOW NOTIFICATION ERROR:", notificationErr.message);
+              });
+            });
+          }
+
           return res.json({
             target_user_id: targetUserId,
             isFollowing: nextFollowingState,
@@ -1355,6 +1464,134 @@ app.post("/api/users/:userId/follow", (req, res) => {
       });
     });
   });
+});
+
+app.get("/api/notifications", (req, res) => {
+  const userId = String(req.query?.user_id || "").trim();
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json([]);
+  }
+
+  db.query(
+    "DELETE FROM notifications WHERE recipient_user_id = ? AND created_at < DATE_SUB(NOW(), INTERVAL 15 DAY)",
+    [userId],
+    (deleteErr) => {
+      if (deleteErr) {
+        console.warn("NOTIFICATION CLEANUP ERROR:", deleteErr.message);
+      }
+
+      db.query(
+        `
+          SELECT n.*, 
+                 u.name AS actor_name,
+                 u.profile_pic AS actor_profile_pic,
+                 COALESCE(u.name, (SELECT us.name FROM users us WHERE us.id = n.actor_user_id LIMIT 1)) AS resolved_actor_name,
+                 COALESCE(u.profile_pic, (SELECT us.profile_pic FROM users us WHERE us.id = n.actor_user_id LIMIT 1)) AS resolved_actor_profile_pic
+          FROM notifications n
+          LEFT JOIN users u ON u.id = n.actor_user_id
+          WHERE n.recipient_user_id = ?
+          ORDER BY n.created_at DESC
+          LIMIT 30
+        `,
+        [userId],
+        (err, rows) => {
+          if (err) {
+            console.error("NOTIFICATION SELECT ERROR:", err);
+            return res.status(500).json({ error: err.message });
+          }
+
+          return res.json((rows || []).map((row) => ({
+            ...row,
+            actor_profile_pic: row.resolved_actor_profile_pic || row.actor_profile_pic || null,
+            actor_name: row.resolved_actor_name || row.actor_name || extractActorNameFromMessage(row.message) || "User",
+            is_read: Number(row.is_read || 0) === 1
+          })));
+        }
+      );
+    }
+  );
+});
+
+app.get("/api/notifications/unread-count", (req, res) => {
+  const userId = String(req.query?.user_id || "").trim();
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({ unread_count: 0 });
+  }
+
+  db.query(
+    "DELETE FROM notifications WHERE recipient_user_id = ? AND created_at < DATE_SUB(NOW(), INTERVAL 15 DAY)",
+    [userId],
+    (cleanupErr) => {
+      if (cleanupErr) {
+        console.warn("NOTIFICATION COUNT CLEANUP ERROR:", cleanupErr.message);
+      }
+
+      db.query(
+        "SELECT COUNT(*) AS unread_count FROM notifications WHERE recipient_user_id = ? AND is_read = 0 AND created_at >= DATE_SUB(NOW(), INTERVAL 15 DAY)",
+        [userId],
+        (err, rows) => {
+          if (err) {
+            console.error("NOTIFICATION COUNT ERROR:", err);
+            return res.status(500).json({ error: err.message });
+          }
+
+          return res.json({ unread_count: Number(rows?.[0]?.unread_count || 0) });
+        }
+      );
+    }
+  );
+});
+
+app.post("/api/notifications/read", (req, res) => {
+  const userId = String(req.body?.user_id || "").trim();
+  const notificationId = req.body?.notification_id !== undefined && req.body?.notification_id !== null && req.body?.notification_id !== ""
+    ? Number(req.body.notification_id)
+    : null;
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({ success: true });
+  }
+
+  if (notificationId && Number.isFinite(notificationId)) {
+    db.query(
+      "UPDATE notifications SET is_read = 1 WHERE id = ? AND recipient_user_id = ?",
+      [notificationId, userId],
+      (err) => {
+        if (err) {
+          console.error("MARK NOTIFICATION READ ERROR:", err);
+          return res.status(500).json({ error: err.message });
+        }
+        return res.json({ success: true });
+      }
+    );
+    return;
+  }
+
+  db.query(
+    "UPDATE notifications SET is_read = 1 WHERE recipient_user_id = ?",
+    [userId],
+    (err) => {
+      if (err) {
+        console.error("MARK ALL NOTIFICATIONS READ ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+      return res.json({ success: true });
+    }
+  );
 });
 
 app.post("/api/profile", (req, res) => {
@@ -1681,17 +1918,92 @@ app.post("/api/posts/:id/like", (req, res) => {
                 return res.status(500).json({ error: updateErr.message });
               }
 
+              if (!alreadyLiked) {
+                db.query("SELECT user_id FROM posts WHERE id = ? LIMIT 1", [postId], (postOwnerErr, postOwnerRows) => {
+                  if (!postOwnerErr && postOwnerRows?.[0] && String(postOwnerRows[0].user_id) !== String(userId)) {
+                    insertNotification({
+                      recipient_user_id: postOwnerRows[0].user_id,
+                      actor_user_id: userId,
+                      type: "like",
+                      target_type: "post",
+                      target_id: String(postId),
+                      message: `${req.body?.name || "Someone"} liked your post.`
+                    }).catch((notificationErr) => {
+                      console.warn("POST LIKE NOTIFICATION ERROR:", notificationErr.message);
+                    });
+                  }
+
+                  return res.json({
+                    success: true,
+                    liked: true,
+                    likeCount,
+                    status: "liked"
+                  });
+                });
+                return;
+              }
+
               return res.json({
                 success: true,
-                liked: !alreadyLiked,
+                liked: false,
                 likeCount,
-                status: alreadyLiked ? "unliked" : "liked"
+                status: "unliked"
               });
             });
           });
         });
       });
     });
+  });
+});
+
+app.post("/api/posts/:id/share", (req, res) => {
+  const postId = Number(req.params.id);
+  const userId = req.body?.user_id ? String(req.body.user_id).trim() : "";
+
+  if (!Number.isFinite(postId)) {
+    return res.status(400).json({ error: "Invalid post id" });
+  }
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({ success: true, shared: true });
+  }
+
+  db.query("SELECT user_id FROM posts WHERE id = ? LIMIT 1", [postId], (postErr, postRows) => {
+    if (postErr) {
+      console.error("SHARE POST SELECT ERROR:", postErr);
+      return res.status(500).json({ error: postErr.message });
+    }
+
+    const ownerUserId = postRows?.[0]?.user_id;
+    if (ownerUserId && String(ownerUserId) !== String(userId)) {
+      ensureUserRecord(userId, {
+        name: req.body?.name,
+        email: req.body?.email,
+        profile_pic: req.body?.profile_pic
+      }, (profileErr) => {
+        if (profileErr) {
+          console.warn("SHARE PROFILE ENSURE ERROR:", profileErr.message);
+        }
+
+        insertNotification({
+          recipient_user_id: ownerUserId,
+          actor_user_id: userId,
+          type: "share",
+          target_type: "post",
+          target_id: String(postId),
+          message: `${req.body?.name || "Someone"} shared your post.`
+        }).catch((notificationErr) => {
+          console.warn("SHARE NOTIFICATION ERROR:", notificationErr.message);
+        });
+      });
+    }
+
+    return res.json({ success: true, shared: true });
   });
 });
 
@@ -1932,18 +2244,33 @@ app.post("/api/comments", (req, res) => {
           return res.status(500).json({ error: err.message });
         }
 
-        return res.json({
-          success: true,
-          comment: {
-            id: results.insertId,
-            user_id: safeUserId,
-            post_id: safePostId,
-            comment: safeContent,
-            reply_to: safeReplyTo,
-            like_count: 0,
-            reply_count: 0,
-            created_at: new Date().toISOString()
+        db.query("SELECT user_id FROM posts WHERE id = ? LIMIT 1", [safePostId], (postErr, postRows) => {
+          if (!postErr && postRows?.[0] && String(postRows[0].user_id) !== String(safeUserId)) {
+            insertNotification({
+              recipient_user_id: postRows[0].user_id,
+              actor_user_id: safeUserId,
+              type: "comment",
+              target_type: "post",
+              target_id: String(safePostId),
+              message: `${req.body?.name || "Someone"} commented on your post.`
+            }).catch((notificationErr) => {
+              console.warn("COMMENT NOTIFICATION ERROR:", notificationErr.message);
+            });
           }
+
+          return res.json({
+            success: true,
+            comment: {
+              id: results.insertId,
+              user_id: safeUserId,
+              post_id: safePostId,
+              comment: safeContent,
+              reply_to: safeReplyTo,
+              like_count: 0,
+              reply_count: 0,
+              created_at: new Date().toISOString()
+            }
+          });
         });
       }
     );
@@ -1996,11 +2323,36 @@ app.post("/api/comments/:id/like", (req, res) => {
             return res.status(500).json({ error: updateErr.message });
           }
 
+          if (!alreadyLiked) {
+            db.query("SELECT user_id FROM comments WHERE id = ? LIMIT 1", [commentId], (commentUserErr, commentUserRows) => {
+              if (!commentUserErr && commentUserRows?.[0] && String(commentUserRows[0].user_id) !== String(userId)) {
+                insertNotification({
+                  recipient_user_id: commentUserRows[0].user_id,
+                  actor_user_id: userId,
+                  type: "comment_like",
+                  target_type: "comment",
+                  target_id: String(commentId),
+                  message: `${req.body?.name || "Someone"} liked your comment.`
+                }).catch((notificationErr) => {
+                  console.warn("COMMENT LIKE NOTIFICATION ERROR:", notificationErr.message);
+                });
+              }
+
+              return res.json({
+                success: true,
+                liked: true,
+                likeCount,
+                status: "liked"
+              });
+            });
+            return;
+          }
+
           return res.json({
             success: true,
-            liked: !alreadyLiked,
+            liked: false,
             likeCount,
-            status: alreadyLiked ? "unliked" : "liked"
+            status: "unliked"
           });
         });
       });
@@ -2130,3 +2482,25 @@ initializeDatabaseSchema();
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
 });
+
+
+function insertNotification({
+  recipient_user_id,
+  actor_user_id,
+  type,
+  target_type,
+  target_id,
+  message
+}) {
+  if (!recipient_user_id || !actor_user_id || recipient_user_id === actor_user_id) return;
+
+  return new Promise((resolve, reject) => {
+    db.query(
+      `INSERT INTO notifications
+       (recipient_user_id, actor_user_id, type, target_type, target_id, message)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [recipient_user_id, actor_user_id, type, target_type, String(target_id || ""), message],
+      (err, result) => err ? reject(err) : resolve(result)
+    );
+  });
+}
