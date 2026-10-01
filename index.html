@@ -158,7 +158,7 @@
             display: flex;
             align-items: center;
             position: absolute;
-            left: 40%;
+            left: 46%;
             transform: translateX(-50%);
             margin-top: -20px;
             
@@ -190,6 +190,7 @@
             justify-content: center;
             width: 38px;
             height: 38px;
+            gap: 4px;
             margin-right: auto;
             margin-left: 4px;
             background: rgba(255, 255, 255, 0.08);
@@ -199,10 +200,17 @@
             transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
         }
 
+        .header-menu-btn {
+          background:none;
+          border: none;
+        }
+
         .search-icon {
             display: flex;
             align-items: center;
             justify-content: center;
+            
+            float: left;
             width: 38px;
             height: 38px;
             margin: 0 4px;
@@ -238,7 +246,7 @@
 
         .header-icons{
           margin-left: auto;
-          margin-right: -7px;
+          margin-right: -14px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -246,7 +254,7 @@
             float: right;
             border-radius: 12px;
             padding: 6px 10px;
-            gap: 12px;
+            gap: 1px;
             margin-top: -6px;
             
             height: 90px;
@@ -3363,10 +3371,10 @@ background: rgba(255, 255, 255, 0.08);
 
 
     <div class="header">
-        <div class="header-brand-icon">
-          <a id="headerBrandLink" href="message.html" aria-label="Open messages"><i class="fa-brands fa-discourse fa-xl" style="color: rgb(109, 108, 111);"></i></a>
-        </div>
-
+       
+<button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars-staggered fa-2xl" style="color: rgb(43, 43, 44);"></i></button>
+     
+  
         <div class="title">
           <div class="title-wrap brand-title-font">
             Chat-mini
@@ -3379,11 +3387,14 @@ background: rgba(255, 255, 255, 0.08);
               <i class="fa-solid fa-bell fa-xl" style="color: rgb(104, 93, 104);"></i>
               <span id="notifyCount" class="notify-bubble">0</span>
             </button>
+
           </div>
-          <div class="search-icon">
+        <div class="search-icon">
             <a href="search.html" aria-label="Search"><i class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(104, 93, 104);"></i></a>
-          </div>
-            <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars-staggered fa-2xl" style="color: rgb(43, 43, 44);"></i></button>
+  </div>
+
+            
+           
         </div>
     </div>
 
