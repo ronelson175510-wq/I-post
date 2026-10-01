@@ -381,16 +381,21 @@ function initializeDatabaseSchema() {
     if (err0) return;
 
     runSchemaQuery(`
-      CREATE TABLE IF NOT EXISTS reported_contents (
+      CREATE TABLE IF NOT EXISTS posts (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        post_id INT NOT NULL,
-        reporter_user_id VARCHAR(255) NOT NULL,
-        reason VARCHAR(100) DEFAULT 'spam',
-        details TEXT,
+        user_id VARCHAR(255) NOT NULL,
+        content TEXT,
+        media_type ENUM('text', 'photo', 'video') DEFAULT 'text',
+        media_url VARCHAR(255),
+        media_urls TEXT,
+        likes_count INT DEFAULT 0,
+        report_count INT DEFAULT 0,
+        is_flagged TINYINT(1) DEFAULT 0,
+        report_status ENUM('active', 'taken_down') DEFAULT 'active',
+        viewer_discretion TINYINT(1) DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY unique_report (post_id, reporter_user_id),
-        FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-        FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE CASCADE
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `, () => {
       ensureColumn("posts", "report_count", "INT DEFAULT 0", (err1) => {
@@ -408,91 +413,95 @@ function initializeDatabaseSchema() {
               ensureColumn("posts", "saved_filename", "VARCHAR(255) NULL", (err5) => {
                 if (err5) return;
 
-                runSchemaQuery(`
-                  CREATE TABLE IF NOT EXISTS comments (
-                    id INT PRIMARY KEY AUTO_INCREMENT,
-                    user_id VARCHAR(255) NOT NULL,
-                    post_id INT NOT NULL,
-                    reply_to INT NULL,
-                    comment TEXT NOT NULL,
-                    like_count INT DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-                    FOREIGN KEY (reply_to) REFERENCES comments(id) ON DELETE CASCADE
-                  )
-                `, () => {
-                  ensureColumn("comments", "reply_to", "INT NULL", (err6) => {
-                    if (err6) return;
+                ensureColumn("posts", "viewer_discretion", "TINYINT(1) DEFAULT 0", (err6) => {
+                  if (err6) return;
 
-                    ensureColumn("comments", "like_count", "INT DEFAULT 0", (err7) => {
+                  runSchemaQuery(`
+                    CREATE TABLE IF NOT EXISTS comments (
+                      id INT PRIMARY KEY AUTO_INCREMENT,
+                      user_id VARCHAR(255) NOT NULL,
+                      post_id INT NOT NULL,
+                      reply_to INT NULL,
+                      comment TEXT NOT NULL,
+                      like_count INT DEFAULT 0,
+                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                      FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                      FOREIGN KEY (reply_to) REFERENCES comments(id) ON DELETE CASCADE
+                    )
+                  `, () => {
+                    ensureColumn("comments", "reply_to", "INT NULL", (err7) => {
                       if (err7) return;
 
-                      runSchemaQuery(`
-                        CREATE TABLE IF NOT EXISTS comment_likes (
-                          id INT PRIMARY KEY AUTO_INCREMENT,
-                          user_id VARCHAR(255) NOT NULL,
-                          comment_id INT NOT NULL,
-                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                          UNIQUE KEY unique_comment_like (user_id, comment_id),
-                          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                          FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
-                        )
-                      `, () => {
+                      ensureColumn("comments", "like_count", "INT DEFAULT 0", (err8) => {
+                        if (err8) return;
+
                         runSchemaQuery(`
-                          CREATE TABLE IF NOT EXISTS follows (
+                          CREATE TABLE IF NOT EXISTS comment_likes (
                             id INT PRIMARY KEY AUTO_INCREMENT,
                             user_id VARCHAR(255) NOT NULL,
-                            following_user_id VARCHAR(255) NOT NULL,
+                            comment_id INT NOT NULL,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            UNIQUE KEY unique_follow (user_id, following_user_id),
+                            UNIQUE KEY unique_comment_like (user_id, comment_id),
                             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                            FOREIGN KEY (following_user_id) REFERENCES users(id) ON DELETE CASCADE
+                            FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
                           )
                         `, () => {
                           runSchemaQuery(`
-                            CREATE TABLE IF NOT EXISTS recent_searches (
+                            CREATE TABLE IF NOT EXISTS follows (
                               id INT PRIMARY KEY AUTO_INCREMENT,
                               user_id VARCHAR(255) NOT NULL,
-                              query VARCHAR(255) NOT NULL,
-                              searched_user_id VARCHAR(255) NULL,
-                              searched_user_name VARCHAR(255) NULL,
-                              searched_user_avatar VARCHAR(500) NULL,
+                              following_user_id VARCHAR(255) NOT NULL,
                               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                              INDEX idx_recent_search_user_created (user_id, created_at DESC),
-                              INDEX idx_recent_search_query (query),
-                              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                              UNIQUE KEY unique_follow (user_id, following_user_id),
+                              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                              FOREIGN KEY (following_user_id) REFERENCES users(id) ON DELETE CASCADE
                             )
                           `, () => {
-                            ensureColumn("recent_searches", "searched_user_id", "VARCHAR(255) NULL", (err8) => {
-                              if (err8) return;
-                              ensureColumn("recent_searches", "searched_user_name", "VARCHAR(255) NULL", (err9) => {
+                            runSchemaQuery(`
+                              CREATE TABLE IF NOT EXISTS recent_searches (
+                                id INT PRIMARY KEY AUTO_INCREMENT,
+                                user_id VARCHAR(255) NOT NULL,
+                                query VARCHAR(255) NOT NULL,
+                                searched_user_id VARCHAR(255) NULL,
+                                searched_user_name VARCHAR(255) NULL,
+                                searched_user_avatar VARCHAR(500) NULL,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                INDEX idx_recent_search_user_created (user_id, created_at DESC),
+                                INDEX idx_recent_search_query (query),
+                                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                              )
+                            `, () => {
+                              ensureColumn("recent_searches", "searched_user_id", "VARCHAR(255) NULL", (err9) => {
                                 if (err9) return;
-                                ensureColumn("recent_searches", "searched_user_avatar", "VARCHAR(500) NULL", (err10) => {
+                                ensureColumn("recent_searches", "searched_user_name", "VARCHAR(255) NULL", (err10) => {
                                   if (err10) return;
+                                  ensureColumn("recent_searches", "searched_user_avatar", "VARCHAR(500) NULL", (err11) => {
+                                    if (err11) return;
 
-                                  runSchemaQuery(`
-                                    CREATE TABLE IF NOT EXISTS notifications (
-                                      id INT PRIMARY KEY AUTO_INCREMENT,
-                                      recipient_user_id VARCHAR(255) NOT NULL,
-                                      actor_user_id VARCHAR(255) NOT NULL,
-                                      type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL,
-                                      target_type ENUM('user', 'post', 'comment') NOT NULL,
-                                      target_id VARCHAR(255) NULL,
-                                      message TEXT NOT NULL,
-                                      is_read TINYINT(1) DEFAULT 0,
-                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                      INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
-                                      INDEX idx_notifications_unread (recipient_user_id, is_read),
-                                      FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
-                                      FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
-                                    )
-                                  `, () => {
                                     runSchemaQuery(`
-                                      ALTER TABLE notifications
-                                      MODIFY COLUMN type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL
+                                      CREATE TABLE IF NOT EXISTS notifications (
+                                        id INT PRIMARY KEY AUTO_INCREMENT,
+                                        recipient_user_id VARCHAR(255) NOT NULL,
+                                        actor_user_id VARCHAR(255) NOT NULL,
+                                        type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL,
+                                        target_type ENUM('user', 'post', 'comment') NOT NULL,
+                                        target_id VARCHAR(255) NULL,
+                                        message TEXT NOT NULL,
+                                        is_read TINYINT(1) DEFAULT 0,
+                                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                        INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
+                                        INDEX idx_notifications_unread (recipient_user_id, is_read),
+                                        FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                                        FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
+                                      )
                                     `, () => {
-                                      console.log("Database schema initialized.");
+                                      runSchemaQuery(`
+                                        ALTER TABLE notifications
+                                        MODIFY COLUMN type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL
+                                      `, () => {
+                                        console.log("Database schema initialized.");
+                                      });
                                     });
                                   });
                                 });
@@ -703,7 +712,30 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: {
+    fileSize: 25 * 1024 * 1024,
+    files: 3
+  }
+});
+
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ error: "File too large. Please choose a smaller file under 25MB." });
+    }
+
+    if (error.code === "LIMIT_FILE_COUNT") {
+      return res.status(400).json({ error: "Too many files uploaded." });
+    }
+
+    return res.status(400).json({ error: error.message || "Upload failed" });
+  }
+
+  if (error) {
+    return res.status(500).json({ error: error.message || "Upload failed" });
+  }
+
+  next();
 });
 
 app.use("/uploads", express.static(uploadsDir));
@@ -1645,6 +1677,9 @@ app.post("/api/profile", (req, res) => {
 app.post("/api/posts", upload.array("file", 3), async (req, res) => {
   const user_id = req.body.user_id || "anonymous";
   const commonContent = (req.body.content || "").trim();
+  const viewerDiscretion = req.body?.viewer_discretion !== undefined && req.body?.viewer_discretion !== null
+    ? Number(Boolean(Number(req.body.viewer_discretion)))
+    : 0;
   const files = Array.isArray(req.files) ? req.files : [];
 
   if (!files.length) {
@@ -1678,6 +1713,7 @@ app.post("/api/posts", upload.array("file", 3), async (req, res) => {
         media_urls: mediaUrls,
         saved_filename: files[0]?.filename || null,
         original_name: firstOriginalName,
+        viewer_discretion: viewerDiscretion,
         created_at: new Date().toISOString(),
         dbDisabled: true,
         is_gallery: mediaUrls.length > 1
@@ -1695,8 +1731,8 @@ app.post("/api/posts", upload.array("file", 3), async (req, res) => {
     }
 
     const query = `
-      INSERT INTO posts (user_id, content, media_type, media_url, media_urls, original_name, saved_filename)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO posts (user_id, content, media_type, media_url, media_urls, original_name, saved_filename, viewer_discretion)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     ensureUserRecord(user_id, {
@@ -1709,7 +1745,7 @@ app.post("/api/posts", upload.array("file", 3), async (req, res) => {
         return res.status(500).json({ error: userErr.message });
       }
 
-      db.query(query, [String(user_id), content, media_type, mediaUrls[0] || null, JSON.stringify(mediaUrls), firstOriginalName, files[0]?.filename || null], (err, results) => {
+      db.query(query, [String(user_id), content, media_type, mediaUrls[0] || null, JSON.stringify(mediaUrls), firstOriginalName, files[0]?.filename || null, viewerDiscretion], (err, results) => {
         if (err) {
           console.error("DB INSERT ERROR:", err);
           return res.status(500).json({ error: err.message });
@@ -1724,6 +1760,7 @@ app.post("/api/posts", upload.array("file", 3), async (req, res) => {
           media_urls: mediaUrls,
           saved_filename: files[0]?.filename || null,
           original_name: firstOriginalName,
+          viewer_discretion: viewerDiscretion,
           success: true,
           is_gallery: mediaUrls.length > 1
         };
@@ -1790,6 +1827,7 @@ app.get("/api/posts", (req, res) => {
           media_url: resolvedMediaUrls[0] || null,
           is_flagged: Boolean(post.is_flagged),
           report_count: Number(post.report_count || 0),
+          viewer_discretion: Number(post.viewer_discretion || post.content_view_discretion || 0),
           likes_count: Number(post.like_count || post.likes_count || 0),
           like_count: Number(post.like_count || post.likes_count || 0),
           comment_count: Number(post.comment_count || 0),
@@ -2074,6 +2112,38 @@ app.post("/api/posts/:id/report", (req, res) => {
         });
       }
     );
+  });
+});
+
+app.post("/api/posts/:id/viewer-discretion", (req, res) => {
+  const postId = Number(req.params.id);
+  const value = req.body?.viewer_discretion !== undefined && req.body?.viewer_discretion !== null
+    ? Number(Boolean(Number(req.body.viewer_discretion)))
+    : 0;
+
+  if (!Number.isFinite(postId)) {
+    return res.status(400).json({ error: "Invalid post id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.status(503).json({ error: "Database is not enabled for manual viewer discretion updates." });
+  }
+
+  db.query("UPDATE posts SET viewer_discretion = ? WHERE id = ?", [value, postId], (err, result) => {
+    if (err) {
+      console.error("VIEWER DISCRETION UPDATE ERROR:", err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    if (!result || result.affectedRows === 0) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    return res.json({
+      success: true,
+      post_id: postId,
+      viewer_discretion: value
+    });
   });
 });
 
@@ -2417,6 +2487,9 @@ app.delete("/api/posts/:id", (req, res) => {
 app.post("/api/text-post", (req, res) => {
   const { user_id, content } = req.body || {};
   const safeUserId = user_id || "anonymous";
+  const viewerDiscretion = req.body?.viewer_discretion !== undefined && req.body?.viewer_discretion !== null
+    ? Number(Boolean(Number(req.body.viewer_discretion)))
+    : 0;
   const safeContent = String(content || "")
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
@@ -2434,6 +2507,7 @@ app.post("/api/text-post", (req, res) => {
       media_type: "text",
       media_url: null,
       original_name: null,
+      viewer_discretion: viewerDiscretion,
       created_at: new Date().toISOString(),
       dbDisabled: true
     };
@@ -2449,8 +2523,8 @@ app.post("/api/text-post", (req, res) => {
   }
 
   const query = `
-    INSERT INTO posts (user_id, content, media_type)
-    VALUES (?, ?, 'text')
+    INSERT INTO posts (user_id, content, media_type, viewer_discretion)
+    VALUES (?, ?, 'text', ?)
   `;
 
   ensureUserRecord(safeUserId, {
@@ -2463,7 +2537,7 @@ app.post("/api/text-post", (req, res) => {
       return res.status(500).json({ error: userErr.message });
     }
 
-    db.query(query, [String(safeUserId), safeContent], (err, results) => {
+    db.query(query, [String(safeUserId), safeContent, viewerDiscretion], (err, results) => {
       if (err) {
         console.error("TEXT POST ERROR:", err);
         return res.status(500).json({ error: err.message });
@@ -2471,7 +2545,8 @@ app.post("/api/text-post", (req, res) => {
 
       res.json({
         id: results.insertId,
-        success: true
+        success: true,
+        viewer_discretion: viewerDiscretion
       });
     });
   });

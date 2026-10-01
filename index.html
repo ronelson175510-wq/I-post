@@ -190,7 +190,7 @@
             justify-content: center;
             width: 38px;
             height: 38px;
-            gap: 4px;
+            gap: 6px;
             margin-right: auto;
             margin-left: 4px;
             background: rgba(255, 255, 255, 0.08);
@@ -209,8 +209,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            
-            float: left;
+            position: fixed;
+           
+            right: 32px;
             width: 38px;
             height: 38px;
             margin: 0 4px;
@@ -316,6 +317,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  ma
 }
 
 .notify-bubble {
@@ -338,6 +340,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  right: 38px;
   width: 38px;
   height: 38px;
   background: rgba(255, 255, 255, 0.08);
@@ -793,7 +796,7 @@
   background: transparent;
   border: none;
   color: #060606;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   cursor: pointer;
@@ -3388,6 +3391,7 @@ background: rgba(255, 255, 255, 0.08);
         </div>
 
         <div class="header-icons">
+          
           <div class="notification-bell">
             <button id="notifyBell" type="button" aria-label="Notifications">
               <i class="fa-solid fa-bell fa-xl" style="color: rgb(104, 93, 104);"></i>
@@ -3395,9 +3399,11 @@ background: rgba(255, 255, 255, 0.08);
             </button>
 
           </div>
-        <div class="search-icon">
+
+          <div class="search-icon">
             <a href="search.html" aria-label="Search"><i class="fa-solid fa-magnifying-glass fa-xl" style="color: rgb(104, 93, 104);"></i></a>
         </div>
+        
 <button class="openbtn" onclick="openNav()"><i class="fa-solid fa-bars-staggered fa-2xl" style="color: rgb(43, 43, 44);"></i></button>
             
            
@@ -3519,8 +3525,11 @@ background: rgba(255, 255, 255, 0.08);
        
       </div>
   <div class="upload-limit-note" style="margin: 8px 0 10px; font-size: 14px; color: rgba(17, 17, 17, 0.72); text-align: center; margin-top: 8px; left: -28px; float: left; font-family: Arial, sans-serif;">
-        Max 3 items per post • 1 video max
-      </div>
+        Max video 25MB • 15–20 sec 
+  </div>
+  <div class="upload-limit-note" style="margin: 8px 0 10px; font-size: 14px; color: rgba(17, 17, 17, 0.72); text-align: center; margin-top: 8px; left: -28px; float: left; font-family: Arial, sans-serif;">
+        Multi-file upload : 3 images max × 1 video max
+  </div>
       
       
       <!-- Preview container (blank for now) -->

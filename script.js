@@ -5058,11 +5058,19 @@ function resetUploadForm() {
 }
 
 const MAX_UPLOAD_ITEMS = 3;
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+const MAX_VIDEO_DURATION_SECONDS = 20;
 
 function validateUploadFiles(files = []) {
   const selectedFiles = Array.from(files || []);
   if (!selectedFiles.length) {
     return { valid: false, error: "Please choose a file first." };
+  }
+
+  const oversizedFile = selectedFiles.find((file) => Number(file.size || 0) > MAX_FILE_SIZE_BYTES);
+  if (oversizedFile) {
+    const readableLimit = "25MB";
+    return { valid: false, error: `Each file must be under ${readableLimit}. ${oversizedFile.name} is too large.` };
   }
 
   const imageCount = selectedFiles.filter((file) => file.type.startsWith("image/")).length;
@@ -5077,6 +5085,187 @@ function validateUploadFiles(files = []) {
   }
 
   return { valid: true, files: selectedFiles };
+}
+
+function getVideoDuration(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith("video/")) {
+      resolve(0);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+
+    const cleanup = () => URL.revokeObjectURL(objectUrl);
+
+    video.onloadedmetadata = () => {
+      const duration = Number.isFinite(video.duration) ? Number(video.duration) : 0;
+      cleanup();
+      resolve(duration);
+    };
+
+    video.onerror = () => {
+      cleanup();
+      reject(new Error("Unable to read video duration."));
+    };
+
+    video.src = objectUrl;
+  });
+}
+
+async function compressVideoFile(file) {
+  if (!file || !file.type.startsWith("video/")) {
+    return file;
+  }
+
+  const fileSize = Number(file.size || 0);
+  if (fileSize <= MAX_FILE_SIZE_BYTES) {
+    try {
+      const duration = await getVideoDuration(file);
+      if (duration > 0 && duration <= MAX_VIDEO_DURATION_SECONDS) {
+        return file;
+      }
+    } catch (error) {
+      console.warn("Video duration read failed, skipping compression check:", error);
+    }
+  }
+
+  const support = typeof MediaRecorder !== "undefined" && typeof HTMLCanvasElement !== "undefined";
+  if (!support) {
+    return file;
+  }
+
+  try {
+    const videoUrl = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.src = videoUrl;
+
+    await new Promise((resolve, reject) => {
+      video.onloadedmetadata = resolve;
+      video.onerror = () => reject(new Error("Unable to load video for compression."));
+    });
+
+    const duration = Number.isFinite(video.duration) ? Number(video.duration) : 0;
+    const targetDuration = Math.min(duration || MAX_VIDEO_DURATION_SECONDS, MAX_VIDEO_DURATION_SECONDS);
+    const originalWidth = video.videoWidth || 1280;
+    const originalHeight = video.videoHeight || 720;
+    const scale = Math.min(1, 1280 / Math.max(originalWidth, 1));
+    const width = Math.max(1, Math.round(originalWidth * scale));
+    const height = Math.max(1, Math.round(originalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+
+    const stream = canvas.captureStream(20);
+    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+      ? "video/webm;codecs=vp9"
+      : (MediaRecorder.isTypeSupported("video/webm;codecs=vp8") ? "video/webm;codecs=vp8" : "video/webm");
+    const recorder = new MediaRecorder(stream, { mimeType });
+    const chunks = [];
+
+    recorder.ondataavailable = (event) => {
+      if (event.data && event.data.size) {
+        chunks.push(event.data);
+      }
+    };
+
+    const recorded = new Promise((resolve, reject) => {
+      recorder.onstop = resolve;
+      recorder.onerror = reject;
+    });
+
+    recorder.start();
+    video.currentTime = 0;
+    await new Promise((resolve) => {
+      const finish = () => {
+        video.pause();
+        resolve();
+      };
+      video.onseeked = finish;
+      video.onerror = finish;
+      if (video.readyState >= 2) {
+        video.currentTime = 0;
+      }
+    });
+
+    const startTime = performance.now();
+    const maxMs = Math.max(1000, targetDuration * 1000);
+
+    video.play();
+    while (performance.now() - startTime < maxMs && video.currentTime < Math.max(targetDuration, 0.1)) {
+      if (context) {
+        context.drawImage(video, 0, 0, width, height);
+      }
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+
+    video.pause();
+    recorder.stop();
+    await recorded;
+
+    const blob = new Blob(chunks, { type: mimeType });
+    const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, ".webm"), {
+      type: blob.type || "video/webm",
+      lastModified: Date.now()
+    });
+
+    URL.revokeObjectURL(videoUrl);
+    return compressedFile.size > 0 ? compressedFile : file;
+  } catch (error) {
+    console.warn("Automatic video compression failed, keeping original file:", error);
+    return file;
+  }
+}
+
+async function prepareUploadFiles(files = []) {
+  const selectedFiles = Array.from(files || []);
+  if (!selectedFiles.length) {
+    return { valid: false, error: "Please choose a file first." };
+  }
+
+  const preparedFiles = [];
+  for (const file of selectedFiles) {
+    const preparedFile = await compressVideoFile(file);
+    preparedFiles.push(preparedFile);
+  }
+
+  const oversizedFile = preparedFiles.find((file) => Number(file.size || 0) > MAX_FILE_SIZE_BYTES);
+  if (oversizedFile) {
+    return { valid: false, error: `Each file must be under 25MB. ${oversizedFile.name} is too large.` };
+  }
+
+  const imageCount = preparedFiles.filter((file) => file.type.startsWith("image/")).length;
+  const videoCount = preparedFiles.filter((file) => file.type.startsWith("video/")).length;
+
+  if (videoCount > 1) {
+    return { valid: false, error: "You can upload only 1 video per post." };
+  }
+
+  if (imageCount + videoCount > MAX_UPLOAD_ITEMS) {
+    return { valid: false, error: `You can upload up to ${MAX_UPLOAD_ITEMS} items per post. Choose up to 3 images or 1 video.` };
+  }
+
+  const videoFiles = preparedFiles.filter((file) => file.type.startsWith("video/"));
+  for (const file of videoFiles) {
+    try {
+      const duration = await getVideoDuration(file);
+      if (duration > MAX_VIDEO_DURATION_SECONDS) {
+        return { valid: false, error: `Videos are capped at ${MAX_VIDEO_DURATION_SECONDS} seconds to keep uploads small and affordable.` };
+      }
+    } catch (error) {
+      console.warn("Could not verify video duration after compression:", error);
+    }
+  }
+
+  return { valid: true, files: preparedFiles };
 }
 
 function handleMediaSelection() {
@@ -5132,12 +5321,18 @@ async function submitUploadedFiles() {
     return;
   }
 
+  const prepared = await prepareUploadFiles(files);
+  if (!prepared.valid) {
+    alert(prepared.error);
+    return;
+  }
+
   const description = uploadDescription ? uploadDescription.value.trim() : "";
   const caption = description;
 
   const formData = new FormData();
   const currentUserId = getCurrentUserId();
-  validation.files.forEach((file) => {
+  prepared.files.forEach((file) => {
     formData.append("file", file);
   });
   formData.append("content", caption);
@@ -5630,6 +5825,7 @@ function renderFeedPost(post) {
     /^[A-Za-z0-9_\-() ]{3,80}$/.test(content) && /(?:IMG|VID|PHOTO|PXL|Screenshot|DCIM|image|video)/i.test(content)
   );
   const caption = content && !isLikelyNumericCaption && !isLikelyFilenameCaption ? translatedContent : "";
+  const isViewerDiscretionRestricted = Number(post?.viewer_discretion || 0) === 1;
   const isVideo = isVideoMediaUrl(mediaUrl);
   const isGallery = mediaList.length > 1;
   const isTextOnly = !mediaUrl && !!caption;
@@ -5730,7 +5926,29 @@ function renderFeedPost(post) {
   const openReelUrl = post?.id ? `reels.html?videoId=${encodeURIComponent(post.id)}` : "reels.html";
   const openReelLabel = dict.openReels || "Open reels";
   const hasVideoMedia = Array.isArray(mediaList) ? mediaList.some((item) => isVideoMediaUrl(item)) : isVideoMediaUrl(mediaUrl);
-  const mediaWrap = hasVideoMedia && post?.id ? `<a href="${openReelUrl}" class="video-open-link" aria-label="${openReelLabel}" data-post-id="${post?.id || ""}">${mediaMarkup}</a>` : mediaMarkup;
+
+  let mediaWrap = hasVideoMedia && post?.id ? `<a href="${openReelUrl}" class="video-open-link" aria-label="${openReelLabel}" data-post-id="${post?.id || ""}">${mediaMarkup}</a>` : mediaMarkup;
+
+  if (isViewerDiscretionRestricted && mediaMarkup) {
+    mediaWrap = `
+      <div class="viewer-discretion-gate" data-post-id="${post?.id || ""}" style="position: relative; display: block; width: 100%; height: 100%; max-width: 100%; overflow: hidden; background: none; border-radius: 0;">
+        <div class="viewer-discretion-media" style="display: block; width: 100%; height: 100%; max-width: 100%; filter: blur(16px) saturate(0.5); opacity: 0.6; pointer-events: none;">
+          ${mediaWrap}
+        </div>
+        <div class="viewer-discretion-screen" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background: rgba(10,10,12,0.68); padding: 22px; text-align:center; z-index:2; width:100%; height:100%; box-sizing:border-box;">
+          <div style="max-width: 290px; width:100%;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(255,255,255,0.76); font-weight: 700; font-family: sans-serif;">Viewer discretion</div>
+            <div style="margin: 12px 0 18px; font-size: 1.15rem; font-weight: 700; color: #ffffff; line-height: 1.3;">This content may contain sensitive material.</div>
+            <div style="display:flex; gap: 10px; justify-content:center; flex-wrap:wrap;">
+              <button type="button" class="viewer-discretion-allow" data-post-id="${post?.id || ""}" style="background: #ffffff; color: #111111; border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 700; cursor: pointer;">Watch anyway</button>
+              <button type="button" class="viewer-discretion-skip" data-post-id="${post?.id || ""}" style="background: transparent; color: #ffffff; border: 1px solid rgba(255,255,255,0.45); border-radius: 999px; padding: 10px 18px; font-weight: 700; cursor: pointer;">Keep scrolling</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   const isOwnPost = Boolean(post?.user_id) && String(post.user_id) === String(getCurrentUserId());
   const reportButtonMarkup = !isOwnPost ? `
     <button class="post-report-btn" type="button" data-post-id="${post?.id || ""}" data-action="report">
@@ -5841,6 +6059,38 @@ function bindReadMoreButtons() {
   });
 }
 
+function bindViewerDiscretionGate() {
+  document.querySelectorAll(".viewer-discretion-allow").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const gate = button.closest(".viewer-discretion-gate");
+      if (!gate) return;
+
+      const media = gate.querySelector(".viewer-discretion-media");
+      if (media) {
+        media.style.filter = "none";
+        media.style.opacity = "1";
+        media.style.pointerEvents = "auto";
+      }
+
+      const screen = gate.querySelector(".viewer-discretion-screen");
+      if (screen) {
+        screen.style.display = "none";
+      }
+    });
+  });
+
+  document.querySelectorAll(".viewer-discretion-skip").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const card = button.closest(".feed-post-card");
+      if (card) {
+        card.style.display = "none";
+      }
+    });
+  });
+}
+
 function bindTextPostMenus() {
   if (!textMenuHandlerBound) {
     textMenuHandlerBound = true;
@@ -5929,6 +6179,7 @@ async function loadPosts() {
       feedPosts.innerHTML = visiblePosts.map(renderFeedPost).join("");
       unwrapThreadWrappers();
       bindReadMoreButtons();
+      bindViewerDiscretionGate();
       bindProfileAvatarButtons(feedPosts);
       feedPosts.querySelectorAll(".video-shell").forEach((videoShell, index) => {
         videoShell.dataset.autoplay = String(index === 0);
