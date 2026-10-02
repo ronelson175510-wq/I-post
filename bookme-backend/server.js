@@ -342,6 +342,158 @@ function maybeCreateWelcomeNotification(userId, callback = null) {
   );
 }
 
+const recommendationStopWords = new Set([
+  "about", "after", "again", "all", "also", "always", "am", "an", "and", "any", "are", "as", "at",
+  "be", "because", "been", "before", "being", "between", "but", "by", "can", "could", "did", "do",
+  "does", "doing", "down", "during", "each", "few", "for", "from", "further", "had", "has", "have",
+  "having", "he", "her", "here", "hers", "him", "his", "how", "i", "if", "in", "into", "is", "it",
+  "its", "itself", "just", "me", "more", "most", "my", "no", "nor", "not", "of", "off", "on", "once",
+  "only", "or", "other", "our", "out", "over", "own", "same", "she", "should", "so", "some", "such",
+  "than", "that", "the", "their", "theirs", "them", "themselves", "then", "there", "these", "they",
+  "this", "those", "through", "to", "too", "under", "until", "up", "very", "was", "we", "were", "what",
+  "when", "where", "which", "while", "who", "whom", "why", "will", "with", "you", "your", "yours"
+]);
+
+function getRecommendationTokens(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token && token.length > 2 && !recommendationStopWords.has(token));
+}
+
+function scoreRecommendationPost(post = {}, userHistory = []) {
+  const safePost = post || {};
+  const postId = Number(safePost.id || 0);
+  const postCreatorId = String(safePost.user_id || "").trim();
+  const postContent = String(safePost.content || "");
+  const postMediaType = String(safePost.media_type || "").trim();
+  const postTokens = new Set(getRecommendationTokens(postContent));
+
+  let score = 0;
+  score += Number(safePost.like_count || 0) * 0.75;
+  score += Number(safePost.comment_count || 0) * 1.5;
+
+  const createdAt = safePost.created_at ? new Date(safePost.created_at) : new Date();
+  const ageHours = Math.max(1, (Date.now() - createdAt.getTime()) / 3600000);
+  const recencyBoost = Math.max(0, 1 - Math.min(ageHours / 168, 1));
+  score += recencyBoost * 8;
+
+  if (!Array.isArray(userHistory) || !userHistory.length) {
+    return score;
+  }
+
+  for (const entry of userHistory) {
+    const eventType = String(entry?.event_type || "").toLowerCase();
+    const targetUserId = String(entry?.target_user_id || "").trim();
+    const eventWeight = Number(entry?.weight || 1);
+    const entryPostId = Number(entry?.post_id || 0);
+    const entryCreatorId = String(entry?.post_user_id || "").trim();
+    const entryContent = String(entry?.post_content || "");
+    const entryMediaType = String(entry?.post_media_type || "").trim();
+    const overlap = getRecommendationTokens(entryContent).filter((token) => postTokens.has(token));
+
+    if (postCreatorId && targetUserId && postCreatorId === targetUserId) {
+      score += eventWeight * 9;
+    }
+
+    if (postCreatorId && entryCreatorId && postCreatorId === entryCreatorId) {
+      score += eventType === "follow_user" ? 9 : (eventWeight * 6);
+    }
+
+    if (postId && entryPostId && postId === entryPostId) {
+      score += eventType === "like" ? 12 : 8;
+    }
+
+    if (targetUserId && postCreatorId && targetUserId === postCreatorId) {
+      score += eventType === "follow_user" ? 10 : 4;
+    }
+
+    if (entryContent && overlap.length) {
+      score += overlap.length * 4 * Math.max(1, eventWeight);
+    }
+
+    if (entryMediaType && postMediaType && entryMediaType === postMediaType) {
+      score += 2;
+    }
+
+    if (eventType === "share") {
+      score += 2;
+    }
+
+    if (eventType === "comment") {
+      score += 1.5;
+    }
+  }
+
+  return score;
+}
+
+function getRecommendationHistoryForUser(userId, callback = null) {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId || !db) {
+    if (typeof callback === "function") {
+      callback(null, []);
+    }
+    return;
+  }
+
+  db.query(
+    `
+      SELECT r.user_id, r.post_id, r.target_user_id, r.event_type, r.weight,
+             p.user_id AS post_user_id,
+             p.content AS post_content,
+             p.media_type AS post_media_type
+      FROM recommendation_events r
+      LEFT JOIN posts p ON p.id = r.post_id
+      WHERE r.user_id = ?
+      ORDER BY r.created_at DESC
+      LIMIT 250
+    `,
+    [safeUserId],
+    (err, rows) => {
+      if (err) {
+        console.warn("RECOMMENDATION HISTORY ERROR:", err.message);
+        if (typeof callback === "function") {
+          callback(err, []);
+        }
+        return;
+      }
+
+      if (typeof callback === "function") {
+        callback(null, Array.isArray(rows) ? rows : []);
+      }
+    }
+  );
+}
+
+function trackRecommendationEvent({ userId, postId = null, targetUserId = null, eventType, weight = 1 }, callback = null) {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId || !db || !eventType) {
+    if (typeof callback === "function") {
+      callback && callback(null);
+    }
+    return;
+  }
+
+  const normalizedPostId = postId !== null && postId !== undefined && postId !== "" ? Number(postId) : null;
+  const normalizedTargetUserId = targetUserId && String(targetUserId).trim() ? String(targetUserId).trim() : null;
+
+  db.query(
+    "INSERT INTO recommendation_events (user_id, post_id, target_user_id, event_type, weight) VALUES (?, ?, ?, ?, ?)",
+    [safeUserId, Number.isFinite(normalizedPostId) ? normalizedPostId : null, normalizedTargetUserId, String(eventType), Number(weight) || 1],
+    (err) => {
+      if (err) {
+        console.warn("RECOMMENDATION EVENT ERROR:", err.message);
+      }
+      if (typeof callback === "function") {
+        callback(err || null);
+      }
+    }
+  );
+}
+
 function initializeDatabaseSchema() {
   if (!db) return;
 
@@ -459,48 +611,66 @@ function initializeDatabaseSchema() {
                             )
                           `, () => {
                             runSchemaQuery(`
-                              CREATE TABLE IF NOT EXISTS recent_searches (
+                              CREATE TABLE IF NOT EXISTS recommendation_events (
                                 id INT PRIMARY KEY AUTO_INCREMENT,
                                 user_id VARCHAR(255) NOT NULL,
-                                query VARCHAR(255) NOT NULL,
-                                searched_user_id VARCHAR(255) NULL,
-                                searched_user_name VARCHAR(255) NULL,
-                                searched_user_avatar VARCHAR(500) NULL,
+                                post_id INT NULL,
+                                target_user_id VARCHAR(255) NULL,
+                                event_type ENUM('like', 'share', 'comment', 'follow_user', 'comment_like', 'view') NOT NULL,
+                                weight DECIMAL(5,2) DEFAULT 1.00,
                                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                INDEX idx_recent_search_user_created (user_id, created_at DESC),
-                                INDEX idx_recent_search_query (query),
-                                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                INDEX idx_recommendation_user_created (user_id, created_at DESC),
+                                INDEX idx_recommendation_post (post_id),
+                                INDEX idx_recommendation_target_user (target_user_id),
+                                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                                FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                                FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE
                               )
                             `, () => {
-                              ensureColumn("recent_searches", "searched_user_id", "VARCHAR(255) NULL", (err9) => {
-                                if (err9) return;
-                                ensureColumn("recent_searches", "searched_user_name", "VARCHAR(255) NULL", (err10) => {
-                                  if (err10) return;
-                                  ensureColumn("recent_searches", "searched_user_avatar", "VARCHAR(500) NULL", (err11) => {
-                                    if (err11) return;
+                              runSchemaQuery(`
+                                CREATE TABLE IF NOT EXISTS recent_searches (
+                                  id INT PRIMARY KEY AUTO_INCREMENT,
+                                  user_id VARCHAR(255) NOT NULL,
+                                  query VARCHAR(255) NOT NULL,
+                                  searched_user_id VARCHAR(255) NULL,
+                                  searched_user_name VARCHAR(255) NULL,
+                                  searched_user_avatar VARCHAR(500) NULL,
+                                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                  INDEX idx_recent_search_user_created (user_id, created_at DESC),
+                                  INDEX idx_recent_search_query (query),
+                                  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                )
+                              `, () => {
+                                ensureColumn("recent_searches", "searched_user_id", "VARCHAR(255) NULL", (err9) => {
+                                  if (err9) return;
+                                  ensureColumn("recent_searches", "searched_user_name", "VARCHAR(255) NULL", (err10) => {
+                                    if (err10) return;
+                                    ensureColumn("recent_searches", "searched_user_avatar", "VARCHAR(500) NULL", (err11) => {
+                                      if (err11) return;
 
-                                    runSchemaQuery(`
-                                      CREATE TABLE IF NOT EXISTS notifications (
-                                        id INT PRIMARY KEY AUTO_INCREMENT,
-                                        recipient_user_id VARCHAR(255) NOT NULL,
-                                        actor_user_id VARCHAR(255) NOT NULL,
-                                        type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL,
-                                        target_type ENUM('user', 'post', 'comment') NOT NULL,
-                                        target_id VARCHAR(255) NULL,
-                                        message TEXT NOT NULL,
-                                        is_read TINYINT(1) DEFAULT 0,
-                                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                        INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
-                                        INDEX idx_notifications_unread (recipient_user_id, is_read),
-                                        FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
-                                        FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
-                                      )
-                                    `, () => {
                                       runSchemaQuery(`
-                                        ALTER TABLE notifications
-                                        MODIFY COLUMN type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL
+                                        CREATE TABLE IF NOT EXISTS notifications (
+                                          id INT PRIMARY KEY AUTO_INCREMENT,
+                                          recipient_user_id VARCHAR(255) NOT NULL,
+                                          actor_user_id VARCHAR(255) NOT NULL,
+                                          type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL,
+                                          target_type ENUM('user', 'post', 'comment') NOT NULL,
+                                          target_id VARCHAR(255) NULL,
+                                          message TEXT NOT NULL,
+                                          is_read TINYINT(1) DEFAULT 0,
+                                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                          INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
+                                          INDEX idx_notifications_unread (recipient_user_id, is_read),
+                                          FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                                          FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
+                                        )
                                       `, () => {
-                                        console.log("Database schema initialized.");
+                                        runSchemaQuery(`
+                                          ALTER TABLE notifications
+                                          MODIFY COLUMN type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL
+                                        `, () => {
+                                          console.log("Database schema initialized.");
+                                        });
                                       });
                                     });
                                   });
@@ -1473,6 +1643,13 @@ app.post("/api/users/:userId/follow", (req, res) => {
                 console.warn("FOLLOW PROFILE ENSURE ERROR:", profileErr.message);
               }
 
+              trackRecommendationEvent({
+                userId: viewerUserId,
+                targetUserId,
+                eventType: "follow_user",
+                weight: 3
+              });
+
               insertNotification({
                 recipient_user_id: targetUserId,
                 actor_user_id: viewerUserId,
@@ -1781,6 +1958,7 @@ app.post("/api/posts", upload.array("file", 3), async (req, res) => {
 app.get("/api/posts", (req, res) => {
   const publicBaseUrl = getPublicBaseUrl(req);
   const viewerUserId = req.query?.user_id ? String(req.query.user_id).trim() : "";
+  const feedMode = String(req.query?.feed_mode || "for_you").trim().toLowerCase();
 
   if (!isDbEnabled()) {
     pruneMissingMediaPosts();
@@ -1789,24 +1967,40 @@ app.get("/api/posts", (req, res) => {
       .slice(0, 20));
   }
 
-  const query = viewerUserId
+  const isFollowingMode = viewerUserId && feedMode === "following";
+  const query = isFollowingMode
     ? `
       SELECT p.*, 
         COALESCE((SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), 0) AS like_count,
         COALESCE((SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id), 0) AS comment_count,
-        CASE WHEN EXISTS (SELECT 1 FROM likes l2 WHERE l2.post_id = p.id AND l2.user_id = ?) THEN 1 ELSE 0 END AS liked_by_current_user
+        CASE WHEN EXISTS (SELECT 1 FROM likes l2 WHERE l2.post_id = p.id AND l2.user_id = ?) THEN 1 ELSE 0 END AS liked_by_current_user,
+        CASE WHEN EXISTS (SELECT 1 FROM follows f WHERE f.user_id = ? AND f.following_user_id = p.user_id) THEN 1 ELSE 0 END AS followed_creator
       FROM posts p
+      WHERE p.user_id = ? OR EXISTS (SELECT 1 FROM follows f WHERE f.user_id = ? AND f.following_user_id = p.user_id)
       ORDER BY p.created_at DESC
     `
-    : `
-      SELECT p.*, 
-        COALESCE((SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), 0) AS like_count,
-        COALESCE((SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id), 0) AS comment_count
-      FROM posts p
-      ORDER BY p.created_at DESC
-    `;
+    : viewerUserId
+      ? `
+        SELECT p.*, 
+          COALESCE((SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), 0) AS like_count,
+          COALESCE((SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id), 0) AS comment_count,
+          CASE WHEN EXISTS (SELECT 1 FROM likes l2 WHERE l2.post_id = p.id AND l2.user_id = ?) THEN 1 ELSE 0 END AS liked_by_current_user
+        FROM posts p
+        ORDER BY p.created_at DESC
+      `
+      : `
+        SELECT p.*, 
+          COALESCE((SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), 0) AS like_count,
+          COALESCE((SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id), 0) AS comment_count
+        FROM posts p
+        ORDER BY p.created_at DESC
+      `;
 
-  const params = viewerUserId ? [viewerUserId] : [];
+  const params = isFollowingMode
+    ? [viewerUserId, viewerUserId, viewerUserId, viewerUserId]
+    : viewerUserId
+      ? [viewerUserId]
+      : [];
 
   db.query(query, params, (err, results) => {
     if (err) {
@@ -1832,7 +2026,8 @@ app.get("/api/posts", (req, res) => {
           like_count: Number(post.like_count || post.likes_count || 0),
           comment_count: Number(post.comment_count || 0),
           liked_by_current_user: Boolean(viewerUserId && Number(post.liked_by_current_user || 0)),
-          liked: Boolean(viewerUserId && Number(post.liked_by_current_user || 0))
+          liked: Boolean(viewerUserId && Number(post.liked_by_current_user || 0)),
+          followed_creator: Boolean(Number(post.followed_creator || 0))
         };
       })
       .filter(post => {
@@ -1844,7 +2039,30 @@ app.get("/api/posts", (req, res) => {
         return !localUploadPath || fs.existsSync(localUploadPath);
       });
 
-    res.json(fixedResults);
+    if (!viewerUserId) {
+      return res.json(fixedResults);
+    }
+
+    if (isFollowingMode) {
+      return res.json(fixedResults);
+    }
+
+    getRecommendationHistoryForUser(viewerUserId, (historyErr, userHistory) => {
+      const rankedResults = fixedResults
+        .map((post) => ({
+          ...post,
+          recommendation_score: scoreRecommendationPost(post, historyErr ? [] : userHistory)
+        }))
+        .sort((a, b) => {
+          const scoreDelta = Number(b.recommendation_score || 0) - Number(a.recommendation_score || 0);
+          if (scoreDelta !== 0) {
+            return scoreDelta;
+          }
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        });
+
+      return res.json(rankedResults.map(({ recommendation_score, ...post }) => post));
+    });
   });
 });
 
@@ -1971,6 +2189,14 @@ app.post("/api/posts/:id/like", (req, res) => {
                     });
                   }
 
+                  trackRecommendationEvent({
+                    userId,
+                    postId,
+                    targetUserId: postOwnerRows?.[0]?.user_id || null,
+                    eventType: "like",
+                    weight: 2.5
+                  });
+
                   return res.json({
                     success: true,
                     liked: true,
@@ -2041,6 +2267,14 @@ app.post("/api/posts/:id/share", (req, res) => {
       });
     }
 
+    trackRecommendationEvent({
+      userId,
+      postId,
+      targetUserId: ownerUserId || null,
+      eventType: "share",
+      weight: 2
+    });
+
     return res.json({ success: true, shared: true });
   });
 });
@@ -2060,17 +2294,16 @@ app.post("/api/posts/:id/report", (req, res) => {
   }
 
   if (!isDbEnabled()) {
-    return res.status(503).json({ error: "Database is not enabled for reports." });
+    return res.status(503).json({ error: "Database is not enabled for post reports." });
   }
 
-  db.query("SELECT id, report_count, is_flagged FROM posts WHERE id = ?", [postId], (selectErr, rows) => {
-    if (selectErr) {
-      console.error("REPORT SELECT ERROR:", selectErr);
-      return res.status(500).json({ error: selectErr.message });
+  db.query("SELECT id FROM posts WHERE id = ? LIMIT 1", [postId], (postCheckErr, postRows) => {
+    if (postCheckErr) {
+      console.error("REPORT POST CHECK ERROR:", postCheckErr);
+      return res.status(500).json({ error: postCheckErr.message });
     }
 
-    const existingPost = rows?.[0];
-    if (!existingPost) {
+    if (!postRows?.length) {
       return res.status(404).json({ error: "Post not found" });
     }
 
@@ -2315,6 +2548,15 @@ app.post("/api/comments", (req, res) => {
         }
 
         db.query("SELECT user_id FROM posts WHERE id = ? LIMIT 1", [safePostId], (postErr, postRows) => {
+          if (!postErr && postRows?.[0]) {
+            trackRecommendationEvent({
+              userId: safeUserId,
+              postId: safePostId,
+              targetUserId: String(postRows[0].user_id || "").trim() || null,
+              eventType: "comment",
+              weight: 1.5
+            });
+          }
           if (!postErr && postRows?.[0] && String(postRows[0].user_id) !== String(safeUserId)) {
             insertNotification({
               recipient_user_id: postRows[0].user_id,
@@ -2394,7 +2636,7 @@ app.post("/api/comments/:id/like", (req, res) => {
           }
 
           if (!alreadyLiked) {
-            db.query("SELECT user_id FROM comments WHERE id = ? LIMIT 1", [commentId], (commentUserErr, commentUserRows) => {
+            db.query("SELECT c.user_id, c.post_id FROM comments c WHERE c.id = ? LIMIT 1", [commentId], (commentUserErr, commentUserRows) => {
               if (!commentUserErr && commentUserRows?.[0] && String(commentUserRows[0].user_id) !== String(userId)) {
                 insertNotification({
                   recipient_user_id: commentUserRows[0].user_id,
@@ -2405,6 +2647,16 @@ app.post("/api/comments/:id/like", (req, res) => {
                   message: `${req.body?.name || "Someone"} liked your comment.`
                 }).catch((notificationErr) => {
                   console.warn("COMMENT LIKE NOTIFICATION ERROR:", notificationErr.message);
+                });
+              }
+
+              if (commentUserRows?.[0]) {
+                trackRecommendationEvent({
+                  userId,
+                  postId: commentUserRows[0].post_id,
+                  targetUserId: commentUserRows[0].user_id,
+                  eventType: "comment_like",
+                  weight: 1.2
                 });
               }
 

@@ -398,7 +398,7 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
     body.dark-mode .comment-btn .comment-count,
     body.dark-mode .feed-post-card .comment-btn .comment-count,
     body.dark-mode .feed-post-card .like-btn .like-count {
-      color: #ffffff !important;
+      color:  #ff4d6d; !important;
     }
 
     body.dark-mode input,
@@ -3444,7 +3444,7 @@ if (searchInputs.length) {
 
         if (window.innerWidth >= 980) {
           if (sideMenu.dataset.state !== "closed") {
-            sideMenu.style.width = "250px";
+            sideMenu.style.width = "350px";
           } else {
             sideMenu.style.width = "0";
           }
@@ -3452,7 +3452,7 @@ if (searchInputs.length) {
         }
 
         if (sideMenu.dataset.state === "open") {
-          sideMenu.style.width = "250px";
+          sideMenu.style.width = "350px";
           return;
         }
 
@@ -3981,8 +3981,27 @@ async function loadCommentsForCurrentPost() {
 const feedPosts = document.getElementById("feedPosts");
 const searchResults = document.getElementById("searchResults");
 const userSheetPosts = document.getElementById("userSheetPosts");
+const feedModeButtons = document.querySelectorAll(".feed-mode-btn");
 let textMenuHandlerBound = false;
 let activeUserSheetFilter = "all";
+let activeFeedMode = "for_you";
+
+function bindFeedModeButtons() {
+  feedModeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const selectedMode = button.dataset.feedMode || "for_you";
+      activeFeedMode = selectedMode;
+
+      feedModeButtons.forEach((btn) => {
+        const isActive = btn === button;
+        btn.classList.toggle("active", isActive);
+        btn.setAttribute("aria-pressed", String(isActive));
+      });
+
+      loadPosts();
+    });
+  });
+}
 
 function isVideoMediaUrl(value) {
   if (!value || typeof value !== "string") return false;
@@ -4718,7 +4737,13 @@ async function loadReels() {
   if (!reelsContainer) return;
 
   try {
-    const response = await apiFetch("/api/posts");
+    const currentUserId = getCurrentUserId();
+    const mode = currentUserId && currentUserId !== "guest" ? (activeFeedMode || "for_you") : "for_you";
+    const requestUrl = currentUserId && currentUserId !== "guest"
+      ? `/api/posts?user_id=${encodeURIComponent(currentUserId)}&feed_mode=${encodeURIComponent(mode)}`
+      : "/api/posts";
+
+    const response = await apiFetch(requestUrl);
     if (!response.ok) {
       throw new Error("Failed to load reels");
     }
@@ -5017,6 +5042,10 @@ if (document.getElementById("reelsContainer")) {
         }
         likeButton.dataset.liked = String(isLiked);
         likeButton.classList.toggle("liked", isLiked);
+
+        if (document.getElementById("reelsContainer")) {
+          await loadReels();
+        }
       } catch (error) {
         console.error("Reel like toggle error:", error);
         alert(error.message || "Unable to update like.");
@@ -5036,6 +5065,7 @@ if (document.getElementById("reelsContainer")) {
 }
 
 if (document.getElementById("searchResults")) {
+  bindFeedModeButtons();
   loadPosts();
 }
 
@@ -6145,8 +6175,9 @@ function bindTextPostMenus() {
 async function loadPosts() {
   try {
     const currentUserId = getCurrentUserId();
+    const mode = currentUserId && currentUserId !== "guest" ? (activeFeedMode || "for_you") : "for_you";
     const url = currentUserId && currentUserId !== "guest"
-      ? `/api/posts?user_id=${encodeURIComponent(currentUserId)}`
+      ? `/api/posts?user_id=${encodeURIComponent(currentUserId)}&feed_mode=${encodeURIComponent(mode)}`
       : "/api/posts";
 
     const response = await fetch(url);
@@ -6327,6 +6358,7 @@ if (submitCommentBtn && commentInput && commentsSheet) {
 }
 
 if (feedPosts) {
+  bindFeedModeButtons();
   loadPosts();
 
   feedPosts.addEventListener("click", async (event) => {
@@ -6376,6 +6408,10 @@ if (feedPosts) {
           countEl.textContent = String(data?.likeCount ?? 0);
         }
         likeButton.dataset.liked = String(isLiked);
+
+        if (feedPosts) {
+          await loadPosts();
+        }
       } catch (error) {
         console.error("Like toggle error:", error);
         alert(error.message || "Unable to update like.");

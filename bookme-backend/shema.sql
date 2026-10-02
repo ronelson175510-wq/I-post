@@ -80,6 +80,22 @@ CREATE TABLE IF NOT EXISTS comment_likes (
 
 
 
+CREATE TABLE IF NOT EXISTS recommendation_events (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id VARCHAR(255) NOT NULL,
+  post_id INT NULL,
+  target_user_id VARCHAR(255) NULL,
+  event_type ENUM('like', 'share', 'comment', 'follow_user', 'comment_like', 'view') NOT NULL,
+  weight DECIMAL(5,2) DEFAULT 1.00,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_recommendation_user_created (user_id, created_at DESC),
+  INDEX idx_recommendation_post (post_id),
+  INDEX idx_recommendation_target_user (target_user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS notifications (
   id INT PRIMARY KEY AUTO_INCREMENT,
   recipient_user_id VARCHAR(255) NOT NULL,
