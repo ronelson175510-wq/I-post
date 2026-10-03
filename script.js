@@ -1757,7 +1757,7 @@ const TRANSLATIONS = {
     openReels: "Open reels",
     commentsHeader: "Comments",
     noCommentsYet: "No comments yet.",
-    uploadDescription: "Type something here...",
+    uploadDescription: "Add a caption and #hashtags to reach people's interests...",
     upload: "Upload",
     submit: "<i class='fa-solid fa-circle-arrow-right fa-lg' style='color: rgb(255, 255, 255);'></i>",
     saveSettings: "Save profile",
@@ -4750,7 +4750,12 @@ async function loadReels() {
 
     const posts = await response.json();
     const reelPosts = Array.isArray(posts)
-      ? posts.filter((post) => getMediaTypeForPost(post) === "video")
+      ? posts.filter((post) => {
+          const isVideo = getMediaTypeForPost(post) === "video";
+          const isOwnPost = Boolean(post?.user_id) && String(post.user_id) === String(currentUserId);
+          const hideOwnPostInFollowing = activeFeedMode === "following" && currentUserId && currentUserId !== "guest" && isOwnPost;
+          return isVideo && !hideOwnPostInFollowing;
+        })
       : [];
 
     if (!reelPosts.length) {
@@ -5043,9 +5048,6 @@ if (document.getElementById("reelsContainer")) {
         likeButton.dataset.liked = String(isLiked);
         likeButton.classList.toggle("liked", isLiked);
 
-        if (document.getElementById("reelsContainer")) {
-          await loadReels();
-        }
       } catch (error) {
         console.error("Reel like toggle error:", error);
         alert(error.message || "Unable to update like.");
@@ -6198,7 +6200,13 @@ async function loadPosts() {
     }
 
     if (feedPosts) {
-      const visiblePosts = validPosts.filter((post) => !Boolean(post.is_flagged) && Number(post.report_count || 0) < 10);
+      const currentUserId = getCurrentUserId();
+      const visiblePosts = validPosts.filter((post) => {
+        const isFlagged = Boolean(post.is_flagged) || Number(post.report_count || 0) >= 10;
+        const isOwnPost = Boolean(post?.user_id) && String(post.user_id) === String(currentUserId);
+        const hideOwnPostInFollowing = activeFeedMode === "following" && currentUserId && currentUserId !== "guest" && isOwnPost;
+        return !isFlagged && !hideOwnPostInFollowing;
+      });
 
       if (!visiblePosts.length) {
         feedPosts.innerHTML = '<div class="feed-empty-state">No posts yet. Start the first post to get the conversation going.</div>';
@@ -6343,9 +6351,6 @@ if (submitCommentBtn && commentInput && commentsSheet) {
         }
       }
 
-      if (feedPosts) {
-        await loadPosts();
-      }
       await loadCommentsForCurrentPost();
     } catch (error) {
       console.error("Comment submit error:", error);
@@ -6408,10 +6413,6 @@ if (feedPosts) {
           countEl.textContent = String(data?.likeCount ?? 0);
         }
         likeButton.dataset.liked = String(isLiked);
-
-        if (feedPosts) {
-          await loadPosts();
-        }
       } catch (error) {
         console.error("Like toggle error:", error);
         alert(error.message || "Unable to update like.");

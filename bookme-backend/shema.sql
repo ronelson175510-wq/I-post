@@ -96,6 +96,29 @@ CREATE TABLE IF NOT EXISTS recommendation_events (
   FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS post_topics (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  post_id INT NOT NULL,
+  topic VARCHAR(100) NOT NULL,
+  source ENUM('hashtag', 'keyword', 'manual', 'auto') DEFAULT 'auto',
+  weight DECIMAL(5,2) DEFAULT 1.00,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_post_topic (post_id, topic),
+  INDEX idx_post_topic_topic (topic),
+  FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_topic_weights (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id VARCHAR(255) NOT NULL,
+  topic VARCHAR(100) NOT NULL,
+  weight DECIMAL(7,2) DEFAULT 0.00,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_user_topic (user_id, topic),
+  INDEX idx_user_topic_weight (user_id, topic),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS notifications (
   id INT PRIMARY KEY AUTO_INCREMENT,
   recipient_user_id VARCHAR(255) NOT NULL,

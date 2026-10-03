@@ -211,7 +211,7 @@
             justify-content: center;
             position: fixed;
            
-            right: 32px;
+            right: 35px;
             width: 38px;
             height: 38px;
             margin: 0 4px;
@@ -341,7 +341,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  right: 38px;
+  right: 48px;
   width: 38px;
   height: 38px;
   background: rgba(255, 255, 255, 0.08);
@@ -535,7 +535,7 @@
 
 .auth-btn {
   margin-top: -80px;
-  width: 80%;
+  width: 76%;
   text-align: center;
       display: flex;
     align-items: center;
@@ -545,7 +545,7 @@
     text-decoration: none;
     font-size: 21px;
     color: #f0eef7;
-    border-radius: 25px;
+    border-radius: 26px;
     transition: all 0.25s ease;
     background: rgba(255, 255, 255, 0.04);
    
@@ -1808,7 +1808,7 @@ font-weight: 590;
   left: 0;
   bottom: -100%;
   width: 100%;
-  height: 98%;
+  height: 100%;
   max-height: 130vh;
   background: white;
  border-top-left-radius: 25px;
@@ -3378,9 +3378,12 @@ background: rgba(255, 255, 255, 0.08);
   width: calc(100% - 24px);
   margin: 12px auto 0;
   padding: 6px;
-  border-radius: 999px;
-  background: rgba(17, 24, 39, 0.06);
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgb(255, 255, 255);
+            border-radius: 25px;
+            box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
 }
 
 .feed-mode-btn {
@@ -3390,14 +3393,16 @@ background: rgba(255, 255, 255, 0.08);
   background: transparent;
   color: #4b5563;
   font-weight: 700;
+  font-size: 15px;
+   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   padding: 10px 12px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .feed-mode-btn.active {
-  background: #111827;
-  color: #f9fafb;
+  background: black;
+  color: rgb(252, 252, 252);
   box-shadow: 0 4px 12px rgba(17, 24, 39, 0.18);
 }
 
@@ -3533,7 +3538,7 @@ background: rgba(255, 255, 255, 0.08);
       </button>
  
  <div class="menu-auth-actions">
-         <button class="auth-btn sign-out-btn" type="button" data-i18n="signOut"><i class="fa-solid fa-arrow-right-from-bracket fa-sm" style="color: rgb(7, 7, 7);"></i>Sign out</button>
+         <button class="auth-btn sign-out-btn" type="button" data-i18n="signOut"><i class="fa-solid fa-arrow-right-from-bracket fa-sm" style="color: rgb(254, 254, 254), 252);"></i>Sign out</button>
       </div>
   
 </div>
@@ -3558,7 +3563,7 @@ background: rgba(255, 255, 255, 0.08);
   <div class="sheet-content">
     <h3 data-i18n="createPost">Create a Post</h3>
 
-    <textarea id="postTextArea" data-i18n-placeholder="postPlaceholder" placeholder="Write something..." rows="5"></textarea>
+    <textarea id="postTextArea" data-i18n-placeholder="postPlaceholder" placeholder="Write something... Add #hashtags to match your topic" rows="5"></textarea>
 
     <button id="postSubmitBtn" class="post-submit-btn" data-i18n="post">Post</button>
   </div>
@@ -3578,7 +3583,7 @@ background: rgba(255, 255, 255, 0.08);
       <div class="upload-description-group">
         <label for="uploadDescription" class="upload-description-label"></label>
         
-       <textarea id="uploadDescription" data-i18n-placeholder="uploadDescription" placeholder='Type something here...' rows="3"></textarea>
+       <textarea id="uploadDescription" data-i18n-placeholder="uploadDescription" placeholder='Add a caption, add hashtags to reach people&apos;s interests' rows="3"></textarea>
          
        
        
@@ -3599,6 +3604,9 @@ background: rgba(255, 255, 255, 0.08);
      
       <!-- Upload buttons -->
       <div class="upload-actions">
+         <button class="Upload-settings-btn">
+         <i class="fa-solid fa-at fa-lg" style="color: rgb(255, 212, 59);"></i>
+      </button>
          <button class="Upload-settings-btn">
         <i class="fa-solid fa-gear fa-lg" style="color: rgb(1, 1, 1);"></i>
       </button>

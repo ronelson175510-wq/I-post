@@ -363,6 +363,190 @@ function getRecommendationTokens(value = "") {
     .filter((token) => token && token.length > 2 && !recommendationStopWords.has(token));
 }
 
+function normalizeTopicToken(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^#+/, "")
+    .replace(/[^a-z0-9_]/g, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .find((token) => token && token.length > 2) || "";
+}
+
+function extractPostTopics(text = "") {
+  const rawText = String(text || "");
+  const hashtagMatches = [...rawText.matchAll(/#([a-zA-Z0-9_]+)/g)]
+    .map((match) => normalizeTopicToken(match[1]))
+    .filter(Boolean);
+
+  const keywordMatches = rawText
+    .toLowerCase()
+    .replace(/[#@]/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .map((token) => normalizeTopicToken(token))
+    .filter((token) => token && token.length > 2 && !recommendationStopWords.has(token));
+
+  return [...new Set([...hashtagMatches, ...keywordMatches])].slice(0, 15);
+}
+
+function savePostTopics(postId, content = "", source = "auto", callback = null) {
+  const safePostId = Number(postId || 0);
+  if (!db || !Number.isFinite(safePostId)) {
+    if (typeof callback === "function") {
+      callback && callback(null);
+    }
+    return;
+  }
+
+  const topics = [...new Set(extractPostTopics(content))];
+  if (!topics.length) {
+    if (typeof callback === "function") {
+      callback && callback(null);
+    }
+    return;
+  }
+
+  db.query("DELETE FROM post_topics WHERE post_id = ?", [safePostId], (deleteErr) => {
+    if (deleteErr) {
+      console.warn("POST TOPIC CLEAR ERROR:", deleteErr.message);
+      if (typeof callback === "function") {
+        callback(deleteErr);
+      }
+      return;
+    }
+
+    let insertedCount = 0;
+    topics.forEach((topic) => {
+      db.query(
+        "INSERT INTO post_topics (post_id, topic, source, weight) VALUES (?, ?, ?, ?)",
+        [safePostId, topic, source || "auto", 1],
+        (insertErr) => {
+          if (insertErr) {
+            console.warn("POST TOPIC INSERT ERROR:", insertErr.message);
+          }
+
+          insertedCount += 1;
+          if (insertedCount >= topics.length && typeof callback === "function") {
+            callback(null);
+          }
+        }
+      );
+    });
+  });
+}
+
+function addUserTopicWeight(userId, content = "", weight = 1, callback = null) {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId || !db) {
+    if (typeof callback === "function") {
+      callback && callback(null);
+    }
+    return;
+  }
+
+  const topics = [...new Set(extractPostTopics(content))];
+  if (!topics.length) {
+    if (typeof callback === "function") {
+      callback && callback(null);
+    }
+    return;
+  }
+
+  let appliedCount = 0;
+  const normalizedWeight = Number(weight) || 1;
+  topics.forEach((topic) => {
+    db.query(
+      "INSERT INTO user_topic_weights (user_id, topic, weight) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE weight = weight + VALUES(weight), updated_at = CURRENT_TIMESTAMP",
+      [safeUserId, topic, normalizedWeight],
+      (err) => {
+        if (err) {
+          console.warn("USER TOPIC UPDATE ERROR:", err.message);
+        }
+
+        appliedCount += 1;
+        if (appliedCount >= topics.length && typeof callback === "function") {
+          callback(null);
+        }
+      }
+    );
+  });
+}
+
+function getUserTopicWeights(userId, callback = null) {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId || !db) {
+    if (typeof callback === "function") {
+      callback(null, {});
+    }
+    return;
+  }
+
+  db.query(
+    "SELECT topic, weight FROM user_topic_weights WHERE user_id = ?",
+    [safeUserId],
+    (err, rows) => {
+      if (err) {
+        console.warn("USER TOPIC LOAD ERROR:", err.message);
+        if (typeof callback === "function") {
+          callback(err, {});
+        }
+        return;
+      }
+
+      const topicMap = {};
+      (rows || []).forEach((row) => {
+        if (row?.topic) {
+          topicMap[String(row.topic)] = Number(row.weight || 0);
+        }
+      });
+
+      if (typeof callback === "function") {
+        callback(null, topicMap);
+      }
+    }
+  );
+}
+
+function getPostTopicMap(postIds = [], callback = null) {
+  const safeIds = Array.from(new Set((postIds || []).map((postId) => Number(postId)).filter((postId) => Number.isFinite(postId))));
+  if (!safeIds.length || !db) {
+    if (typeof callback === "function") {
+      callback(null, {});
+    }
+    return;
+  }
+
+  const placeholders = safeIds.map(() => "?").join(",");
+  db.query(
+    `SELECT post_id, topic FROM post_topics WHERE post_id IN (${placeholders})`,
+    safeIds,
+    (err, rows) => {
+      if (err) {
+        console.warn("POST TOPIC LOAD ERROR:", err.message);
+        if (typeof callback === "function") {
+          callback(err, {});
+        }
+        return;
+      }
+
+      const topicMap = {};
+      (rows || []).forEach((row) => {
+        const postId = String(row.post_id);
+        if (!topicMap[postId]) {
+          topicMap[postId] = [];
+        }
+        topicMap[postId].push(String(row.topic || ""));
+      });
+
+      if (typeof callback === "function") {
+        callback(null, topicMap);
+      }
+    }
+  );
+}
+
 function scoreRecommendationPost(post = {}, userHistory = []) {
   const safePost = post || {};
   const postId = Number(safePost.id || 0);
@@ -384,6 +568,28 @@ function scoreRecommendationPost(post = {}, userHistory = []) {
     return score;
   }
 
+  const userPreferenceTokens = new Set();
+  for (const entry of userHistory) {
+    const historyContent = String(entry?.post_content || "");
+    if (historyContent) {
+      getRecommendationTokens(historyContent).forEach((token) => userPreferenceTokens.add(token));
+    }
+  }
+
+  const preferredTokenMatches = [...userPreferenceTokens].filter((token) => postTokens.has(token));
+  if (preferredTokenMatches.length) {
+    score += preferredTokenMatches.length * 8;
+  }
+
+  const creatorAffinityMatches = userHistory.filter((entry) => {
+    const targetUserId = String(entry?.target_user_id || "").trim();
+    const entryCreatorId = String(entry?.post_user_id || "").trim();
+    return Boolean(postCreatorId && (targetUserId === postCreatorId || entryCreatorId === postCreatorId));
+  });
+  if (creatorAffinityMatches.length) {
+    score += creatorAffinityMatches.reduce((sum, entry) => sum + Number(entry?.weight || 1) * 9, 0);
+  }
+
   for (const entry of userHistory) {
     const eventType = String(entry?.event_type || "").toLowerCase();
     const targetUserId = String(entry?.target_user_id || "").trim();
@@ -395,35 +601,35 @@ function scoreRecommendationPost(post = {}, userHistory = []) {
     const overlap = getRecommendationTokens(entryContent).filter((token) => postTokens.has(token));
 
     if (postCreatorId && targetUserId && postCreatorId === targetUserId) {
-      score += eventWeight * 9;
+      score += eventWeight * 11;
     }
 
     if (postCreatorId && entryCreatorId && postCreatorId === entryCreatorId) {
-      score += eventType === "follow_user" ? 9 : (eventWeight * 6);
+      score += eventType === "follow_user" ? 12 : (eventWeight * 8);
     }
 
     if (postId && entryPostId && postId === entryPostId) {
-      score += eventType === "like" ? 12 : 8;
+      score += eventType === "like" ? 14 : 10;
     }
 
     if (targetUserId && postCreatorId && targetUserId === postCreatorId) {
-      score += eventType === "follow_user" ? 10 : 4;
+      score += eventType === "follow_user" ? 12 : 5;
     }
 
     if (entryContent && overlap.length) {
-      score += overlap.length * 4 * Math.max(1, eventWeight);
+      score += overlap.length * 5 * Math.max(1, eventWeight);
     }
 
     if (entryMediaType && postMediaType && entryMediaType === postMediaType) {
-      score += 2;
+      score += 3;
     }
 
     if (eventType === "share") {
-      score += 2;
+      score += 3;
     }
 
     if (eventType === "comment") {
-      score += 1.5;
+      score += 2;
     }
   }
 
@@ -628,48 +834,75 @@ function initializeDatabaseSchema() {
                               )
                             `, () => {
                               runSchemaQuery(`
-                                CREATE TABLE IF NOT EXISTS recent_searches (
+                                CREATE TABLE IF NOT EXISTS post_topics (
                                   id INT PRIMARY KEY AUTO_INCREMENT,
-                                  user_id VARCHAR(255) NOT NULL,
-                                  query VARCHAR(255) NOT NULL,
-                                  searched_user_id VARCHAR(255) NULL,
-                                  searched_user_name VARCHAR(255) NULL,
-                                  searched_user_avatar VARCHAR(500) NULL,
+                                  post_id INT NOT NULL,
+                                  topic VARCHAR(100) NOT NULL,
+                                  source ENUM('hashtag', 'keyword', 'manual', 'auto') DEFAULT 'auto',
+                                  weight DECIMAL(5,2) DEFAULT 1.00,
                                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                  INDEX idx_recent_search_user_created (user_id, created_at DESC),
-                                  INDEX idx_recent_search_query (query),
-                                  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                  UNIQUE KEY unique_post_topic (post_id, topic),
+                                  INDEX idx_post_topic_topic (topic),
+                                  FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
                                 )
                               `, () => {
-                                ensureColumn("recent_searches", "searched_user_id", "VARCHAR(255) NULL", (err9) => {
-                                  if (err9) return;
-                                  ensureColumn("recent_searches", "searched_user_name", "VARCHAR(255) NULL", (err10) => {
-                                    if (err10) return;
-                                    ensureColumn("recent_searches", "searched_user_avatar", "VARCHAR(500) NULL", (err11) => {
-                                      if (err11) return;
+                                runSchemaQuery(`
+                                  CREATE TABLE IF NOT EXISTS user_topic_weights (
+                                    id INT PRIMARY KEY AUTO_INCREMENT,
+                                    user_id VARCHAR(255) NOT NULL,
+                                    topic VARCHAR(100) NOT NULL,
+                                    weight DECIMAL(7,2) DEFAULT 0.00,
+                                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                    UNIQUE KEY unique_user_topic (user_id, topic),
+                                    INDEX idx_user_topic_weight (user_id, topic),
+                                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                  )
+                                `, () => {
+                                  runSchemaQuery(`
+                                    CREATE TABLE IF NOT EXISTS recent_searches (
+                                      id INT PRIMARY KEY AUTO_INCREMENT,
+                                      user_id VARCHAR(255) NOT NULL,
+                                      query VARCHAR(255) NOT NULL,
+                                      searched_user_id VARCHAR(255) NULL,
+                                      searched_user_name VARCHAR(255) NULL,
+                                      searched_user_avatar VARCHAR(500) NULL,
+                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                      INDEX idx_recent_search_user_created (user_id, created_at DESC),
+                                      INDEX idx_recent_search_query (query),
+                                      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                                    )
+                                  `, () => {
+                                    ensureColumn("recent_searches", "searched_user_id", "VARCHAR(255) NULL", (err9) => {
+                                      if (err9) return;
+                                      ensureColumn("recent_searches", "searched_user_name", "VARCHAR(255) NULL", (err10) => {
+                                        if (err10) return;
+                                        ensureColumn("recent_searches", "searched_user_avatar", "VARCHAR(500) NULL", (err11) => {
+                                          if (err11) return;
 
-                                      runSchemaQuery(`
-                                        CREATE TABLE IF NOT EXISTS notifications (
-                                          id INT PRIMARY KEY AUTO_INCREMENT,
-                                          recipient_user_id VARCHAR(255) NOT NULL,
-                                          actor_user_id VARCHAR(255) NOT NULL,
-                                          type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL,
-                                          target_type ENUM('user', 'post', 'comment') NOT NULL,
-                                          target_id VARCHAR(255) NULL,
-                                          message TEXT NOT NULL,
-                                          is_read TINYINT(1) DEFAULT 0,
-                                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                          INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
-                                          INDEX idx_notifications_unread (recipient_user_id, is_read),
-                                          FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
-                                          FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
-                                        )
-                                      `, () => {
-                                        runSchemaQuery(`
-                                          ALTER TABLE notifications
-                                          MODIFY COLUMN type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL
-                                        `, () => {
-                                          console.log("Database schema initialized.");
+                                          runSchemaQuery(`
+                                            CREATE TABLE IF NOT EXISTS notifications (
+                                              id INT PRIMARY KEY AUTO_INCREMENT,
+                                              recipient_user_id VARCHAR(255) NOT NULL,
+                                              actor_user_id VARCHAR(255) NOT NULL,
+                                              type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL,
+                                              target_type ENUM('user', 'post', 'comment') NOT NULL,
+                                              target_id VARCHAR(255) NULL,
+                                              message TEXT NOT NULL,
+                                              is_read TINYINT(1) DEFAULT 0,
+                                              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                              INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
+                                              INDEX idx_notifications_unread (recipient_user_id, is_read),
+                                              FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                                              FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
+                                            )
+                                          `, () => {
+                                            runSchemaQuery(`
+                                              ALTER TABLE notifications
+                                              MODIFY COLUMN type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL
+                                            `, () => {
+                                              console.log("Database schema initialized.");
+                                            });
+                                          });
                                         });
                                       });
                                     });
@@ -1942,6 +2175,12 @@ app.post("/api/posts", upload.array("file", 3), async (req, res) => {
           is_gallery: mediaUrls.length > 1
         };
 
+        savePostTopics(savedPost.id, content, "keyword", (topicErr) => {
+          if (topicErr) {
+            console.warn("POST TOPIC SAVE ERROR:", topicErr.message || topicErr);
+          }
+        });
+
         res.json({
           success: true,
           post: savedPost,
@@ -1976,7 +2215,7 @@ app.get("/api/posts", (req, res) => {
         CASE WHEN EXISTS (SELECT 1 FROM likes l2 WHERE l2.post_id = p.id AND l2.user_id = ?) THEN 1 ELSE 0 END AS liked_by_current_user,
         CASE WHEN EXISTS (SELECT 1 FROM follows f WHERE f.user_id = ? AND f.following_user_id = p.user_id) THEN 1 ELSE 0 END AS followed_creator
       FROM posts p
-      WHERE p.user_id = ? OR EXISTS (SELECT 1 FROM follows f WHERE f.user_id = ? AND f.following_user_id = p.user_id)
+      WHERE EXISTS (SELECT 1 FROM follows f WHERE f.user_id = ? AND f.following_user_id = p.user_id)
       ORDER BY p.created_at DESC
     `
     : viewerUserId
@@ -1997,7 +2236,7 @@ app.get("/api/posts", (req, res) => {
       `;
 
   const params = isFollowingMode
-    ? [viewerUserId, viewerUserId, viewerUserId, viewerUserId]
+    ? [viewerUserId, viewerUserId, viewerUserId]
     : viewerUserId
       ? [viewerUserId]
       : [];
@@ -2048,20 +2287,36 @@ app.get("/api/posts", (req, res) => {
     }
 
     getRecommendationHistoryForUser(viewerUserId, (historyErr, userHistory) => {
-      const rankedResults = fixedResults
-        .map((post) => ({
-          ...post,
-          recommendation_score: scoreRecommendationPost(post, historyErr ? [] : userHistory)
-        }))
-        .sort((a, b) => {
-          const scoreDelta = Number(b.recommendation_score || 0) - Number(a.recommendation_score || 0);
-          if (scoreDelta !== 0) {
-            return scoreDelta;
-          }
-          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-        });
+      getUserTopicWeights(viewerUserId, (topicErr, userTopicWeights) => {
+        const topicMap = topicErr ? {} : (userTopicWeights || {});
+        const postIds = fixedResults.map((post) => post.id).filter((postId) => postId != null);
 
-      return res.json(rankedResults.map(({ recommendation_score, ...post }) => post));
+        getPostTopicMap(postIds, (postTopicErr, postTopicMap) => {
+          const topicLookup = postTopicErr ? {} : (postTopicMap || {});
+
+          const rankedResults = fixedResults
+            .map((post) => {
+              const postTopics = topicLookup[String(post.id)] || [];
+              const topicMatchScore = postTopics.reduce((sum, topic) => sum + Number(topicMap[String(topic)] || 0), 0);
+              const baseScore = scoreRecommendationPost(post, historyErr ? [] : userHistory);
+
+              return {
+                ...post,
+                topic_match_score: topicMatchScore,
+                recommendation_score: baseScore + (topicMatchScore * 8)
+              };
+            })
+            .sort((a, b) => {
+              const scoreDelta = Number(b.recommendation_score || 0) - Number(a.recommendation_score || 0);
+              if (scoreDelta !== 0) {
+                return scoreDelta;
+              }
+              return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+            });
+
+          return res.json(rankedResults.map(({ recommendation_score, topic_match_score, ...post }) => post));
+        });
+      });
     });
   });
 });
@@ -2175,7 +2430,7 @@ app.post("/api/posts/:id/like", (req, res) => {
               }
 
               if (!alreadyLiked) {
-                db.query("SELECT user_id FROM posts WHERE id = ? LIMIT 1", [postId], (postOwnerErr, postOwnerRows) => {
+                db.query("SELECT user_id, content FROM posts WHERE id = ? LIMIT 1", [postId], (postOwnerErr, postOwnerRows) => {
                   if (!postOwnerErr && postOwnerRows?.[0] && String(postOwnerRows[0].user_id) !== String(userId)) {
                     insertNotification({
                       recipient_user_id: postOwnerRows[0].user_id,
@@ -2187,6 +2442,10 @@ app.post("/api/posts/:id/like", (req, res) => {
                     }).catch((notificationErr) => {
                       console.warn("POST LIKE NOTIFICATION ERROR:", notificationErr.message);
                     });
+                  }
+
+                  if (!postOwnerErr && postOwnerRows?.[0]) {
+                    addUserTopicWeight(userId, String(postOwnerRows[0].content || ""), 5, () => {});
                   }
 
                   trackRecommendationEvent({
@@ -2237,13 +2496,14 @@ app.post("/api/posts/:id/share", (req, res) => {
     return res.json({ success: true, shared: true });
   }
 
-  db.query("SELECT user_id FROM posts WHERE id = ? LIMIT 1", [postId], (postErr, postRows) => {
+  db.query("SELECT user_id, content FROM posts WHERE id = ? LIMIT 1", [postId], (postErr, postRows) => {
     if (postErr) {
       console.error("SHARE POST SELECT ERROR:", postErr);
       return res.status(500).json({ error: postErr.message });
     }
 
     const ownerUserId = postRows?.[0]?.user_id;
+    const postContent = String(postRows?.[0]?.content || "");
     if (ownerUserId && String(ownerUserId) !== String(userId)) {
       ensureUserRecord(userId, {
         name: req.body?.name,
@@ -2265,6 +2525,10 @@ app.post("/api/posts/:id/share", (req, res) => {
           console.warn("SHARE NOTIFICATION ERROR:", notificationErr.message);
         });
       });
+    }
+
+    if (postContent) {
+      addUserTopicWeight(userId, postContent, 7, () => {});
     }
 
     trackRecommendationEvent({
@@ -2547,8 +2811,11 @@ app.post("/api/comments", (req, res) => {
           return res.status(500).json({ error: err.message });
         }
 
-        db.query("SELECT user_id FROM posts WHERE id = ? LIMIT 1", [safePostId], (postErr, postRows) => {
+        db.query("SELECT user_id, content FROM posts WHERE id = ? LIMIT 1", [safePostId], (postErr, postRows) => {
           if (!postErr && postRows?.[0]) {
+            if (String(postRows[0].content || "").trim()) {
+              addUserTopicWeight(safeUserId, String(postRows[0].content || ""), 6, () => {});
+            }
             trackRecommendationEvent({
               userId: safeUserId,
               postId: safePostId,
@@ -2794,6 +3061,12 @@ app.post("/api/text-post", (req, res) => {
         console.error("TEXT POST ERROR:", err);
         return res.status(500).json({ error: err.message });
       }
+
+      savePostTopics(results.insertId, safeContent, "keyword", (topicErr) => {
+        if (topicErr) {
+          console.warn("TEXT POST TOPIC SAVE ERROR:", topicErr.message || topicErr);
+        }
+      });
 
       res.json({
         id: results.insertId,
