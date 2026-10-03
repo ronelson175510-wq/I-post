@@ -3735,7 +3735,7 @@ if (searchInputs.length) {
         const sideMenu = document.getElementById("mysidemenu");
         if (!sideMenu) return;
         sideMenu.dataset.state = "open";
-        sideMenu.style.width = "350px";
+        sideMenu.style.width = "300px";
     }
 
     function closeNav() {
@@ -3765,6 +3765,20 @@ if (searchInputs.length) {
 
         sideMenu.style.width = "0";
     }
+
+    document.addEventListener("click", (event) => {
+      const sideMenu = document.getElementById("mysidemenu");
+      const openButton = document.querySelector(".openbtn");
+      if (!sideMenu || !openButton) return;
+
+      const clickedInsideMenu = sideMenu.contains(event.target);
+      const clickedOpenButton = openButton.contains(event.target);
+      const isMenuOpen = sideMenu.dataset.state === "open";
+
+      if (isMenuOpen && !clickedInsideMenu && !clickedOpenButton) {
+        closeNav();
+      }
+    });
 
     window.addEventListener("resize", syncDesktopSideMenuState);
     window.addEventListener("load", () => {

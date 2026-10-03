@@ -577,6 +577,8 @@
     box-shadow: 8px 0 24px rgba(0, 0, 0, 0.28);
     overflow-x: hidden;
     overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     transition: 0.45s ease;
     gap: 8px;
     padding-top: 70px;
@@ -585,6 +587,10 @@
     display: flex;
     flex-direction: column;
     overflow: auto;
+}
+
+.sidemenu::-webkit-scrollbar {
+    display: none;
 }
 
 .sidemenu-inner {
@@ -630,14 +636,7 @@
     transition: all 0.25s ease;
 }
 
-.dropdown-btn:hover,
-.dropdown-btn.active {
-    background: linear-gradient(90deg, rgba(177, 151, 252, 0.24), rgba(255, 255, 255, 0.06));
-    transform: translateX(4px);
-    border-radius: 25px;
-    border: 1px solid rgba(177, 151, 252, 0.5);
-    box-shadow: 0 8px 18px rgba(177, 151, 252, 0.15);
-}
+
 
 .dropdown-container {
    display: none;
@@ -666,14 +665,7 @@
   transform: rotate(180deg);
 }
 
-.sidemenu a:hover,
-.menu-settings-btn:hover {
-    background: linear-gradient(90deg, rgba(177, 151, 252, 0.24), rgba(255, 255, 255, 0.06));
-    transform: translateX(4px);
-    border-radius: 25px;
-    border: 1px solid rgba(177, 151, 252, 0.5);
-    box-shadow: 0 8px 18px rgba(113, 179, 241, 0.15);
-}
+
 
 .sidemenu a i,
 .menu-settings-btn i {
@@ -732,8 +724,8 @@
 
 .sidemenu-profile {
 
-  margin-top: -58px;
-  margin-left: 9px;
+  margin-top: -71px;
+  
    display: flex;
     align-items: center;
     gap: 12px;
@@ -741,10 +733,11 @@
     
     text-decoration: none;
     font-size: 21px;
+    font-weight: bold;
     color: #060606;
     background: rgba(255, 255, 255, 0.08);
             border: 1.5px solid rgb(255, 255, 255);
-            border-radius: 25px;
+            
             box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
             transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
     transition: all 0.25s ease;
@@ -837,9 +830,10 @@
   gap: 6px;
   padding: 14px 20px 14px 24px;
   margin: 10px 16px;
-  width: calc(83% - 32px);
+  width: calc(98% - 32px);
   text-decoration: none;
   font-size: 16px;
+  font-weight: 700;
   font-family: "Times New Roman", Times, serif;
   color: #111111;
   background: rgba(255, 255, 255, 0.08);
@@ -877,26 +871,6 @@
 }
 
 
-
-.closebtn {
-    position: absolute;
-    background: none;
-    top: -15px;
-    
-    right: -147px;
-    
-    font-size: 16px;
-    width: 32px;
-    color: #090909;
-    text-decoration: none;
-    opacity: 0.85;
-    transition: opacity 0.2s ease;
-    
-}
-
-.closebtn:hover {
-    opacity: 1;
-}
 
 .openbtn {
     font-size: 10px;
@@ -3503,8 +3477,6 @@ background: rgba(255, 255, 255, 0.08);
     <div id="feedPosts" class="feed-posts" aria-live="polite"></div>
 
     <div id="mysidemenu" class="sidemenu">
-          
-    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()" style="background-color: none !important; border: none !important;">&times;</a>
 
     <div class="sidemenu-profile">
       <button id="sideMenuProfileBtn" class="side-menu-profile-btn" type="button" aria-label="Open profile">
@@ -3543,6 +3515,7 @@ background: rgba(255, 255, 255, 0.08);
     
 
  <button id="themeToggleBtn" class="theme-toggle-btn" type="button" aria-label="Toggle dark mode" aria-pressed="false">
+  <i class="fa-solid fa-moon fa-sm" style="color: rgb(7, 7, 7);"></i>
         <span class="theme-toggle-label">Dark mode</span>
         <span class="theme-toggle-switch" aria-hidden="true">
         <span class="theme-toggle-knob"></span>
