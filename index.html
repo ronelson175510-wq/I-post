@@ -732,7 +732,7 @@
 
 .sidemenu-profile {
 
-  margin-top: -62px;
+  margin-top: -58px;
   margin-left: 9px;
    display: flex;
     align-items: center;
@@ -751,7 +751,7 @@
      
             cursor: pointer;
     font-family: inherit;
-     width: 79%;
+     width: 100%;
     text-align: left;
 }
 
@@ -808,9 +808,8 @@
   padding: 0;
   text-align: left;
   max-width: 180px;
+  width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -820,6 +819,16 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+#sideMenuUserName .verified-user-badge {
+  flex-shrink: 0;
 }
 
 #themeToggleBtn {
@@ -2039,14 +2048,16 @@ background: rgba(255, 255, 255, 0.08);
 }
 
 .feed-empty-state {
-  width: min(92vw, 560px);
-  margin: 24px auto 0;
-  padding: 22px 18px;
-  border: 2px solid rgba(18, 16, 16, 0.12);
-  border-radius: 18px;
+  position: absolute; 
+  transform: translate(-50%, -50%);
+  left: 50%;
+  top: 50%;
+ 
+
   
-  background: linear-gradient(135deg, #858583, #f4f4f4);
-  color: #171717;
+  background: none;
+  color: black;
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
   text-align: center;
   font-size: 15px;
   font-weight: 600;
@@ -3516,6 +3527,7 @@ background: rgba(255, 255, 255, 0.08);
       <a href="#" data-i18n="bookmarks"><i class="fa-solid fa-bookmark fa-sm" style="color: rgb(2, 2, 2);"></i>Saved</a>
       <a href="message.html" data-i18n="chat"><i class="fa-solid fa-comment fa-sm" style="color: rgb(7, 7, 7);"></i>Chat</a>
       <button id="settingsBtn" class="menu-settings-btn" type="button" data-i18n="settings"><i class="fa-solid fa-cog fa-sm" style="color: rgb(7, 7, 7);"></i>Settings</button>
+      <a href="#"><i class="fa-solid fa-screwdriver-wrench fa-sm" style="color: rgb(7, 7, 7);"></i>Support</a>
       <button class="dropdown-btn" type="button"><i class="fa-solid fa-book-open fa-sm" style="color: rgb(4, 4, 4);"></i>Legals
         <i class="fa fa-caret-down"></i>
       </button>
@@ -3538,7 +3550,7 @@ background: rgba(255, 255, 255, 0.08);
       </button>
  
  <div class="menu-auth-actions">
-         <button class="auth-btn sign-out-btn" type="button" data-i18n="signOut"><i class="fa-solid fa-arrow-right-from-bracket fa-sm" style="color: rgb(254, 254, 254), 252);"></i>Sign out</button>
+         <button class="auth-btn sign-out-btn" type="button" data-i18n="signOut"><i class="fa-solid fa-arrow-right-from-bracket fa-sm" style="color: rgb(254, 254, 254);"></i>Sign out</button>
       </div>
   
 </div>
@@ -3711,12 +3723,12 @@ background: rgba(255, 255, 255, 0.08);
     <form id="profileSettingsForm">
       <div class="settings-field-group">
         <label for="firstNameInput" data-i18n="firstName">First name</label>
-        <input id="firstNameInput" name="firstName" type="text" data-i18n-placeholder="firstNamePlaceholder" placeholder="First name" />
+        <input id="firstNameInput" name="firstName" type="text" data-i18n-placeholder="firstNamePlaceholder" placeholder="First name" minlength="2" maxlength="30" />
       </div>
 
       <div class="settings-field-group">
         <label for="lastNameInput" data-i18n="lastName">Last name</label>
-        <input id="lastNameInput" name="lastName" type="text" data-i18n-placeholder="lastNamePlaceholder" placeholder="Last name" />
+        <input id="lastNameInput" name="lastName" type="text" data-i18n-placeholder="lastNamePlaceholder" placeholder="Last name" minlength="2" maxlength="30" />
       </div>
 
       <div class="settings-field-group">

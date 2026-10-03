@@ -945,7 +945,9 @@ function updateSideMenuUserName() {
     displayName = auth.currentUser.email.split("@")[0];
   }
 
-  sideMenuUserName.innerHTML = renderUserNameWithVerification(displayName, userId);
+  const truncatedName = displayName.length > 22 ? `${displayName.slice(0, 19).trim()}...` : displayName;
+  sideMenuUserName.title = displayName;
+  sideMenuUserName.innerHTML = renderUserNameWithVerification(truncatedName, userId);
 }
 
 function redirectToLogin() {
@@ -1043,7 +1045,57 @@ function getCurrentUserProfileData(userId = getCurrentUserId()) {
   }
 }
 
+function validateDisplayNamePolicy(name, fieldLabel = "Name") {
+  const trimmedName = String(name || "").trim();
+
+  if (!trimmedName) {
+    return `${fieldLabel} is required.`;
+  }
+
+  if (trimmedName.length < 2) {
+    return `${fieldLabel} must be at least 2 characters long.`;
+  }
+
+  if (trimmedName.length > 30) {
+    return `${fieldLabel} must be no more than 30 characters long.`;
+  }
+
+  if (/\p{Extended_Pictographic}/u.test(trimmedName)) {
+    return `${fieldLabel} cannot contain emojis.`;
+  }
+
+  if (/[!@#$%^&*()[\]{};:"\\|<>/?~]/.test(trimmedName)) {
+    return `${fieldLabel} cannot contain special symbols like @, #, $, %, ^, &, *, (, ), or similar characters.`;
+  }
+
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} '’-]*$/u.test(trimmedName)) {
+    return `${fieldLabel} can only contain letters, numbers, spaces, apostrophes, and hyphens.`;
+  }
+
+  const normalized = trimmedName.toLowerCase().replace(/[\s_-]+/g, "");
+  if (normalized.includes("chatmini") || normalized.includes("chat-mini")) {
+    return "The name 'Chat-mini' cannot be used for impersonation or misleading purposes.";
+  }
+
+  const restrictedWords = ["fuck", "shit", "bitch", "hate", "nazi", "slur", "bomb", "terror"];
+  if (restrictedWords.some((word) => normalized.includes(word))) {
+    return `${fieldLabel} contains restricted or offensive language.`;
+  }
+
+  return "";
+}
+
 function saveCurrentUserProfileData(data, userId = getCurrentUserId()) {
+  const firstName = String(data?.firstName || "").trim();
+  const lastName = String(data?.lastName || "").trim();
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+  const nameError = validateDisplayNamePolicy(fullName || firstName || lastName || "", "Name");
+
+  if (nameError) {
+    alert(nameError);
+    return false;
+  }
+
   const currentData = getCurrentUserProfileData(userId);
   const merged = { ...currentData, ...data };
   localStorage.setItem(getUserProfileKey(userId), JSON.stringify(merged));
@@ -1244,6 +1296,51 @@ function getVerifiedBadgeMarkup() {
       </svg>
     </span>
   `;
+}
+
+function truncateDisplayName(displayName, maxLength = 22) {
+  const resolvedName = String(displayName || "User").trim() || "User";
+
+  if (resolvedName.length <= maxLength) {
+    return resolvedName;
+  }
+
+  return `${resolvedName.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
+}
+
+function parseCompactCount(value) {
+  const text = String(value ?? "0").trim();
+  if (!text) return 0;
+
+  const lower = text.toLowerCase();
+  if (lower.endsWith("m")) {
+    return Number.parseFloat(lower.slice(0, -1)) * 1000000;
+  }
+
+  if (lower.endsWith("k")) {
+    return Number.parseFloat(lower.slice(0, -1)) * 1000;
+  }
+
+  return Number(text) || 0;
+}
+
+function formatCompactCount(value) {
+  const numericValue = Number.isFinite(Number(value)) ? Number(value) : parseCompactCount(value);
+  if (!Number.isFinite(numericValue) || numericValue === 0) {
+    return "0";
+  }
+
+  if (numericValue >= 1000000) {
+    const millions = numericValue / 1000000;
+    return `${millions >= 10 ? Math.round(millions) : millions.toFixed(1).replace(/\.0$/, "")}m`;
+  }
+
+  if (numericValue >= 1000) {
+    const thousands = numericValue / 1000;
+    return `${thousands >= 10 ? Math.round(thousands) : thousands.toFixed(1).replace(/\.0$/, "")}k`;
+  }
+
+  return String(numericValue);
 }
 
 function renderUserNameWithVerification(displayName, userId = getCurrentUserId()) {
@@ -1950,7 +2047,7 @@ const TRANSLATIONS = {
     readLess: "Read less",
     translate: "Translate",
     video: "Video",
-    noPosts: "No posts yet. Start the first post to get the conversation going.",
+    noPosts: "No posts yet. Start following people to see their posts.",
     openReels: "Open reels",
     commentsHeader: "Comments",
     noCommentsYet: "No comments yet.",
@@ -3480,14 +3577,27 @@ if (profileSettingsForm) {
   profileSettingsForm.addEventListener("submit", (event) => {
     event.preventDefault();
 
+    const firstName = document.getElementById("firstNameInput")?.value || "";
+    const lastName = document.getElementById("lastNameInput")?.value || "";
+    const fullName = [firstName, lastName].filter(Boolean).join(" ");
+    const nameError = validateDisplayNamePolicy(fullName || firstName || lastName || "", "Name");
+
+    if (nameError) {
+      alert(nameError);
+      return;
+    }
+
     const payload = {
-      firstName: document.getElementById("firstNameInput")?.value || "",
-      lastName: document.getElementById("lastNameInput")?.value || "",
+      firstName,
+      lastName,
       dob: document.getElementById("dobInput")?.value || "",
       email: document.getElementById("emailInput")?.value || ""
     };
 
-    saveCurrentUserProfileData(payload);
+    if (!saveCurrentUserProfileData(payload)) {
+      return;
+    }
+
     updateSideMenuUserName();
     updateProfileNameDisplay();
     if (document.getElementById("reelsContainer")) {
@@ -4040,6 +4150,8 @@ function renderCommentNode(comment, depth = 0) {
       ? Math.max(renderedReplyCount, comment.replies.length)
       : renderedReplyCount
   );
+  const compactLikeCount = formatCompactCount(baseLikeCount);
+  const compactReplyCount = formatCompactCount(baseReplyCount);
   const isLiked = Boolean(existingState.liked);
   const repliedToThisComment = activeReplyCommentId === String(commentId);
   const indentStyle = depth > 0 ? `style="margin-left: ${Math.min(depth * 18, 36)}px;"` : "";
@@ -4068,11 +4180,11 @@ function renderCommentNode(comment, depth = 0) {
         <div class="comment-action-row">
           <button type="button" class="comment-action-btn comment-like-btn ${isLiked ? "liked" : ""}" data-comment-id="${escapeHtml(commentId)}" data-like-count="${Number(baseLikeCount)}" aria-label="Like comment">
             <i class="${isLiked ? "fa-solid fa-heart" : "fa-regular fa-heart"}"></i>
-            <span>${baseLikeCount}</span>
+            <span>${compactLikeCount}</span>
           </button>
           <button type="button" class="comment-action-btn comment-reply-btn" data-comment-id="${escapeHtml(commentId)}" data-author-name="${escapeHtml(author)}" aria-label="Reply to comment">
             <i class="fa-regular fa-comment"></i>
-            <span>${baseReplyCount}</span>
+            <span>${compactReplyCount}</span>
           </button>
         </div>
       </div>
@@ -4984,11 +5096,14 @@ async function loadReels() {
       const ownerUserId = post?.user_id || getCurrentUserId();
       const avatarMarkup = getCurrentUserAvatarMarkup(ownerUserId);
       const displayName = getDisplayNameForUser(ownerUserId);
-      const verifiedMarkup = renderUserNameWithVerification(displayName, ownerUserId);
+      const truncatedDisplayName = truncateDisplayName(displayName, 30);
+      const verifiedMarkup = renderUserNameWithVerification(truncatedDisplayName, ownerUserId);
       const truncatedCaption = caption.length > 90 ? `${caption.slice(0, 90)}...` : caption;
       const postId = post?.id || "";
       const likeCount = Number(post?.likes_count ?? post?.like_count ?? 0);
       const commentCount = Number(post?.comment_count ?? post?.comments_count ?? post?.commentCount ?? 0);
+      const compactLikeCount = formatCompactCount(likeCount);
+      const compactCommentCount = formatCompactCount(commentCount);
       const isLikedByCurrentUser = Boolean(post?.liked_by_current_user || post?.liked === true);
       const isSavedByCurrentUser = Boolean(post?.saved_by_current_user || post?.saved === true);
 
@@ -5007,11 +5122,11 @@ async function loadReels() {
           <div class="reel-actions" aria-label="Reel actions">
             <button class="reel-action-btn like-btn ${isLikedByCurrentUser ? "liked" : ""}" type="button" aria-label="Like reel" data-post-id="${postId}" data-liked="${isLikedByCurrentUser ? "true" : "false"}">
               <i class="${isLikedByCurrentUser ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color: ${isLikedByCurrentUser ? "rgb(255, 93, 93)" : "rgba(242, 224, 22, 0.9)"};"></i>
-              <span class="reel-action-count">${likeCount}</span>
+              <span class="reel-action-count">${compactLikeCount}</span>
             </button>
             <button class="reel-action-btn comment-btn" type="button" aria-label="Open comments" data-post-id="${postId}">
               <i class="fa-regular fa-comment" style="color: rgba(242, 224, 22, 0.9)"></i>
-              <span class="reel-action-count">${commentCount}</span>
+              <span class="reel-action-count">${compactCommentCount}</span>
             </button>
             <button class="reel-action-btn save-btn ${isSavedByCurrentUser ? "saved" : ""}" type="button" aria-label="Save reel" data-post-id="${postId}" data-saved="${isSavedByCurrentUser ? "true" : "false"}">
               <i class="${isSavedByCurrentUser ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"}" style="color: ${isSavedByCurrentUser ? "rgb(242, 224, 22)" : "rgb(123, 117, 117)"};"></i>
@@ -5255,7 +5370,7 @@ if (document.getElementById("reelsContainer")) {
           icon.style.color = isLiked ? "rgb(255, 93, 93)" : "rgba(242, 224, 22, 0.9)";
         }
         if (countEl) {
-          countEl.textContent = String(data?.likeCount ?? 0);
+          countEl.textContent = formatCompactCount(data?.likeCount ?? 0);
         }
         likeButton.dataset.liked = String(isLiked);
         likeButton.classList.toggle("liked", isLiked);
@@ -5709,6 +5824,12 @@ function bindVideoControls(videoShell) {
   video.autoplay = shouldAutoplay;
   video.loop = true;
   video.playsInline = true;
+  video.setAttribute("muted", "");
+  video.setAttribute("playsinline", "");
+  video.setAttribute("loop", "");
+  if (shouldAutoplay) {
+    video.setAttribute("autoplay", "");
+  }
 
   const progressBar = videoShell.querySelector(".video-progress-bar");
 
@@ -5805,7 +5926,19 @@ function bindVideoControls(videoShell) {
   syncMuteButton();
 
   if (shouldAutoplay) {
-    video.play().catch(() => {});
+    const tryAutoplay = () => {
+      video.play().catch(() => {
+        requestAnimationFrame(() => {
+          video.play().catch(() => {});
+        });
+      });
+    };
+
+    if (video.readyState >= 2) {
+      tryAutoplay();
+    } else {
+      video.addEventListener("loadeddata", tryAutoplay, { once: true });
+    }
   }
 }
 
@@ -6094,6 +6227,8 @@ function renderFeedPost(post) {
   const isOwner = Boolean(post?.user_id) && String(post.user_id) === String(getCurrentUserId());
   const likeCount = Number(post?.likes_count ?? post?.like_count ?? 0);
   const commentCount = Number(post?.comment_count ?? post?.comments_count ?? post?.commentCount ?? 0);
+  const compactLikeCount = formatCompactCount(likeCount);
+  const compactCommentCount = formatCompactCount(commentCount);
   const isLikedByCurrentUser = Boolean(post?.liked_by_current_user || post?.liked === true);
   const captionPreviewLimit = 80;
 
@@ -6258,17 +6393,12 @@ function renderFeedPost(post) {
 
       <button class="like-btn" type="button" data-post-id="${post?.id || ""}" data-liked="${isLikedByCurrentUser ? "true" : "false"}">
           <i class="${isLikedByCurrentUser ? "fa-solid fa-heart" : "fa-regular fa-heart"} fa-xl" style="color: ${isLikedByCurrentUser ? "rgb(255, 93, 93)" : "rgb(50, 50, 49)"};"></i>
-          <span class="like-count">${likeCount}</span>
+          <span class="like-count">${compactLikeCount}</span>
         </button>
-        
-
-        
-
-      
 
         <button class="comment-btn" type="button" aria-label="Open comments" data-post-id="${post?.id || ""}">
           <i class="fa-regular fa-comments fa-xl" style="color: rgb(76, 76, 76);"></i>
-          <span class="comment-count">${commentCount}</span>
+          <span class="comment-count">${compactCommentCount}</span>
         </button>
 
         <i class="fa-regular fa-bookmark" style="color: rgb(123, 117, 117);"></i>
@@ -6566,8 +6696,8 @@ if (submitCommentBtn && commentInput && commentsSheet) {
 
       const commentCountBadge = document.querySelector(`.comment-btn[data-post-id="${CSS.escape(String(postId))}"] .comment-count`);
       if (commentCountBadge) {
-        const currentCount = Number(commentCountBadge.textContent.trim()) || 0;
-        commentCountBadge.textContent = String(currentCount + 1);
+        const currentCount = parseCompactCount(commentCountBadge.textContent.trim());
+        commentCountBadge.textContent = formatCompactCount(currentCount + 1);
       }
 
       if (Array.isArray(window.__feedPostsCache)) {
@@ -6637,7 +6767,7 @@ if (feedPosts) {
           icon.style.color = isLiked ? "rgb(255, 93, 93)" : "rgb(101, 101, 100)";
         }
         if (countEl) {
-          countEl.textContent = String(data?.likeCount ?? 0);
+          countEl.textContent = formatCompactCount(data?.likeCount ?? 0);
         }
         likeButton.dataset.liked = String(isLiked);
       } catch (error) {

@@ -414,19 +414,22 @@
 
         .reel-action-btn {
             width: 62px;
-            height: 62px;
+            height: auto;
+            min-height: 62px;
             border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 50%;
+            border-radius: 24px;
             background: rgba(17, 17, 17, 0.42);
             color: #fff;
             display: inline-flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 5px;
             cursor: pointer;
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
-            padding: 0;
+            padding: 10px 8px;
         }
 
         .reel-action-btn:active {
@@ -435,6 +438,16 @@
 
         .reel-action-btn i {
             font-size: 18px;
+            line-height: 1;
+        }
+
+        .reel-action-count {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.1;
+            color: #fff;
+            letter-spacing: 0.02em;
         }
 
         .reel-user-row,
@@ -472,6 +485,10 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            max-width: 550px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             font-size: 14px;
             font-weight: 800;
             color: #fff;

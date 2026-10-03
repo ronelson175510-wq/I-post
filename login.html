@@ -539,7 +539,7 @@
         <!-- Slide 1 -->
         <div class="slide activeSlide" id="slide1">
             <h2 data-i18n-login="createAccount">Create Account</h2>
-            <input id="nameInput" data-i18n-login-placeholder="fullNamePlaceholder" placeholder="Full Name">
+            <input id="nameInput" data-i18n-login-placeholder="fullNamePlaceholder" placeholder="Full Name" minlength="2" maxlength="30">
             <input id="emailInput" data-i18n-login-placeholder="loginEmailPlaceholder" placeholder="Email">
             <div class="password-wrap">
                 <input id="passwordInput" type="password" data-i18n-login-placeholder="passwordPlaceholder" placeholder="Password">
@@ -1260,6 +1260,46 @@
             }
         }
 
+        function validateDisplayNameValue(name, fieldLabel = "Name") {
+            const trimmedName = String(name || "").trim();
+
+            if (!trimmedName) {
+                return `${fieldLabel} is required.`;
+            }
+
+            if (trimmedName.length < 2) {
+                return `${fieldLabel} must be at least 2 characters long.`;
+            }
+
+            if (trimmedName.length > 30) {
+                return `${fieldLabel} must be no more than 30 characters long.`;
+            }
+
+            if (/\p{Extended_Pictographic}/u.test(trimmedName)) {
+                return `${fieldLabel} cannot contain emojis.`;
+            }
+
+            if (/[!@#$%^&*()[\]{};:"\\|<>/?~]/.test(trimmedName)) {
+                return `${fieldLabel} cannot contain special symbols like @, #, $, %, ^, &, *, (, ), or similar characters.`;
+            }
+
+            if (!/^[\p{L}\p{N}][\p{L}\p{N} '’-]*$/u.test(trimmedName)) {
+                return `${fieldLabel} can only contain letters, numbers, spaces, apostrophes, and hyphens.`;
+            }
+
+            const normalized = trimmedName.toLowerCase().replace(/[\s_-]+/g, "");
+            if (normalized.includes("chatmini") || normalized.includes("chat-mini")) {
+                return "The name 'Chat-mini' cannot be used for impersonation or misleading purposes.";
+            }
+
+            const restrictedWords = ["fuck", "shit", "bitch", "hate", "nazi", "slur", "bomb", "terror"];
+            if (restrictedWords.some((word) => normalized.includes(word))) {
+                return `${fieldLabel} contains restricted or offensive language.`;
+            }
+
+            return "";
+        }
+
         function validateFirstSlide() {
             const name = document.getElementById("nameInput").value.trim();
             const email = document.getElementById("emailInput").value.trim();
@@ -1267,6 +1307,12 @@
 
             if (!name || !email || !password) {
                 alert("Please fill in your full name, email, and password.");
+                return false;
+            }
+
+            const nameError = validateDisplayNameValue(name, "Full name");
+            if (nameError) {
+                alert(nameError);
                 return false;
             }
 
@@ -1395,6 +1441,12 @@
 
             if (!email || !password || !name) {
                 alert("Please fill in all required fields!");
+                return;
+            }
+
+            const nameError = validateDisplayNameValue(name, "Full name");
+            if (nameError) {
+                alert(nameError);
                 return;
             }
 

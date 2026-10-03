@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS users (
   sex VARCHAR(20),
   dob DATE,
   profile_pic VARCHAR(255),
-  verified TINYINT(1) DEFAULT 0
+  verified TINYINT(1) DEFAULT 0,
+  is_hidden TINYINT(1) NOT NULL DEFAULT 0,
+  account_status ENUM('active', 'hidden', 'banned') NOT NULL DEFAULT 'active'
 );
 
 -- Posts table (text, photos, videos)

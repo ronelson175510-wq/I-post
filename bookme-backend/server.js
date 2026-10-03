@@ -57,6 +57,46 @@ function normalizeMediaUrlForPublic(mediaUrl, req = null) {
   return normalized;
 }
 
+function validateDisplayNamePolicy(name, fieldLabel = "Name") {
+  const trimmedName = String(name || "").trim();
+
+  if (!trimmedName) {
+    return `${fieldLabel} is required.`;
+  }
+
+  if (trimmedName.length < 2) {
+    return `${fieldLabel} must be at least 2 characters long.`;
+  }
+
+  if (trimmedName.length > 30) {
+    return `${fieldLabel} must be no more than 30 characters long.`;
+  }
+
+  if (/\p{Extended_Pictographic}/u.test(trimmedName)) {
+    return `${fieldLabel} cannot contain emojis.`;
+  }
+
+  if (/[!@#$%^&*()[\]{};:"\\|<>/?~]/.test(trimmedName)) {
+    return `${fieldLabel} cannot contain special symbols like @, #, $, %, ^, &, *, (, ), or similar characters.`;
+  }
+
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} '’-]*$/u.test(trimmedName)) {
+    return `${fieldLabel} can only contain letters, numbers, spaces, apostrophes, and hyphens.`;
+  }
+
+  const normalized = trimmedName.toLowerCase().replace(/[\s_-]+/g, "");
+  if (normalized.includes("chatmini") || normalized.includes("chat-mini")) {
+    return "The name 'Chat-mini' cannot be used for impersonation or misleading purposes.";
+  }
+
+  const restrictedWords = ["fuck", "shit", "bitch", "hate", "nazi", "slur", "bomb", "terror"];
+  if (restrictedWords.some((word) => normalized.includes(word))) {
+    return `${fieldLabel} contains restricted or offensive language.`;
+  }
+
+  return "";
+}
+
 function loadPostsFromFile() {
   try {
     if (!fs.existsSync(postsFilePath)) {
@@ -1490,10 +1530,14 @@ app.get("/api/search", (req, res) => {
   const userQuery = `
     SELECT id, name, email, first_name, last_name, profile_pic
     FROM users
-    WHERE name LIKE ?
-      OR email LIKE ?
-      OR first_name LIKE ?
-      OR last_name LIKE ?
+    WHERE is_hidden = 0
+      AND account_status = 'active'
+      AND (
+        name LIKE ?
+        OR email LIKE ?
+        OR first_name LIKE ?
+        OR last_name LIKE ?
+      )
     ORDER BY
       CASE
         WHEN name LIKE ? THEN 0
@@ -1515,8 +1559,13 @@ app.get("/api/search", (req, res) => {
       COALESCE((SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), 0) AS like_count,
       COALESCE((SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id), 0) AS comment_count
     FROM posts p
-    WHERE p.content LIKE ?
-      OR p.media_url LIKE ?
+    INNER JOIN users u ON u.id = p.user_id
+    WHERE u.is_hidden = 0
+      AND u.account_status = 'active'
+      AND (
+        p.content LIKE ?
+        OR p.media_url LIKE ?
+      )
     ORDER BY p.created_at DESC
     LIMIT 20
   `;
@@ -1642,6 +1691,8 @@ app.get("/api/users", (req, res) => {
       `
         SELECT id, name, email, first_name, last_name, profile_pic
         FROM users
+        WHERE is_hidden = 0
+          AND account_status = 'active'
         ORDER BY name, first_name, last_name, email
         LIMIT 20
       `,
@@ -1671,10 +1722,14 @@ app.get("/api/users", (req, res) => {
   const userLookupQuery = `
     SELECT id, name, email, first_name, last_name, profile_pic
     FROM users
-    WHERE name LIKE ?
-      OR email LIKE ?
-      OR first_name LIKE ?
-      OR last_name LIKE ?
+    WHERE is_hidden = 0
+      AND account_status = 'active'
+      AND (
+        name LIKE ?
+        OR email LIKE ?
+        OR first_name LIKE ?
+        OR last_name LIKE ?
+      )
     ORDER BY
       CASE
         WHEN name LIKE ? THEN 0
@@ -1745,7 +1800,7 @@ app.get("/api/profile/:userId", (req, res) => {
   }
 
   db.query(
-    "SELECT id, name, email, first_name, last_name, dob, profile_pic, verified FROM users WHERE id = ? LIMIT 1",
+    "SELECT id, name, email, first_name, last_name, dob, profile_pic, verified FROM users WHERE id = ? AND is_hidden = 0 AND account_status = 'active' LIMIT 1",
     [userId],
     (err, rows) => {
       if (err) {
@@ -1962,10 +2017,10 @@ app.get("/api/notifications", (req, res) => {
           SELECT n.*, 
                  u.name AS actor_name,
                  u.profile_pic AS actor_profile_pic,
-                 COALESCE(u.name, (SELECT us.name FROM users us WHERE us.id = n.actor_user_id LIMIT 1)) AS resolved_actor_name,
-                 COALESCE(u.profile_pic, (SELECT us.profile_pic FROM users us WHERE us.id = n.actor_user_id LIMIT 1)) AS resolved_actor_profile_pic
+                 COALESCE(u.name, (SELECT us.name FROM users us WHERE us.id = n.actor_user_id AND us.is_hidden = 0 AND us.account_status = 'active' LIMIT 1)) AS resolved_actor_name,
+                 COALESCE(u.profile_pic, (SELECT us.profile_pic FROM users us WHERE us.id = n.actor_user_id AND us.is_hidden = 0 AND us.account_status = 'active' LIMIT 1)) AS resolved_actor_profile_pic
           FROM notifications n
-          LEFT JOIN users u ON u.id = n.actor_user_id
+          LEFT JOIN users u ON u.id = n.actor_user_id AND u.is_hidden = 0 AND u.account_status = 'active'
           WHERE n.recipient_user_id = ?
           ORDER BY n.created_at DESC
           LIMIT 30
@@ -2078,6 +2133,12 @@ app.post("/api/profile", (req, res) => {
 
   if (!userId) {
     return res.status(400).json({ error: "Missing user id" });
+  }
+
+  const fullName = [firstName, lastName].filter(Boolean).join(" ") || firstName || lastName || "";
+  const nameError = validateDisplayNamePolicy(fullName, "Name");
+  if (nameError) {
+    return res.status(400).json({ error: nameError });
   }
 
   if (!isDbEnabled()) {
@@ -2245,7 +2306,10 @@ app.get("/api/posts", (req, res) => {
         CASE WHEN EXISTS (SELECT 1 FROM likes l2 WHERE l2.post_id = p.id AND l2.user_id = ?) THEN 1 ELSE 0 END AS liked_by_current_user,
         CASE WHEN EXISTS (SELECT 1 FROM follows f WHERE f.user_id = ? AND f.following_user_id = p.user_id) THEN 1 ELSE 0 END AS followed_creator
       FROM posts p
-      WHERE EXISTS (SELECT 1 FROM follows f WHERE f.user_id = ? AND f.following_user_id = p.user_id)
+      INNER JOIN users u ON u.id = p.user_id
+      WHERE u.is_hidden = 0
+        AND u.account_status = 'active'
+        AND EXISTS (SELECT 1 FROM follows f WHERE f.user_id = ? AND f.following_user_id = p.user_id)
       ORDER BY p.created_at DESC
     `
     : viewerUserId
@@ -2255,6 +2319,9 @@ app.get("/api/posts", (req, res) => {
           COALESCE((SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id), 0) AS comment_count,
           CASE WHEN EXISTS (SELECT 1 FROM likes l2 WHERE l2.post_id = p.id AND l2.user_id = ?) THEN 1 ELSE 0 END AS liked_by_current_user
         FROM posts p
+        INNER JOIN users u ON u.id = p.user_id
+        WHERE u.is_hidden = 0
+          AND u.account_status = 'active'
         ORDER BY p.created_at DESC
       `
       : `
@@ -2262,6 +2329,9 @@ app.get("/api/posts", (req, res) => {
           COALESCE((SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id), 0) AS like_count,
           COALESCE((SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id), 0) AS comment_count
         FROM posts p
+        INNER JOIN users u ON u.id = p.user_id
+        WHERE u.is_hidden = 0
+          AND u.account_status = 'active'
         ORDER BY p.created_at DESC
       `;
 
@@ -2758,7 +2828,7 @@ app.get("/api/comments/:postId", (req, res) => {
         COALESCE((SELECT COUNT(*) FROM comments reply WHERE reply.reply_to = c.id), 0) AS reply_count,
         COALESCE((SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id), 0) AS like_count
       FROM comments c
-      LEFT JOIN users u ON u.id = c.user_id
+      LEFT JOIN users u ON u.id = c.user_id AND u.is_hidden = 0 AND u.account_status = 'active'
       WHERE c.post_id = ?
       ORDER BY c.created_at ASC
     `,
