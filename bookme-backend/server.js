@@ -380,15 +380,7 @@ function extractPostTopics(text = "") {
     .map((match) => normalizeTopicToken(match[1]))
     .filter(Boolean);
 
-  const keywordMatches = rawText
-    .toLowerCase()
-    .replace(/[#@]/g, " ")
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .map((token) => normalizeTopicToken(token))
-    .filter((token) => token && token.length > 2 && !recommendationStopWords.has(token));
-
-  return [...new Set([...hashtagMatches, ...keywordMatches])].slice(0, 15);
+  return [...new Set(hashtagMatches)].slice(0, 15);
 }
 
 function savePostTopics(postId, content = "", source = "auto", callback = null) {
@@ -1159,6 +1151,44 @@ app.get("/message", (req, res) => {
 app.get("/health", (req, res) => {
   const publicBaseUrl = getPublicBaseUrl(req);
   res.json({ ok: true, message: "Backend healthy", publicBaseUrl });
+});
+
+app.get("/api/hashtags/suggestions", (req, res) => {
+  const rawQuery = String(req.query?.q || req.query?.term || "").trim();
+  const normalizedQuery = rawQuery.replace(/^#+/, "").toLowerCase();
+
+  if (!isDbEnabled()) {
+    return res.json([]);
+  }
+
+  const isEmptyQuery = !normalizedQuery;
+  const sql = isEmptyQuery
+    ? `SELECT topic AS tag, COUNT(*) AS usage_count
+       FROM post_topics
+       GROUP BY topic
+       ORDER BY usage_count DESC, topic ASC
+       LIMIT 8`
+    : `SELECT topic AS tag, COUNT(*) AS usage_count
+       FROM post_topics
+       WHERE topic LIKE ?
+       GROUP BY topic
+       ORDER BY usage_count DESC, topic ASC
+       LIMIT 8`;
+
+  const params = isEmptyQuery ? [] : [`${normalizedQuery}%`];
+
+  db.query(sql, params, (err, rows) => {
+    if (err) {
+      console.warn("HASHTAG SUGGESTION ERROR:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+
+    const suggestions = (rows || [])
+      .map((row) => String(row?.tag || "").trim())
+      .filter(Boolean);
+
+    return res.json(suggestions);
+  });
 });
 
 app.post("/api/translate", async (req, res) => {

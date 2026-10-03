@@ -198,6 +198,203 @@ window.addEventListener("beforeinstallprompt", (event) => {
   deferredInstallPrompt = event;
 });
 
+const hashtagSuggestionStyleId = "bookme-hashtag-suggestion-styles";
+const hashtagSuggestionPopoverId = "bookme-hashtag-suggestions";
+
+if (!document.getElementById(hashtagSuggestionStyleId)) {
+  const hashtagStyleTag = document.createElement("style");
+  hashtagStyleTag.id = hashtagSuggestionStyleId;
+  hashtagStyleTag.textContent = `
+    .hashtag-highlight {
+      color: #f5c94a;
+      font-weight: 700;
+    }
+
+    .hashtag-suggestion-popover {
+      position: fixed;
+      z-index: 99999;
+      display: none;
+      max-height: 220px;
+      overflow-y: hidden;
+      width: min(260px, calc(100vw - 24px));
+      background: rgba(17, 17, 17, 0.96);
+      border: 1px solid rgba(245, 201, 74, 0.5);
+      border-radius: 14px;
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
+      padding: 8px;
+      backdrop-filter: blur(8px);
+
+    }
+
+    .hashtag-suggestion-item {
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: #f5f5f5;
+      border-radius: 10px;
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .hashtag-suggestion-item:hover,
+    .hashtag-suggestion-item:focus-visible {
+      background: rgba(245, 201, 74, 0.12);
+      outline: none;
+    }
+
+    .hashtag-suggestion-tag {
+      color: #f5c94a;
+      font-weight: 700;
+    }
+
+    .hashtag-suggestion-count {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+    }
+  `;
+  document.head.appendChild(hashtagStyleTag);
+}
+
+function buildHashtagSuggestionPopover() {
+  let popover = document.getElementById(hashtagSuggestionPopoverId);
+  if (!popover) {
+    popover = document.createElement("div");
+    popover.id = hashtagSuggestionPopoverId;
+    popover.className = "hashtag-suggestion-popover";
+    document.body.appendChild(popover);
+  }
+  return popover;
+}
+
+function hideHashtagSuggestions() {
+  const popover = document.getElementById(hashtagSuggestionPopoverId);
+  if (popover) {
+    popover.style.display = "none";
+    popover.innerHTML = "";
+  }
+}
+
+function getHashtagQuery(textarea) {
+  if (!textarea) return null;
+
+  const value = textarea.value || "";
+  const cursorPosition = textarea.selectionStart ?? value.length;
+  const beforeCursor = value.slice(0, cursorPosition);
+  const hashMatch = beforeCursor.match(/(?:^|\s)#([^\s#]*)$/);
+
+  if (!hashMatch) {
+    return null;
+  }
+
+  const fragment = String(hashMatch[1] || "");
+  if (!fragment) {
+    return "";
+  }
+
+  return fragment.toLowerCase();
+}
+
+function insertSuggestedHashtag(textarea, tag) {
+  if (!textarea || !tag) return;
+
+  const value = textarea.value || "";
+  const cursorPosition = textarea.selectionStart ?? value.length;
+  const beforeCursor = value.slice(0, cursorPosition);
+  const hashIndex = beforeCursor.lastIndexOf("#");
+  const safeTag = String(tag).replace(/^#+/, "").trim();
+
+  if (!safeTag) {
+    hideHashtagSuggestions();
+    return;
+  }
+
+  let nextValue = value;
+  if (hashIndex >= 0) {
+    nextValue = `${value.slice(0, hashIndex)}#${safeTag} ${value.slice(cursorPosition)}`;
+  } else {
+    const prefix = beforeCursor && !beforeCursor.endsWith(" ") ? " " : "";
+    nextValue = `${value.slice(0, cursorPosition)}${prefix}#${safeTag} ${value.slice(cursorPosition)}`;
+  }
+
+  textarea.value = nextValue;
+  textarea.focus();
+  const finalPosition = textarea.value.length;
+  textarea.setSelectionRange(finalPosition, finalPosition);
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  hideHashtagSuggestions();
+}
+
+async function updateHashtagSuggestions(textarea) {
+  const query = getHashtagQuery(textarea);
+  const popover = buildHashtagSuggestionPopover();
+
+  if (query === null || query === undefined) {
+    hideHashtagSuggestions();
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/hashtags/suggestions?q=${encodeURIComponent(query)}`);
+    if (!response.ok) {
+      throw new Error("Unable to load hashtag suggestions");
+    }
+
+    const suggestions = await response.json();
+    const items = Array.isArray(suggestions) ? suggestions : [];
+
+    if (!items.length) {
+      hideHashtagSuggestions();
+      return;
+    }
+
+    const rect = textarea.getBoundingClientRect();
+    popover.innerHTML = items.map((tag) => `
+      <button class="hashtag-suggestion-item" type="button" data-tag="${String(tag).replace(/"/g, "&quot;")}">
+        <span class="hashtag-suggestion-tag">#${String(tag).replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>
+        <span class="hashtag-suggestion-count">saved</span>
+      </button>
+    `).join("");
+
+    popover.style.left = `${Math.min(rect.left + 8, window.innerWidth - 270)}px`;
+    popover.style.top = `${rect.bottom + 10}px`;
+    popover.style.display = "block";
+
+    popover.querySelectorAll(".hashtag-suggestion-item").forEach((button) => {
+      const handleSuggestionSelect = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        textarea.focus();
+        insertSuggestedHashtag(textarea, button.dataset.tag);
+      };
+
+      button.addEventListener("mousedown", handleSuggestionSelect);
+      button.addEventListener("click", handleSuggestionSelect);
+    });
+  } catch (error) {
+    hideHashtagSuggestions();
+  }
+}
+
+function initHashtagSuggestions(textarea) {
+  if (!textarea) return;
+
+  textarea.addEventListener("input", () => updateHashtagSuggestions(textarea));
+  textarea.addEventListener("keyup", (event) => {
+    if (event.key === "Escape") {
+      hideHashtagSuggestions();
+    }
+  });
+  textarea.addEventListener("blur", () => {
+    setTimeout(hideHashtagSuggestions, 120);
+  });
+}
+
 const auth = window.firebase ? firebase.auth() : null;
 const signOutBtn = document.querySelector(".sign-out-btn");
 const sideMenuProfileBtn = document.getElementById("sideMenuProfileBtn");
@@ -3628,6 +3825,10 @@ const closeWritePostSheet = document.getElementById("closeWritePostSheet");
 const postSubmitBtn = document.getElementById("postSubmitBtn");
 const postTextArea = document.getElementById("postTextArea");
 
+if (postTextArea) {
+  initHashtagSuggestions(postTextArea);
+}
+
 if (writePostBtn && writePostSheet) {
   writePostBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -3985,6 +4186,17 @@ const feedModeButtons = document.querySelectorAll(".feed-mode-btn");
 let textMenuHandlerBound = false;
 let activeUserSheetFilter = "all";
 let activeFeedMode = "for_you";
+let homeFeedInitialized = false;
+
+function initializeHomeFeed() {
+  if (homeFeedInitialized) {
+    return;
+  }
+
+  homeFeedInitialized = true;
+  bindFeedModeButtons();
+  loadPosts();
+}
 
 function bindFeedModeButtons() {
   feedModeButtons.forEach((button) => {
@@ -5067,9 +5279,20 @@ if (document.getElementById("reelsContainer")) {
 }
 
 if (document.getElementById("searchResults")) {
-  bindFeedModeButtons();
-  loadPosts();
+  initializeHomeFeed();
 }
+
+window.addEventListener("focus", () => {
+  if (document.visibilityState === "visible" && feedPosts) {
+    loadPosts();
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && feedPosts) {
+    loadPosts();
+  }
+});
 
 /* ===========================
    UPLOAD MEDIA SECTION
@@ -5082,6 +5305,10 @@ const uploadFilesBtn = document.getElementById("uploadFilesBtn");
 const submitFilesBtn = document.getElementById("submitFilesBtn");
 const uploadDescription = document.getElementById("uploadDescription");
 const previewContainer = document.getElementById("previewContainer");
+
+if (uploadDescription) {
+  initHashtagSuggestions(uploadDescription);
+}
 
 function resetUploadForm() {
   if (mediaInput) mediaInput.value = "";
@@ -5893,7 +6120,8 @@ function renderFeedPost(post) {
     const captionPreviewLimit = 90;
     const isLongCaption = normalizedText.length > captionPreviewLimit;
     const previewText = isLongCaption ? `${normalizedText.slice(0, captionPreviewLimit).trim()}...` : normalizedText;
-    const safeText = encodeHtml(previewText);
+    const safeText = encodeHtml(previewText)
+      .replace(/(^|[\s>])(#(?:[a-zA-Z0-9_]+))/g, '$1<span class="hashtag-highlight">$2</span>');
     const fullTextAttr = encodeAttribute(normalizedText);
 
     return `
@@ -6363,8 +6591,7 @@ if (submitCommentBtn && commentInput && commentsSheet) {
 }
 
 if (feedPosts) {
-  bindFeedModeButtons();
-  loadPosts();
+  initializeHomeFeed();
 
   feedPosts.addEventListener("click", async (event) => {
     const commentButton = event.target.closest(".comment-btn");
