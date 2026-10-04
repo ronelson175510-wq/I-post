@@ -15,8 +15,8 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY || process.env.CLOUDINARY_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET || process.env.CLOUDINARY_SECRET
 });
-const uploadsDir = path.join(__dirname, "uploads");
 const projectRoot = path.join(__dirname, "..");
+const tempUploadDir = path.join(__dirname, ".tmp-upload");
 const postsFilePath = path.join(__dirname, "posts.json");
 const commentsFilePath = path.join(__dirname, "comments.json");
 const PORT = process.env.PORT || 10000;
@@ -203,50 +203,35 @@ async function uploadMediaFile(file, folderName = "uploads") {
     return null;
   }
 
+  if (!isCloudinaryConfigured()) {
+    throw new Error("Cloudinary is not configured. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.");
+  }
+
   const normalizedFolder = String(folderName || "")
     .replace(/\\/g, "/")
     .replace(/^\/+/, "")
     .replace(/^uploads\/?/i, "")
     .replace(/\/+$/, "")
     .trim();
-  const relativeUploadPath = normalizedFolder ? `/${normalizedFolder}/${file.filename}` : `/${file.filename}`;
-  const localPublicUrl = `${getPublicBaseUrl()}/uploads${relativeUploadPath}`;
-
-  if (isCloudinaryConfigured()) {
-    try {
-      const result = await cloudinary.uploader.upload(file.path, {
-        folder: normalizedFolder || "uploads",
-        resource_type: "auto"
-      });
-
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
-
-      return result?.secure_url || result?.url || localPublicUrl;
-    } catch (error) {
-      const cloudinaryFailure = new Error(
-        `Cloudinary upload failed for ${file.originalname || file.filename}: ${error?.message || "Unknown Cloudinary error"}`
-      );
-      console.error(cloudinaryFailure.message);
-      throw cloudinaryFailure;
-    }
-  }
 
   try {
+    const result = await cloudinary.uploader.upload(file.path, {
+      folder: normalizedFolder || "uploads",
+      resource_type: "auto"
+    });
+
     if (fs.existsSync(file.path)) {
-      const destinationParts = normalizedFolder ? normalizedFolder.split("/").filter(Boolean) : [];
-      const destinationDir = path.join(uploadsDir, ...destinationParts);
-      fs.mkdirSync(destinationDir, { recursive: true });
-      const destinationPath = path.join(destinationDir, file.filename);
-      fs.copyFileSync(file.path, destinationPath);
       fs.unlinkSync(file.path);
     }
-  } catch (error) {
-    console.warn("Local media copy failed, keeping original temp path:", error.message);
-  }
 
-  return localPublicUrl;
+    return result?.secure_url || result?.url || null;
+  } catch (error) {
+    const cloudinaryFailure = new Error(
+      `Cloudinary upload failed for ${file.originalname || file.filename}: ${error?.message || "Unknown Cloudinary error"}`
+    );
+    console.error(cloudinaryFailure.message);
+    throw cloudinaryFailure;
+  }
 }
 
 function normalizeStoredMediaUrls(value) {
@@ -588,8 +573,8 @@ function scoreRecommendationPost(post = {}, userHistory = []) {
   const postTokens = new Set(getRecommendationTokens(postContent));
 
   let score = 0;
-  score += Number(safePost.like_count || 0) * 0.75;
-  score += Number(safePost.comment_count || 0) * 1.5;
+  score += Number(safePost.like_count || 0) * 0.15;
+  score += Number(safePost.comment_count || 0) * 0.25;
 
   const createdAt = safePost.created_at ? new Date(safePost.created_at) : new Date();
   const ageHours = Math.max(1, (Date.now() - createdAt.getTime()) / 3600000);
@@ -601,25 +586,54 @@ function scoreRecommendationPost(post = {}, userHistory = []) {
   }
 
   const userPreferenceTokens = new Set();
+  const creatorAffinityMap = new Map();
+  const seenPostIds = new Set();
+
   for (const entry of userHistory) {
     const historyContent = String(entry?.post_content || "");
     if (historyContent) {
       getRecommendationTokens(historyContent).forEach((token) => userPreferenceTokens.add(token));
     }
+
+    const targetUserId = String(entry?.target_user_id || "").trim();
+    const entryCreatorId = String(entry?.post_user_id || "").trim();
+    const eventType = String(entry?.event_type || "").toLowerCase();
+    const eventWeight = Number(entry?.weight || 1);
+    const typeWeightMap = {
+      like: 10,
+      comment: 12,
+      share: 10,
+      follow_user: 15,
+      comment_like: 8,
+      view: 3
+    };
+
+    if (postCreatorId && targetUserId && postCreatorId === targetUserId) {
+      creatorAffinityMap.set(postCreatorId, (creatorAffinityMap.get(postCreatorId) || 0) + (typeWeightMap[eventType] || 2) * eventWeight);
+    }
+
+    if (postCreatorId && entryCreatorId && postCreatorId === entryCreatorId) {
+      creatorAffinityMap.set(postCreatorId, (creatorAffinityMap.get(postCreatorId) || 0) + (eventType === "follow_user" ? 12 : (typeWeightMap[eventType] || 5)) * eventWeight);
+    }
+
+    if (entry?.post_id != null) {
+      seenPostIds.add(String(entry.post_id));
+    }
+  }
+
+  const creatorAffinityScore = creatorAffinityMap.get(postCreatorId) || 0;
+  if (creatorAffinityScore > 0) {
+    score += creatorAffinityScore * 1.6;
   }
 
   const preferredTokenMatches = [...userPreferenceTokens].filter((token) => postTokens.has(token));
   if (preferredTokenMatches.length) {
-    score += preferredTokenMatches.length * 8;
+    score += preferredTokenMatches.length * 12;
   }
 
-  const creatorAffinityMatches = userHistory.filter((entry) => {
-    const targetUserId = String(entry?.target_user_id || "").trim();
-    const entryCreatorId = String(entry?.post_user_id || "").trim();
-    return Boolean(postCreatorId && (targetUserId === postCreatorId || entryCreatorId === postCreatorId));
-  });
-  if (creatorAffinityMatches.length) {
-    score += creatorAffinityMatches.reduce((sum, entry) => sum + Number(entry?.weight || 1) * 9, 0);
+  const hasBeenSeen = seenPostIds.has(String(postId));
+  if (!hasBeenSeen && (creatorAffinityScore > 0 || preferredTokenMatches.length > 0)) {
+    score += 24;
   }
 
   for (const entry of userHistory) {
@@ -637,7 +651,7 @@ function scoreRecommendationPost(post = {}, userHistory = []) {
     }
 
     if (postCreatorId && entryCreatorId && postCreatorId === entryCreatorId) {
-      score += eventType === "follow_user" ? 12 : (eventWeight * 8);
+      score += eventType === "follow_user" ? 15 : (eventWeight * 9);
     }
 
     if (postId && entryPostId && postId === entryPostId) {
@@ -649,7 +663,7 @@ function scoreRecommendationPost(post = {}, userHistory = []) {
     }
 
     if (entryContent && overlap.length) {
-      score += overlap.length * 5 * Math.max(1, eventWeight);
+      score += overlap.length * 6 * Math.max(1, eventWeight);
     }
 
     if (entryMediaType && postMediaType && entryMediaType === postMediaType) {
@@ -1018,56 +1032,6 @@ function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic
   });
 }
 
-function getLocalUploadPathFromMediaUrl(mediaUrl) {
-  if (!mediaUrl) return null;
-
-  const resolveFromPathname = (pathname) => {
-    if (!pathname || !pathname.startsWith("/uploads/")) return null;
-
-    const relativePath = pathname.slice("/uploads".length).replace(/^\/+/, "");
-    if (!relativePath) return null;
-
-    return path.join(uploadsDir, ...relativePath.split("/").filter(Boolean));
-  };
-
-  if (mediaUrl.startsWith("/uploads/")) {
-    return resolveFromPathname(mediaUrl);
-  }
-
-  try {
-    const parsed = new URL(mediaUrl);
-    const expectedOrigin = getPublicBaseUrl();
-    if (parsed.origin === expectedOrigin) {
-      return resolveFromPathname(parsed.pathname);
-    }
-  } catch (error) {
-    return null;
-  }
-
-  return null;
-}
-
-function removeInMemoryPostById(postId, requestingUserId = null) {
-  const index = inMemoryPosts.findIndex(post => Number(post.id) === Number(postId));
-  if (index < 0) {
-    return null;
-  }
-
-  const existing = inMemoryPosts[index];
-  if (requestingUserId && existing?.user_id && String(existing.user_id) !== String(requestingUserId)) {
-    return { forbidden: true };
-  }
-
-  const removed = inMemoryPosts.splice(index, 1)[0];
-  if (removed?.media_url) {
-    const localUploadPath = getLocalUploadPathFromMediaUrl(removed.media_url);
-    if (localUploadPath && fs.existsSync(localUploadPath)) {
-      fs.unlinkSync(localUploadPath);
-    }
-  }
-  return removed;
-}
-
 function pruneMissingMediaPosts() {
   for (let index = inMemoryPosts.length - 1; index >= 0; index--) {
     const post = inMemoryPosts[index];
@@ -1079,18 +1043,11 @@ function pruneMissingMediaPosts() {
     if (Array.isArray(post?.media_urls)) {
       post.media_urls = post.media_urls.map(normalizeMediaUrlForPublic);
     }
-
-    const localUploadPath = getLocalUploadPathFromMediaUrl(post?.media_url);
-
-    if (post?.media_url && localUploadPath && !fs.existsSync(localUploadPath)) {
-      inMemoryPosts.splice(index, 1);
-    }
   }
 
   savePostsToFile();
 }
 
-fs.mkdirSync(uploadsDir, { recursive: true });
 pruneMissingMediaPosts();
 
 app.use(cors({
@@ -1135,9 +1092,11 @@ app.use((req, res, next) => {
   next();
 });
 
+fs.mkdirSync(tempUploadDir, { recursive: true });
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadsDir);
+    cb(null, tempUploadDir);
   },
   filename: (req, file, cb) => {
     const safeName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
@@ -1173,7 +1132,6 @@ app.use((error, req, res, next) => {
   next();
 });
 
-app.use("/uploads", express.static(uploadsDir));
 app.use(express.static(projectRoot));
 
 app.get("/", (req, res) => {
@@ -1299,7 +1257,11 @@ app.post("/api/profile-picture", upload.single("profilePic"), async (req, res) =
   }
 
   try {
-    const imageUrl = await uploadMediaFile(file, `profile-pictures/${userId}`) || `${getPublicBaseUrl(req)}/uploads/${file.filename}`;
+    const imageUrl = await uploadMediaFile(file, `profile-pictures/${userId}`);
+
+    if (!imageUrl) {
+      return res.status(500).json({ error: "Failed to upload profile picture to Cloudinary." });
+    }
 
     ensureUserRecord(userId, {
       profile_pic: imageUrl,
@@ -1625,14 +1587,7 @@ app.get("/api/search", (req, res) => {
                 liked_by_current_user: false,
                 liked: false
               };
-            }).filter((post) => {
-              if (post.is_flagged || Number(post.report_count || 0) >= 10) {
-                return false;
-              }
-              if (!post.media_url) return true;
-              const localUploadPath = getLocalUploadPathFromMediaUrl(post.media_url);
-              return !localUploadPath || fs.existsSync(localUploadPath);
-            })
+            }).filter((post) => !(post.is_flagged || Number(post.report_count || 0) >= 10))
           });
         });
       });
@@ -1665,14 +1620,7 @@ app.get("/api/search", (req, res) => {
           liked_by_current_user: false,
           liked: false
         };
-      }).filter((post) => {
-        if (post.is_flagged || Number(post.report_count || 0) >= 10) {
-          return false;
-        }
-        if (!post.media_url) return true;
-        const localUploadPath = getLocalUploadPathFromMediaUrl(post.media_url);
-        return !localUploadPath || fs.existsSync(localUploadPath);
-      });
+      }).filter((post) => !(post.is_flagged || Number(post.report_count || 0) >= 10));
 
       return res.json({ users, posts });
     });
@@ -2199,7 +2147,13 @@ app.post("/api/posts", upload.array("file", 3), async (req, res) => {
   }
 
   try {
-    const mediaUrls = await Promise.all(files.map((file) => uploadMediaFile(file, `posts/${user_id}`) || `${getPublicBaseUrl(req)}/uploads/${file.filename}`));
+    const mediaUrls = await Promise.all(files.map(async (file) => {
+      const uploadedUrl = await uploadMediaFile(file, `posts/${user_id}`);
+      if (!uploadedUrl) {
+        throw new Error(`Cloudinary upload failed for ${file.originalname || "media file"}.`);
+      }
+      return uploadedUrl;
+    }));
     const firstOriginalName = files[0]?.originalname || "uploaded file";
     const media_type = files.some((file) => file.mimetype?.startsWith("video/")) ? "video" : "photo";
     const content = commonContent;
@@ -2369,14 +2323,7 @@ app.get("/api/posts", (req, res) => {
           followed_creator: Boolean(Number(post.followed_creator || 0))
         };
       })
-      .filter(post => {
-        if (post.is_flagged || Number(post.report_count || 0) >= 10) {
-          return false;
-        }
-        if (!post.media_url) return true;
-        const localUploadPath = getLocalUploadPathFromMediaUrl(post.media_url);
-        return !localUploadPath || fs.existsSync(localUploadPath);
-      });
+      .filter(post => !(post.is_flagged || Number(post.report_count || 0) >= 10));
 
     if (!viewerUserId) {
       return res.json(fixedResults);
@@ -3058,16 +3005,7 @@ app.delete("/api/posts/:id", (req, res) => {
   }
 
   if (!isDbEnabled()) {
-    const deleted = removeInMemoryPostById(postId, requestingUserId);
-    if (!deleted) {
-      return res.status(404).json({ error: "Post not found" });
-    }
-    if (deleted.forbidden) {
-      return res.status(403).json({ error: "You can only delete your own posts." });
-    }
-
-    savePostsToFile();
-    return res.json({ success: true, deletedId: postId });
+    return res.status(400).json({ error: "Database is disabled; delete is unavailable while using local-only mode." });
   }
 
   db.query("SELECT user_id, media_url FROM posts WHERE id = ?", [postId], (selectErr, rows) => {
@@ -3083,13 +3021,6 @@ app.delete("/api/posts/:id", (req, res) => {
 
     if (requestingUserId && String(existingPost.user_id) !== String(requestingUserId)) {
       return res.status(403).json({ error: "You can only delete your own posts." });
-    }
-
-    const mediaUrl = existingPost.media_url;
-    const localUploadPath = getLocalUploadPathFromMediaUrl(mediaUrl);
-
-    if (localUploadPath && fs.existsSync(localUploadPath)) {
-      fs.unlinkSync(localUploadPath);
     }
 
     db.query("DELETE FROM posts WHERE id = ?", [postId], (deleteErr) => {
