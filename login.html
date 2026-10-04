@@ -201,8 +201,8 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: min(360px, calc(100vw - 28px));
-            max-height: 500px;
+            width: min(85%, calc(100vw - 28px));
+            height: 65%;
             background: white;
             border: 1px solid rgba(177, 151, 252, 0.5);
             padding: 40px 24px 26px;
@@ -1216,7 +1216,7 @@
                             loginMessage.textContent = "Wrong password.";
                             break;
                         default:
-                            loginMessage.textContent = "Login failed.";
+                            loginMessage.textContent = "Wrong username or password.";
                     }
                 });
         });

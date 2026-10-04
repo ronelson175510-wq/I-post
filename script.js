@@ -5656,45 +5656,79 @@ async function prepareUploadFiles(files = []) {
   return { valid: true, files: preparedFiles };
 }
 
-function handleMediaSelection() {
-  if (!mediaInput || !previewContainer) return;
+function renderSelectedPreviews(files = []) {
+  if (!previewContainer) return;
 
-  const files = Array.from(mediaInput.files || []);
-  const validation = validateUploadFiles(files);
+  const normalizedFiles = Array.from(files || []);
+  if (!normalizedFiles.length) {
+    previewContainer.innerHTML = "";
+    return;
+  }
 
+  const validation = validateUploadFiles(normalizedFiles);
   if (!validation.valid) {
     previewContainer.innerHTML = "";
-    mediaInput.value = "";
+    if (mediaInput) mediaInput.value = "";
     alert(validation.error);
     return;
   }
 
   previewContainer.innerHTML = validation.files
-    .map(file => {
+    .map((file, index) => {
       const objectUrl = URL.createObjectURL(file);
+      const previewMarkup = file.type.startsWith("image/")
+        ? `<img src="${objectUrl}" alt="${file.name}" />`
+        : file.type.startsWith("video/")
+          ? `<video src="${objectUrl}" muted loop playsinline></video>`
+          : `<div class="preview-item file-preview"></div>`;
 
-      if (file.type.startsWith("image/")) {
-        return `
-          <div class="preview-item image-preview">
-            <img src="${objectUrl}" alt="${file.name}" />
-          </div>
-        `;
-      }
-
-      if (file.type.startsWith("video/")) {
-        return `
-          <div class="preview-item video-preview video-shell">
-            <video src="${objectUrl}" muted loop playsinline></video>
-          </div>
-        `;
-      }
-
-      return `<div class="preview-item file-preview"></div>`;
+      return `
+        <div class="preview-item ${file.type.startsWith("image/") ? "image-preview" : file.type.startsWith("video/") ? "video-preview video-shell" : "file-preview"}" style="position: relative;">
+          <button
+            type="button"
+            class="preview-remove-btn"
+            data-remove-index="${index}"
+            aria-label="Remove selected media"
+            title="Remove"
+            style="position: absolute; top: 8px; right: 8px; z-index: 2; width: 28px; height: 28px; border: none; border-radius: 50%; background: rgba(17, 17, 17, 0.72); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(17,17,17,0.2);"
+          >
+            ×
+          </button>
+          ${previewMarkup}
+        </div>
+      `;
     })
     .join("");
 
   previewContainer.querySelectorAll(".video-shell").forEach(bindVideoControls);
 }
+
+function handleMediaSelection() {
+  if (!mediaInput || !previewContainer) return;
+
+  const files = Array.from(mediaInput.files || []);
+  renderSelectedPreviews(files);
+}
+
+previewContainer?.addEventListener("click", (event) => {
+  const removeButton = event.target.closest(".preview-remove-btn");
+  if (!removeButton || !mediaInput) return;
+
+  const indexToRemove = Number(removeButton.dataset.removeIndex);
+  const currentFiles = Array.from(mediaInput.files || []);
+  const nextFiles = currentFiles.filter((_, index) => index !== indexToRemove);
+
+  const dataTransfer = new DataTransfer();
+  nextFiles.forEach((file) => dataTransfer.items.add(file));
+  mediaInput.files = dataTransfer.files;
+
+  if (!nextFiles.length) {
+    previewContainer.innerHTML = "";
+    return;
+  }
+
+  renderSelectedPreviews(nextFiles);
+});
 
 async function submitUploadedFiles() {
   if (!mediaInput) {
