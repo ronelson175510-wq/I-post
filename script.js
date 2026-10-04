@@ -3075,7 +3075,22 @@ populateProfileSettingsForm();
    Handles chat screens, conversations, and messaging UI.
    ============================================================ */
 
-function initializeMessagePage() {
+function matchesConversationSearch(searchTerm, displayName = "", threadEntries = []) {
+  const normalizedSearch = String(searchTerm || "").trim().toLowerCase();
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  const name = String(displayName || "").toLowerCase();
+  const threadMatch = (Array.isArray(threadEntries) ? threadEntries : []).some((entry) => {
+    const messageText = String(entry?.text || "").toLowerCase();
+    return messageText.includes(normalizedSearch);
+  });
+
+  return name.includes(normalizedSearch) || threadMatch;
+}
+
+async function initializeMessagePage() {
   const currentUserId = typeof getCurrentUserId === "function" ? getCurrentUserId() : "guest";
   const sessionKey = `bookme_message_page_${currentUserId}`;
   if (window.__bookmeMessagePageInitialized && window.__bookmeMessagePageUserId === currentUserId) return;
@@ -3140,7 +3155,8 @@ function initializeMessagePage() {
   const existingMessages = (() => {
     try {
       const raw = localStorage.getItem(sessionKey);
-      return raw ? JSON.parse(raw) : {};
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
     } catch (error) {
       return {};
     }
@@ -3148,20 +3164,51 @@ function initializeMessagePage() {
 
   const conversations = {};
   if (currentUserId && currentUserId !== "guest") {
-    conversations[currentUserId] = [];
+    Object.assign(conversations, existingMessages);
+    if (!conversations[currentUserId]) {
+      conversations[currentUserId] = [];
+    }
   }
 
   delete conversations.guest;
   delete conversations.michael;
 
-  try {
-    localStorage.setItem(sessionKey, JSON.stringify(conversations));
-  } catch (error) {
-    console.warn("Unable to clear previous message state:", error);
+  async function hydrateConversationsFromServer() {
+    if (!currentUserId || currentUserId === "guest") {
+      return;
+    }
+
+    try {
+      const response = await apiFetch(`/api/messages/conversations?user_id=${encodeURIComponent(currentUserId)}`);
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = await response.json().catch(() => []);
+      const rows = Array.isArray(payload) ? payload : [];
+
+      rows.forEach((thread) => {
+        const otherUserId = String(thread?.user_id || "").trim();
+        if (!otherUserId || otherUserId === currentUserId) return;
+
+        const messages = Array.isArray(thread?.messages) ? thread.messages : [];
+        conversations[otherUserId] = messages.map((entry) => ({
+          id: entry?.id || null,
+          text: entry?.text || entry?.message || "",
+          mine: Boolean(entry?.mine) || String(entry?.sender_user_id || "") === String(currentUserId),
+          created_at: entry?.created_at || null
+        }));
+      });
+
+      saveConversations();
+    } catch (error) {
+      console.warn("Unable to hydrate conversations from server:", error);
+    }
   }
 
   let activeConversation = null;
   let currentSearchTerm = "";
+  let userSearchMatches = [];
 
   function saveConversations() {
     try {
@@ -3208,38 +3255,180 @@ function initializeMessagePage() {
     return lastMessage ? lastMessage.text.trim() : "No messages yet";
   }
 
+  async function loadConversationHistoryFromServer(userKey) {
+    const contactUserId = String(userKey || "").trim();
+    if (!contactUserId || contactUserId === currentUserId) {
+      return;
+    }
+
+    try {
+      const response = await apiFetch(`/api/messages?user_id=${encodeURIComponent(currentUserId)}&other_user_id=${encodeURIComponent(contactUserId)}`);
+      if (!response.ok) {
+        return;
+      }
+
+      const rows = await response.json().catch(() => []);
+      const mappedRows = (Array.isArray(rows) ? rows : []).map((row) => ({
+        id: row?.id || null,
+        text: row?.message || row?.text || "",
+        mine: String(row?.sender_user_id || row?.sender_id || "") === String(currentUserId),
+        created_at: row?.created_at || null
+      }));
+
+      if (mappedRows.length) {
+        conversations[contactUserId] = mappedRows;
+        saveConversations();
+      }
+    } catch (error) {
+      console.warn("Unable to load conversation history from server:", error);
+    }
+  }
+
+  async function saveConversationMessageToServer(userKey, text) {
+    const contactUserId = String(userKey || "").trim();
+    const safeText = String(text || "").trim();
+    if (!contactUserId || !safeText) return null;
+
+    try {
+      const response = await apiFetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender_user_id: currentUserId,
+          recipient_user_id: contactUserId,
+          message: safeText
+        })
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        console.warn("Message save failed:", payload?.error || response.statusText);
+        return null;
+      }
+
+      const payload = await response.json().catch(() => ({}));
+      return payload?.message || null;
+    } catch (error) {
+      console.warn("Unable to save message to database:", error);
+      return null;
+    }
+  }
+
   function syncView() {
     const hasActiveConversation = Boolean(activeConversation && conversations[activeConversation]);
+    const header = document.querySelector(".header");
+    const searchWrap = document.querySelector(".message-search-wrap");
 
     if (hasActiveConversation) {
-      conversationPanel.style.display = "block";
-      conversationPanel.style.width = "34%";
+      conversationPanel.style.display = "none";
+      conversationPanel.style.width = "0";
       chatWindow.style.display = "flex";
+      chatWindow.style.width = "100%";
+      if (header) header.style.display = "none";
+      if (searchWrap) searchWrap.style.display = "none";
       if (chatBackBtn) chatBackBtn.style.display = "block";
     } else {
       conversationPanel.style.display = "block";
       conversationPanel.style.width = "100%";
       chatWindow.style.display = "none";
+      chatWindow.style.width = "0";
+      if (header) header.style.display = "flex";
+      if (searchWrap) searchWrap.style.display = "block";
       if (chatBackBtn) chatBackBtn.style.display = "none";
     }
 
     if (chatRecipientName) {
-      chatRecipientName.textContent = hasActiveConversation ? getConversationDisplayName(activeConversation) : "Select a conversation";
+      if (!hasActiveConversation) {
+        chatRecipientName.innerHTML = "Select a conversation";
+        return;
+      }
+
+      const recipientName = getConversationDisplayName(activeConversation);
+      const recipientPic = getProfilePicForUser(activeConversation);
+      const avatarMarkup = recipientPic
+        ? `<span class="chat-recipient-avatar"><img src="${getCacheBustedImageUrl(recipientPic)}" alt="${escapeHtml(recipientName)} profile picture" /></span>`
+        : `<span class="chat-recipient-avatar chat-recipient-avatar-fallback"><i class="fa-solid fa-circle-user"></i></span>`;
+
+      chatRecipientName.innerHTML = `${avatarMarkup}<span class="chat-recipient-name-text">${escapeHtml(recipientName)}</span>`;
     }
   }
 
-  function renderConversations() {
-    const filteredUsers = Object.keys(conversations)
-      .filter((user) => user !== currentUserId)
-      .filter((user) => {
-        const search = currentSearchTerm.trim().toLowerCase();
-        if (!search) return true;
+  function matchesMessageSearch(userKey, searchTerm) {
+    const normalizedSearch = String(searchTerm || "").trim().toLowerCase();
+    if (!normalizedSearch) return true;
 
-        const name = getConversationDisplayName(user).toLowerCase();
-        const matchedText = (conversations[user] || []).some((entry) => String(entry?.text || "").toLowerCase().includes(search));
-        return name.includes(search) || matchedText;
-      })
-      .sort((a, b) => getConversationDisplayName(a).localeCompare(getConversationDisplayName(b)));
+    const displayName = getConversationDisplayName(userKey).toLowerCase();
+    const conversationText = (conversations[userKey] || []).some((entry) => {
+      const messageText = String(entry?.text || "").toLowerCase();
+      return messageText.includes(normalizedSearch);
+    });
+
+    return displayName.includes(normalizedSearch) || conversationText;
+  }
+
+  async function loadUserSearchMatches(searchTerm) {
+    const query = String(searchTerm || "").trim();
+    if (!query) {
+      userSearchMatches = [];
+      return [];
+    }
+
+    try {
+      const response = await apiFetch(`/api/users?q=${encodeURIComponent(query)}`);
+      if (!response.ok) {
+        userSearchMatches = [];
+        return [];
+      }
+
+      const rows = await response.json().catch(() => []);
+      const matches = (Array.isArray(rows) ? rows : [])
+        .map((user) => {
+          const userId = String(user?.user_id || user?.id || "").trim();
+          if (!userId || userId === currentUserId) return null;
+
+          const displayName = String(
+            user?.name || [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.email || "User"
+          ).trim();
+
+          return {
+            userId,
+            displayName: displayName || "User",
+            profilePic: user?.profile_pic || null
+          };
+        })
+        .filter(Boolean);
+
+      const uniqueMatches = [];
+      const seen = new Set();
+      matches.forEach((user) => {
+        if (!seen.has(user.userId)) {
+          seen.add(user.userId);
+          uniqueMatches.push(user);
+        }
+      });
+
+      userSearchMatches = uniqueMatches;
+      return uniqueMatches;
+    } catch (error) {
+      console.warn("Unable to search users for message input:", error);
+      userSearchMatches = [];
+      return [];
+    }
+  }
+
+  async function renderConversations() {
+    const existingUsers = Object.keys(conversations)
+      .filter((user) => user !== currentUserId)
+      .filter((user) => matchesConversationSearch(currentSearchTerm, getConversationDisplayName(user), conversations[user] || []));
+
+    const searchUsers = currentSearchTerm.trim() ? await loadUserSearchMatches(currentSearchTerm) : [];
+    const allUsers = [...new Set([...existingUsers, ...searchUsers.map((user) => user.userId)])];
+
+    const filteredUsers = allUsers.sort((a, b) => {
+      const labelA = getConversationDisplayName(a).toLowerCase();
+      const labelB = getConversationDisplayName(b).toLowerCase();
+      return labelA.localeCompare(labelB);
+    });
 
     if (!filteredUsers.length) {
       conversationList.innerHTML = `
@@ -3250,30 +3439,68 @@ function initializeMessagePage() {
       return;
     }
 
-    conversationList.innerHTML = filteredUsers.map((user) => {
+    const finalUserList = filteredUsers.filter((user) => {
+      const matchesOnlySearch = currentSearchTerm.trim() && !conversations[user]?.length;
+      if (!matchesOnlySearch) {
+        return true;
+      }
+      return searchUsers.some((entry) => entry.userId === user);
+    });
+
+    if (!finalUserList.length) {
+      conversationList.innerHTML = `
+        <div style="padding: 14px 8px; color: #666; font-size: 14px; text-align: center;">
+          No matches found.
+        </div>
+      `;
+      return;
+    }
+
+    conversationList.innerHTML = finalUserList.map((user) => {
       const label = getConversationDisplayName(user);
-      const preview = getLastMessagePreview(user);
+      const preview = conversations[user]?.length ? getLastMessagePreview(user) : "Start a conversation";
+      const matchingUser = searchUsers.find((entry) => entry.userId === user);
+      const avatarMarkup = matchingUser?.profilePic ? `<span class="conversation-avatar"><img src="${getCacheBustedImageUrl(matchingUser.profilePic)}" alt="${escapeHtml(label)} profile picture" /></span>` : getConversationAvatarMarkup(user);
       return `
         <div class="conversation-item ${user === activeConversation ? "active" : ""}">
           <button type="button" class="conversation-select-btn" data-user="${user}">
             <span class="conversation-meta">
-              ${getConversationAvatarMarkup(user)}
+              ${avatarMarkup}
               <span class="conversation-text-wrap">
                 <span class="conversation-name">${escapeHtml(label)}</span>
                 <span class="conversation-preview">${escapeHtml(preview)}</span>
               </span>
             </span>
           </button>
-          <button type="button" class="delete-conversation-btn" data-user="${user}" aria-label="Delete conversation with ${escapeHtml(label)}">
-            <i class="fa-solid fa-trash"></i>
-          </button>
+          <div class="conversation-menu-wrap">
+            <button type="button" class="conversation-menu-btn" data-user="${user}" aria-label="More options for ${escapeHtml(label)}">
+              <i class="fa-solid fa-ellipsis"></i>
+            </button>
+            <div class="conversation-menu-popup" data-menu-user="${user}" style="display:none;">
+              <button type="button" class="conversation-menu-delete" data-user="${user}">Delete</button>
+            </div>
+          </div>
         </div>
       `;
     }).join("");
 
     conversationList.querySelectorAll(".conversation-select-btn").forEach((button) => {
-      button.addEventListener("click", () => {
-        activeConversation = button.dataset.user;
+      button.addEventListener("click", async () => {
+        const selectedUser = button.dataset.user;
+        if (!selectedUser) return;
+
+        currentSearchTerm = "";
+        if (messageSearchInput) {
+          messageSearchInput.value = "";
+        }
+
+        if (!conversations[selectedUser]) {
+          conversations[selectedUser] = [];
+          saveConversations();
+        }
+
+        activeConversation = selectedUser;
+        await loadConversationHistoryFromServer(selectedUser);
         renderConversations();
         renderMessages();
         syncView();
@@ -3281,7 +3508,24 @@ function initializeMessagePage() {
       });
     });
 
-    conversationList.querySelectorAll(".delete-conversation-btn").forEach((button) => {
+    conversationList.querySelectorAll(".conversation-menu-btn").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const user = button.dataset.user;
+        if (!user) return;
+
+        const menu = conversationList.querySelector(`.conversation-menu-popup[data-menu-user="${CSS.escape(user)}"]`);
+        if (!menu) return;
+
+        const isVisible = menu.style.display === "block";
+        document.querySelectorAll(".conversation-menu-popup").forEach((popup) => {
+          popup.style.display = "none";
+        });
+        menu.style.display = isVisible ? "none" : "block";
+      });
+    });
+
+    conversationList.querySelectorAll(".conversation-menu-delete").forEach((button) => {
       button.addEventListener("click", (event) => {
         event.stopPropagation();
         const user = button.dataset.user;
@@ -3289,6 +3533,16 @@ function initializeMessagePage() {
         deleteConversation(user);
       });
     });
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!target) return;
+      if (!target.closest(".conversation-menu-btn") && !target.closest(".conversation-menu-popup")) {
+        document.querySelectorAll(".conversation-menu-popup").forEach((popup) => {
+          popup.style.display = "none";
+        });
+      }
+    }, { once: true });
   }
 
   function renderMessages() {
@@ -3298,15 +3552,10 @@ function initializeMessagePage() {
     }
 
     const thread = conversations[activeConversation] || [];
-    messageList.innerHTML = thread.map((entry, index) => `
+    messageList.innerHTML = thread.map((entry) => `
       <div class="message-row ${entry.mine ? "mine" : ""}">
         <div class="message-bubble">
           <span class="message-text">${escapeHtml(entry.text || "")}</span>
-          ${entry.mine ? `
-            <button type="button" class="message-delete-btn" data-message-index="${index}" aria-label="Delete sent message">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          ` : ""}
         </div>
       </div>
     `).join("");
@@ -3314,20 +3563,6 @@ function initializeMessagePage() {
     if (chatRecipientName) {
       chatRecipientName.textContent = getConversationDisplayName(activeConversation);
     }
-
-    messageList.querySelectorAll(".message-delete-btn").forEach((button) => {
-      button.addEventListener("click", () => {
-        const messageIndex = Number(button.dataset.messageIndex);
-        if (Number.isNaN(messageIndex)) return;
-
-        const threadList = conversations[activeConversation] || [];
-        threadList.splice(messageIndex, 1);
-        conversations[activeConversation] = threadList;
-        saveConversations();
-        renderMessages();
-        renderConversations();
-      });
-    });
   }
 
   function appendMessage(text, isMine = false) {
@@ -3338,6 +3573,74 @@ function initializeMessagePage() {
     saveConversations();
     renderMessages();
     renderConversations();
+  }
+
+  async function notifyRecipientOfMessage(recipientUserId, messageText) {
+    const targetUserId = String(recipientUserId || "").trim();
+    const sanitizedText = String(messageText || "").trim();
+    if (!targetUserId || targetUserId === currentUserId || !sanitizedText) return;
+
+    try {
+      const payload = {
+        recipient_user_id: targetUserId,
+        actor_user_id: currentUserId,
+        message: `${getConversationDisplayName(currentUserId)} sent you a message: ${sanitizedText}`
+      };
+
+      const response = await apiFetch("/api/notifications/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        console.warn("Message notification failed:", errorPayload?.error || response.statusText);
+      }
+    } catch (error) {
+      console.warn("Unable to notify recipient of message:", error);
+    }
+  }
+
+  async function openUserSearchConversation(searchTerm = currentSearchTerm) {
+    const query = String(searchTerm || "").trim();
+    if (!query) return;
+
+    try {
+      const response = await apiFetch(`/api/users?q=${encodeURIComponent(query)}`);
+      if (!response.ok) return;
+
+      const users = await response.json().catch(() => []);
+      const selectedUser = (Array.isArray(users) ? users : []).find((user) => {
+        const userId = String(user?.user_id || user?.id || "").trim();
+        if (!userId || userId === currentUserId) return false;
+        const displayName = String(user?.name || [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.email || "").toLowerCase();
+        return displayName.includes(query.toLowerCase());
+      });
+
+      if (!selectedUser) return;
+
+      const selectedUserId = String(selectedUser.user_id || selectedUser.id || "").trim();
+      if (!selectedUserId) return;
+
+      if (!conversations[selectedUserId]) {
+        conversations[selectedUserId] = [];
+      }
+
+      currentSearchTerm = "";
+      if (messageSearchInput) {
+        messageSearchInput.value = "";
+      }
+
+      activeConversation = selectedUserId;
+      await loadConversationHistoryFromServer(selectedUserId);
+      renderConversations();
+      renderMessages();
+      syncView();
+      messageInput?.focus();
+    } catch (error) {
+      console.warn("Unable to start conversation from message search:", error);
+    }
   }
 
   function deleteConversation(userKey) {
@@ -3360,30 +3663,25 @@ function initializeMessagePage() {
     });
   }
 
-  if (newMessageBtn && messageInput) {
-    newMessageBtn.addEventListener("click", () => {
-      messageFooterMenu.classList.remove("show");
-      const user = prompt("Who would you like to message?", "guest");
-      if (!user) return;
-
-      if (!conversations[user]) {
-        conversations[user] = [];
-      }
-
-      activeConversation = user;
-      renderConversations();
-      renderMessages();
-      syncView();
-      messageInput.focus();
-    });
-  }
-
   if (sendMessageBtn && messageInput) {
-    sendMessageBtn.addEventListener("click", () => {
+    sendMessageBtn.addEventListener("click", async () => {
       const text = messageInput.value.trim();
       if (!text || !activeConversation) return;
 
-      appendMessage(text, true);
+      const savedMessage = await saveConversationMessageToServer(activeConversation, text);
+      const thread = conversations[activeConversation] || [];
+      const savedText = savedMessage?.message && typeof savedMessage.message === "string" ? savedMessage.message : text;
+      const savedTime = savedMessage?.created_at || new Date().toISOString();
+      thread.push({
+        text: savedText,
+        mine: true,
+        created_at: savedTime
+      });
+      conversations[activeConversation] = thread;
+      saveConversations();
+      renderMessages();
+      renderConversations();
+      await notifyRecipientOfMessage(activeConversation, text);
       messageInput.value = "";
       messageInput.focus();
     });
@@ -3404,9 +3702,16 @@ function initializeMessagePage() {
   }
 
   if (messageSearchInput) {
-    messageSearchInput.addEventListener("input", (event) => {
+    messageSearchInput.addEventListener("input", async (event) => {
       currentSearchTerm = event.target.value || "";
-      renderConversations();
+      await renderConversations();
+    });
+
+    messageSearchInput.addEventListener("keydown", async (event) => {
+      if (event.key === "Enter" && currentSearchTerm.trim()) {
+        event.preventDefault();
+        await openUserSearchConversation(currentSearchTerm);
+      }
     });
   }
 
@@ -3424,6 +3729,7 @@ function initializeMessagePage() {
 
   window.addEventListener("resize", syncView);
 
+  await hydrateConversationsFromServer();
   renderConversations();
   renderMessages();
   syncView();
@@ -5447,7 +5753,7 @@ function resetUploadForm() {
 
 const MAX_UPLOAD_ITEMS = 3;
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
-const MAX_VIDEO_DURATION_SECONDS = 20;
+const MAX_VIDEO_DURATION_SECONDS = 30;
 
 function validateUploadFiles(files = []) {
   const selectedFiles = Array.from(files || []);
@@ -5505,125 +5811,13 @@ function getVideoDuration(file) {
   });
 }
 
-async function compressVideoFile(file) {
-  if (!file || !file.type.startsWith("video/")) {
-    return file;
-  }
-
-  const fileSize = Number(file.size || 0);
-  if (fileSize <= MAX_FILE_SIZE_BYTES) {
-    try {
-      const duration = await getVideoDuration(file);
-      if (duration > 0 && duration <= MAX_VIDEO_DURATION_SECONDS) {
-        return file;
-      }
-    } catch (error) {
-      console.warn("Video duration read failed, skipping compression check:", error);
-    }
-  }
-
-  const support = typeof MediaRecorder !== "undefined" && typeof HTMLCanvasElement !== "undefined";
-  if (!support) {
-    return file;
-  }
-
-  try {
-    const videoUrl = URL.createObjectURL(file);
-    const video = document.createElement("video");
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "auto";
-    video.src = videoUrl;
-
-    await new Promise((resolve, reject) => {
-      video.onloadedmetadata = resolve;
-      video.onerror = () => reject(new Error("Unable to load video for compression."));
-    });
-
-    const duration = Number.isFinite(video.duration) ? Number(video.duration) : 0;
-    const targetDuration = Math.min(duration || MAX_VIDEO_DURATION_SECONDS, MAX_VIDEO_DURATION_SECONDS);
-    const originalWidth = video.videoWidth || 1280;
-    const originalHeight = video.videoHeight || 720;
-    const scale = Math.min(1, 1280 / Math.max(originalWidth, 1));
-    const width = Math.max(1, Math.round(originalWidth * scale));
-    const height = Math.max(1, Math.round(originalHeight * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-
-    const stream = canvas.captureStream(20);
-    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-      ? "video/webm;codecs=vp9"
-      : (MediaRecorder.isTypeSupported("video/webm;codecs=vp8") ? "video/webm;codecs=vp8" : "video/webm");
-    const recorder = new MediaRecorder(stream, { mimeType });
-    const chunks = [];
-
-    recorder.ondataavailable = (event) => {
-      if (event.data && event.data.size) {
-        chunks.push(event.data);
-      }
-    };
-
-    const recorded = new Promise((resolve, reject) => {
-      recorder.onstop = resolve;
-      recorder.onerror = reject;
-    });
-
-    recorder.start();
-    video.currentTime = 0;
-    await new Promise((resolve) => {
-      const finish = () => {
-        video.pause();
-        resolve();
-      };
-      video.onseeked = finish;
-      video.onerror = finish;
-      if (video.readyState >= 2) {
-        video.currentTime = 0;
-      }
-    });
-
-    const startTime = performance.now();
-    const maxMs = Math.max(1000, targetDuration * 1000);
-
-    video.play();
-    while (performance.now() - startTime < maxMs && video.currentTime < Math.max(targetDuration, 0.1)) {
-      if (context) {
-        context.drawImage(video, 0, 0, width, height);
-      }
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-    }
-
-    video.pause();
-    recorder.stop();
-    await recorded;
-
-    const blob = new Blob(chunks, { type: mimeType });
-    const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, ".webm"), {
-      type: blob.type || "video/webm",
-      lastModified: Date.now()
-    });
-
-    URL.revokeObjectURL(videoUrl);
-    return compressedFile.size > 0 ? compressedFile : file;
-  } catch (error) {
-    console.warn("Automatic video compression failed, keeping original file:", error);
-    return file;
-  }
-}
-
 async function prepareUploadFiles(files = []) {
   const selectedFiles = Array.from(files || []);
   if (!selectedFiles.length) {
     return { valid: false, error: "Please choose a file first." };
   }
 
-  const preparedFiles = [];
-  for (const file of selectedFiles) {
-    const preparedFile = await compressVideoFile(file);
-    preparedFiles.push(preparedFile);
-  }
+  const preparedFiles = [...selectedFiles];
 
   const oversizedFile = preparedFiles.find((file) => Number(file.size || 0) > MAX_FILE_SIZE_BYTES);
   if (oversizedFile) {
@@ -5646,10 +5840,10 @@ async function prepareUploadFiles(files = []) {
     try {
       const duration = await getVideoDuration(file);
       if (duration > MAX_VIDEO_DURATION_SECONDS) {
-        return { valid: false, error: `Videos are capped at ${MAX_VIDEO_DURATION_SECONDS} seconds to keep uploads small and affordable.` };
+        return { valid: false, error: `Videos are capped at ${MAX_VIDEO_DURATION_SECONDS} seconds.` };
       }
     } catch (error) {
-      console.warn("Could not verify video duration after compression:", error);
+      console.warn("Could not verify video duration:", error);
     }
   }
 
