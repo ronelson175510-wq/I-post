@@ -926,27 +926,41 @@ function initializeDatabaseSchema() {
                                           if (err11) return;
 
                                           runSchemaQuery(`
-                                            CREATE TABLE IF NOT EXISTS notifications (
+                                            CREATE TABLE IF NOT EXISTS messages (
                                               id INT PRIMARY KEY AUTO_INCREMENT,
+                                              sender_user_id VARCHAR(255) NOT NULL,
                                               recipient_user_id VARCHAR(255) NOT NULL,
-                                              actor_user_id VARCHAR(255) NOT NULL,
-                                              type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL,
-                                              target_type ENUM('user', 'post', 'comment') NOT NULL,
-                                              target_id VARCHAR(255) NULL,
                                               message TEXT NOT NULL,
-                                              is_read TINYINT(1) DEFAULT 0,
                                               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                              INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
-                                              INDEX idx_notifications_unread (recipient_user_id, is_read),
-                                              FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
-                                              FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
+                                              INDEX idx_messages_thread (sender_user_id, recipient_user_id, created_at),
+                                              INDEX idx_messages_recipient_created (recipient_user_id, created_at DESC),
+                                              FOREIGN KEY (sender_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                                              FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE
                                             )
                                           `, () => {
                                             runSchemaQuery(`
-                                              ALTER TABLE notifications
-                                              MODIFY COLUMN type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome') NOT NULL
+                                              CREATE TABLE IF NOT EXISTS notifications (
+                                                id INT PRIMARY KEY AUTO_INCREMENT,
+                                                recipient_user_id VARCHAR(255) NOT NULL,
+                                                actor_user_id VARCHAR(255) NOT NULL,
+                                                type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome', 'message') NOT NULL,
+                                                target_type ENUM('user', 'post', 'comment') NOT NULL,
+                                                target_id VARCHAR(255) NULL,
+                                                message TEXT NOT NULL,
+                                                is_read TINYINT(1) DEFAULT 0,
+                                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
+                                                INDEX idx_notifications_unread (recipient_user_id, is_read),
+                                                FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
+                                                FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
+                                              )
                                             `, () => {
-                                              console.log("Database schema initialized.");
+                                              runSchemaQuery(`
+                                                ALTER TABLE notifications
+                                                MODIFY COLUMN type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome', 'message') NOT NULL
+                                              `, () => {
+                                                console.log("Database schema initialized.");
+                                              });
                                             });
                                           });
                                         });
@@ -2067,6 +2081,204 @@ app.post("/api/notifications/read", (req, res) => {
       return res.json({ success: true });
     }
   );
+});
+
+app.post("/api/notifications/clear", (req, res) => {
+  const userId = String(req.body?.user_id || "").trim();
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({ success: true });
+  }
+
+  db.query(
+    "DELETE FROM notifications WHERE recipient_user_id = ?",
+    [userId],
+    (err) => {
+      if (err) {
+        console.error("CLEAR NOTIFICATIONS ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      return res.json({ success: true });
+    }
+  );
+});
+
+app.get("/api/messages/conversations", (req, res) => {
+  const userId = String(req.query?.user_id || "").trim();
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json([]);
+  }
+
+  db.query(
+    `
+      SELECT other_user_id, sender_user_id, message, created_at
+      FROM (
+        SELECT recipient_user_id AS other_user_id, sender_user_id, message, created_at
+        FROM messages
+        WHERE sender_user_id = ?
+        UNION ALL
+        SELECT sender_user_id AS other_user_id, sender_user_id, message, created_at
+        FROM messages
+        WHERE recipient_user_id = ?
+      ) combined
+      ORDER BY created_at ASC
+    `,
+    [userId, userId],
+    (err, rows) => {
+      if (err) {
+        console.error("MESSAGE CONVERSATIONS ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      const grouped = {};
+      (rows || []).forEach((row) => {
+        const otherUserId = String(row.other_user_id || "").trim();
+        if (!otherUserId) return;
+
+        if (!grouped[otherUserId]) {
+          grouped[otherUserId] = [];
+        }
+
+        grouped[otherUserId].push({
+          id: row.id || null,
+          sender_user_id: row.sender_user_id,
+          text: row.message,
+          message: row.message,
+          mine: String(row.sender_user_id) === String(userId),
+          created_at: row.created_at
+        });
+      });
+
+      return res.json(Object.entries(grouped).map(([otherUserId, messages]) => ({
+        user_id: otherUserId,
+        messages: messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      })));
+    }
+  );
+});
+
+app.get("/api/messages", (req, res) => {
+  const userId = String(req.query?.user_id || "").trim();
+  const otherUserId = String(req.query?.other_user_id || "").trim();
+
+  if (!userId || !otherUserId) {
+    return res.status(400).json({ error: "Missing user ids" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json([]);
+  }
+
+  db.query(
+    `
+      SELECT id, sender_user_id, recipient_user_id, message, created_at
+      FROM messages
+      WHERE (sender_user_id = ? AND recipient_user_id = ?) OR (sender_user_id = ? AND recipient_user_id = ?)
+      ORDER BY created_at ASC
+    `,
+    [userId, otherUserId, otherUserId, userId],
+    (err, rows) => {
+      if (err) {
+        console.error("MESSAGE LOAD ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      return res.json((rows || []).map((row) => ({
+        id: row.id,
+        sender_user_id: row.sender_user_id,
+        recipient_user_id: row.recipient_user_id,
+        message: row.message,
+        created_at: row.created_at
+      })));
+    }
+  );
+});
+
+app.post("/api/messages", (req, res) => {
+  const senderUserId = String(req.body?.sender_user_id || "").trim();
+  const recipientUserId = String(req.body?.recipient_user_id || "").trim();
+  const message = String(req.body?.message || "").trim();
+
+  if (!senderUserId || !recipientUserId || !message) {
+    return res.status(400).json({ error: "Missing required message fields" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({
+      success: true,
+      message: {
+        id: null,
+        sender_user_id: senderUserId,
+        recipient_user_id: recipientUserId,
+        message,
+        created_at: new Date().toISOString()
+      }
+    });
+  }
+
+  db.query(
+    `INSERT INTO messages (sender_user_id, recipient_user_id, message) VALUES (?, ?, ?)` ,
+    [senderUserId, recipientUserId, message],
+    (err, result) => {
+      if (err) {
+        console.error("MESSAGE SAVE ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      return res.json({
+        success: true,
+        message: {
+          id: result.insertId,
+          sender_user_id: senderUserId,
+          recipient_user_id: recipientUserId,
+          message,
+          created_at: new Date().toISOString()
+        }
+      });
+    }
+  );
+});
+
+app.post("/api/notifications/message", (req, res) => {
+  const recipientUserId = String(req.body?.recipient_user_id || "").trim();
+  const actorUserId = String(req.body?.actor_user_id || "").trim();
+  const message = String(req.body?.message || "").trim();
+
+  if (!recipientUserId || !actorUserId) {
+    return res.status(400).json({ error: "Missing recipient or actor user id" });
+  }
+
+  if (!message) {
+    return res.status(400).json({ error: "Missing notification message" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({ success: true, notification: { recipient_user_id: recipientUserId, actor_user_id: actorUserId } });
+  }
+
+  insertNotification({
+    recipient_user_id: recipientUserId,
+    actor_user_id: actorUserId,
+    type: "message",
+    target_type: "user",
+    target_id: actorUserId,
+    message
+  })
+    .then(() => res.json({ success: true }))
+    .catch((err) => {
+      console.error("MESSAGE NOTIFICATION INSERT ERROR:", err);
+      return res.status(500).json({ error: err.message });
+    });
 });
 
 app.post("/api/profile", (req, res) => {

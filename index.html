@@ -363,7 +363,7 @@
   right: 28px;
   bottom: 22px;
   max-width: min(84vw, 320px);
-  background: rgba(17, 17, 17, 0.96);
+  background: rgba(21, 21, 21, 0.96);
   color: #ffffff;
   border-radius: 16px;
   padding: 12px 16px;
@@ -417,12 +417,32 @@
 
 .notification-sheet-header {
   position: relative;
-  padding-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 0;
+}
+
+.notification-close-btn {
+  
+  background: none;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  color: #111;
+  padding: 0;
+  margin-left: auto;
+}
+
+.notification-close-btn:hover,
+.notification-close-btn:focus-visible {
+  opacity: 0.8;
+  outline: none;
 }
 
 .notification-sheet-content {
   padding: 0 18px 18px;
-  margin-top: -34px;
   height: calc(100% - 52px);
   overflow-y: auto;
   scrollbar-width: none;
@@ -433,6 +453,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
   padding: 0 4px;
 }
@@ -441,6 +462,21 @@
   margin: 0;
   font-size: 1.2rem;
   color: #111;
+}
+
+.notification-clear-btn {
+  border: none;
+  background: transparent;
+  color: #6d5dfc;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.notification-clear-btn:hover,
+.notification-clear-btn:focus-visible {
+  opacity: 0.8;
 }
 
 .notification-list {
@@ -454,7 +490,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 12px 10px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(79, 143, 238, 0.08);
             border: 1.5px solid rgb(255, 255, 255);
             border-radius: 10px;
             font-family: 'Times New Roman', Times, serif;
@@ -462,8 +498,8 @@
 }
 
 .notification-item.unread {
-  background: #f8f5ff;
-  border-color: rgba(118, 96, 255, 0.35);
+  background: #cce9fa;
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .notification-avatar {
@@ -657,56 +693,6 @@
     transition: all 0.25s ease;
    
 }
-
-.dropdown-btn {
-    width: calc(70% - 42px);
-    margin: 10px 16px 0;
-    padding: 14px 20px 14px 24px;
-    border: none;
-    background: transparent;
-    color: black;
-    text-align: left;
-    font-size: 21px;
-    font-family: times new roman, serif;
-    border-radius: 25px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    cursor: pointer;
-    transition: all 0.25s ease;
-}
-
-
-
-.dropdown-container {
-   display: none;
-   font-family: times new roman, serif;
-   font-size: 18px;
-   background-color: transparent;
-   padding: 0 16px 8px;
-   margin-left: 0;
-}
-
-.dropdown-container a {
-    width: 100%;
-    margin: 6px 0;
-    padding: 10px 12px;
-    font-size: 18px;
-    border-radius: 14px;
-}
-
-.dropdown-btn .fa-caret-down {
-  float: none;
-  padding-right: 0;
-  transition: transform 0.2s ease;
-}
-
-.dropdown-btn.active .fa-caret-down {
-  transform: rotate(180deg);
-}
-
-
 
 .sidemenu a i,
 .menu-settings-btn i {
@@ -3505,11 +3491,12 @@ background: rgba(255, 255, 255, 0.08);
     <div id="notificationSheet" class="notification-sheet" aria-live="polite">
       <div class="sheet-header notification-sheet-header">
         <span class="sheet-drag"></span>
-        <button id="closeNotificationSheet" class="close-btn" type="button" aria-label="Close notifications">×</button>
+        <button id="closeNotificationSheet" class="notification-close-btn close-btn" type="button" aria-label="Close notifications">×</button>
       </div>
       <div class="notification-sheet-content">
         <div class="notification-sheet-header-row">
           <h3>Notifications</h3>
+          <button id="clearNotificationsBtn" class="notification-clear-btn" type="button">Clear all</button>
         </div>
         <div id="notificationList" class="notification-list"></div>
       </div>
@@ -3546,16 +3533,8 @@ background: rgba(255, 255, 255, 0.08);
       <a href="message.html" data-i18n="chat"><i class="fa-solid fa-comment fa-sm" style="color: rgb(7, 7, 7);"></i>Chat</a>
       <button id="settingsBtn" class="menu-settings-btn" type="button" data-i18n="settings"><i class="fa-solid fa-cog fa-sm" style="color: rgb(7, 7, 7);"></i>Settings</button>
       <a href="#"><i class="fa-solid fa-screwdriver-wrench fa-sm" style="color: rgb(7, 7, 7);"></i>Support</a>
-      <button class="dropdown-btn" type="button"><i class="fa-solid fa-book-open fa-sm" style="color: rgb(4, 4, 4);"></i>Legals
-        <i class="fa fa-caret-down"></i>
-      </button>
-      <div class="dropdown-container">
-        <a href="privacypoliciy.html">Privacy Policy</a>
-        <a href="termsofservice.html">Terms of Service</a>
-        
-      </div>
-     
-      
+      <a href="privacypoliciy.html"><i class="fa-solid fa-arrow-right-long fa-rotate-by fa-lg" style="color: rgb(7, 7, 7); --fa-rotate-angle: 330deg;"></i>Privacy</a>
+      <a href="termsofservice.html"><i class="fa-solid fa-arrow-right-long fa-rotate-by fa-lg" style="color: rgb(7, 7, 7); --fa-rotate-angle: 330deg;"></i>Terms</a>
     </div>
 
     
@@ -3815,7 +3794,7 @@ background: rgba(255, 255, 255, 0.08);
                <div id="footerIconMenu" class="footer-icon-menu">
                   <div class="left-icons">
                    <i id="userSheetBtn" class="fa-solid fa-user fa-xl" style="color: rgb(11, 11, 11);"></i>
-                    <a href="reels.html" class="footer-message-link" aria-label="Open reels"><i class="fa-brands fa-instagram fa-lg" style="color: rgb(0, 0, 0);"></i></a>
+                    <a href="reels.html" class="footer-message-link" aria-label="Open reels"><i class="fa-solid fa-clapperboard fa-lg" style="color: rgb(7, 7, 7);"></i></a>
                    
                 </div>
 

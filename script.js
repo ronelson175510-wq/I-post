@@ -1493,6 +1493,7 @@ const bubble = document.getElementById("notifyCount");
 const notification = document.getElementById("notification");
 const notificationSheet = document.getElementById("notificationSheet");
 const notificationList = document.getElementById("notificationList");
+const clearNotificationsBtn = document.getElementById("clearNotificationsBtn");
 
 function escapeHtml(value = "") {
   return String(value)
@@ -1607,14 +1608,18 @@ function renderNotificationList(rows = []) {
         ? "fa-regular fa-comment"
         : notificationType.includes("welcome")
           ? "fa-solid fa-book-open"
-          : "fa-solid fa-heart";
+          : notificationType.includes("follow") || notificationType.includes("follower")
+            ? "fa-solid fa-user-plus"
+            : "fa-solid fa-heart";
     const iconColor = notificationType.includes("message")
       ? "#3b82f6"
       : notificationType.includes("comment")
         ? "#f59e0b"
         : notificationType.includes("welcome")
           ? "#8b5cf6"
-          : "#ef4444";
+          : notificationType.includes("follow") || notificationType.includes("follower")
+            ? "rgb(255, 212, 59)"
+            : "#ef4444";
     const avatarMarkup = avatar
       ? `<img src="${escapeHtml(avatar)}" alt="${actorName}">`
       : `<span>${escapeHtml(actorName).charAt(0).toUpperCase() || "U"}</span>`;
@@ -1698,6 +1703,31 @@ if (closeNotificationSheet && notificationSheet) {
     event.preventDefault();
     event.stopPropagation();
     closeSheet(notificationSheet);
+  });
+}
+
+if (clearNotificationsBtn) {
+  clearNotificationsBtn.addEventListener("click", async () => {
+    const userId = getCurrentUserId();
+    if (!userId || userId === "guest") return;
+
+    try {
+      const response = await apiFetch("/api/notifications/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId })
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result?.error || "Unable to clear notifications.");
+      }
+
+      renderNotificationList([]);
+      await loadNotificationCount();
+    } catch (error) {
+      console.warn("Clear notifications error:", error);
+    }
   });
 }
 
@@ -4135,21 +4165,6 @@ if (searchInputs.length) {
       if (sideMenu) sideMenu.dataset.state = window.innerWidth >= 980 ? "open" : "closed";
       syncDesktopSideMenuState();
     });
-
-    var dropdown = document.getElementsByClassName("dropdown-btn");
-var i;
-
-for (i = 0; i < dropdown.length; i++) {
-  dropdown[i].addEventListener("click", function() {
-    this.classList.toggle("active");
-    var dropdownContent = this.nextElementSibling;
-    if (dropdownContent.style.display === "block") {
-      dropdownContent.style.display = "none";
-    } else {
-      dropdownContent.style.display = "block";
-    }
-  });
-}
 
 // read more js
 const readMoreBtn = document.getElementById("readMoreIpost");
