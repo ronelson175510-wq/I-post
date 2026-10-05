@@ -512,6 +512,9 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
     body.dark-mode .see-more-like-this,
     body.dark-mode .post-delete-btn,
     body.dark-mode .text-post-delete-btn {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
       color: #111111 !important;
     }
 
@@ -821,6 +824,7 @@ body.dark-mode .see-more-like-this,
 body.dark-mode .see-more-like-this:hover,
 .dark-mode .see-more-like-this {
   background: transparent !important;
+  border: none !important;
   color: #111111 !important;
   padding: 10px 12px !important;
   box-shadow: none !important;
@@ -1596,13 +1600,33 @@ function renderNotificationList(rows = []) {
     const avatar = item.actor_profile_pic || "";
     const time = formatNotificationTime(item.created_at);
     const unread = Number(item.is_read || 0) === 0 ? "unread" : "";
+    const notificationType = String(item.type || "").toLowerCase();
+    const iconName = notificationType.includes("message")
+      ? "fa-regular fa-message"
+      : notificationType.includes("comment")
+        ? "fa-regular fa-comment"
+        : notificationType.includes("welcome")
+          ? "fa-solid fa-book-open"
+          : "fa-solid fa-heart";
+    const iconColor = notificationType.includes("message")
+      ? "#3b82f6"
+      : notificationType.includes("comment")
+        ? "#f59e0b"
+        : notificationType.includes("welcome")
+          ? "#8b5cf6"
+          : "#ef4444";
     const avatarMarkup = avatar
       ? `<img src="${escapeHtml(avatar)}" alt="${actorName}">`
       : `<span>${escapeHtml(actorName).charAt(0).toUpperCase() || "U"}</span>`;
+    const notificationBadge = `
+      <span class="notification-type-badge" style="background:${iconColor};">
+        <i class="${iconName}"></i>
+      </span>
+    `;
 
     return `
       <div class="notification-item ${unread}" data-id="${escapeHtml(String(item.id || ""))}">
-        <div class="notification-avatar">${avatarMarkup}</div>
+        <div class="notification-avatar">${avatarMarkup}${notificationBadge}</div>
         <div class="notification-copy">
           <div class="notification-topline">
             <strong>${actorName}</strong>
@@ -3206,6 +3230,24 @@ async function initializeMessagePage() {
     }
   }
 
+  function startMessagePolling() {
+    if (window.__bookmeMessagePollingStarted) return;
+    window.__bookmeMessagePollingStarted = true;
+
+    const refreshMessages = async () => {
+      if (!currentUserId || currentUserId === "guest") return;
+
+      await hydrateConversationsFromServer();
+      renderConversations();
+      if (activeConversation) {
+        renderMessages();
+      }
+    };
+
+    refreshMessages();
+    window.setInterval(refreshMessages, 5000);
+  }
+
   let activeConversation = null;
   let currentSearchTerm = "";
   let userSearchMatches = [];
@@ -3733,6 +3775,7 @@ async function initializeMessagePage() {
   renderConversations();
   renderMessages();
   syncView();
+  startMessagePolling();
   window.__bookmeMessagePageInitialized = true;
   window.__bookmeMessagePageUserId = currentUserId;
 }
@@ -5413,12 +5456,19 @@ async function loadReels() {
       const mediaList = normalizeMediaList(post);
       const videoUrl = getVideoMediaUrl(post);
       const caption = (post?.content || "").trim() || "Video";
+      const normalizedCaption = String(caption)
+        .replace(/^\s+/, "")
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n");
+      const displayCaption = normalizedCaption
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/\n/g, "<br>");
       const ownerUserId = post?.user_id || getCurrentUserId();
       const avatarMarkup = getCurrentUserAvatarMarkup(ownerUserId);
       const displayName = getDisplayNameForUser(ownerUserId);
       const truncatedDisplayName = truncateDisplayName(displayName, 30);
       const verifiedMarkup = renderUserNameWithVerification(truncatedDisplayName, ownerUserId);
-      const truncatedCaption = caption.length > 90 ? `${caption.slice(0, 90)}...` : caption;
+      const truncatedCaption = normalizedCaption.length > 90 ? `${normalizedCaption.slice(0, 90).trim()}...` : normalizedCaption;
       const postId = post?.id || "";
       const likeCount = Number(post?.likes_count ?? post?.like_count ?? 0);
       const commentCount = Number(post?.comment_count ?? post?.comments_count ?? post?.commentCount ?? 0);
@@ -5463,9 +5513,9 @@ async function loadReels() {
               </div>
               <div class="reel-user-name">${verifiedMarkup}</div>
             </div>
-            <div class="reel-caption" data-full-text="${caption.replace(/"/g, '&quot;')}">
-              <span class="reel-caption-text">${truncatedCaption}</span>
-              ${caption.length > 90 ? '<button class="reel-read-more-btn" type="button">Read more</button>' : ""}
+            <div class="reel-caption" data-full-text="${normalizedCaption.replace(/"/g, '&quot;')}">
+              <span class="reel-caption-text">${displayCaption.length > 90 ? truncatedCaption.replace(/\n/g, "<br>") : displayCaption}</span>
+              ${normalizedCaption.length > 90 ? '<button class="reel-read-more-btn" type="button">Read more</button>' : ""}
             </div>
           </div>
         </div>
@@ -5503,12 +5553,13 @@ async function loadReels() {
         const isExpanded = caption.classList.contains("expanded");
 
         if (isExpanded) {
-          const truncated = `${fullText.slice(0, 90).trim()}...`;
-          text.textContent = truncated;
+          const truncated = `${fullText.replace(/^\s+/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").slice(0, 90).trim()}...`;
+          text.innerHTML = truncated.replace(/\n{2,}/g, "<br><br>").replace(/\n/g, "<br>");
           button.textContent = "Read more";
           caption.classList.remove("expanded");
         } else {
-          text.textContent = fullText;
+          const safeFullText = fullText.replace(/^\s+/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+          text.innerHTML = safeFullText.replace(/\n{2,}/g, "<br><br>").replace(/\n/g, "<br>");
           button.textContent = "Read less";
           caption.classList.add("expanded");
         }
