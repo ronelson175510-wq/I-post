@@ -1854,6 +1854,66 @@ app.get("/api/users/:userId/follow-status", (req, res) => {
   });
 });
 
+app.get("/api/users/:userId/stats", (req, res) => {
+  const userId = String(req.params.userId || "").trim();
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({
+      user_id: userId,
+      post_count: 0,
+      total_likes: 0,
+      following_count: 0
+    });
+  }
+
+  db.query(
+    "SELECT COUNT(*) AS post_count FROM posts WHERE user_id = ?",
+    [userId],
+    (postErr, postRows) => {
+      if (postErr) {
+        console.error("USER POST COUNT ERROR:", postErr);
+        return res.status(500).json({ error: postErr.message });
+      }
+
+      const postCount = Number(postRows?.[0]?.post_count || 0);
+
+      db.query(
+        `SELECT COUNT(*) AS total_likes
+         FROM likes l
+         INNER JOIN posts p ON p.id = l.post_id
+         WHERE p.user_id = ?`,
+        [userId],
+        (likeErr, likeRows) => {
+          if (likeErr) {
+            console.error("USER LIKE COUNT ERROR:", likeErr);
+            return res.status(500).json({ error: likeErr.message });
+          }
+
+          const totalLikes = Number(likeRows?.[0]?.total_likes || 0);
+
+          db.query("SELECT COUNT(*) AS following_count FROM follows WHERE user_id = ?", [userId], (followingErr, followingRows) => {
+            if (followingErr) {
+              console.error("USER FOLLOWING COUNT ERROR:", followingErr);
+              return res.status(500).json({ error: followingErr.message });
+            }
+
+            return res.json({
+              user_id: userId,
+              post_count: postCount,
+              total_likes: totalLikes,
+              following_count: Number(followingRows?.[0]?.following_count || 0)
+            });
+          });
+        }
+      );
+    }
+  );
+});
+
 app.post("/api/users/:userId/follow", (req, res) => {
   const targetUserId = String(req.params.userId || "").trim();
   const viewerUserId = String(req.body?.user_id || "").trim();

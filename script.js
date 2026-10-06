@@ -206,7 +206,7 @@ if (!document.getElementById(hashtagSuggestionStyleId)) {
   hashtagStyleTag.id = hashtagSuggestionStyleId;
   hashtagStyleTag.textContent = `
     .hashtag-highlight {
-      color: #f5c94a;
+      color: #202020;
       font-weight: 700;
     }
 
@@ -482,6 +482,8 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
       border-color: rgba(255, 255, 255, 0.12);
       color: var(--app-text);
     }
+
+ 
 
     body.dark-mode #searchInput,
     body.dark-mode .search-input-btn,
@@ -828,7 +830,15 @@ body.dark-mode .see-more-like-this:hover,
   color: #111111 !important;
   padding: 10px 12px !important;
   box-shadow: none !important;
+
 }
+
+   body.dark-mode .feed-more-bar { 
+      background: rgba(255, 255, 255, 0.04) !important;
+      border-color: rgba(238, 4, 4, 0.12) !important;
+      
+
+    }
   `;
   document.head.appendChild(styleTag);
   return styleTag;
@@ -904,6 +914,101 @@ if (themeToggleBtn) {
 
 applyTheme(getPreferredTheme());
 
+/* User Data Slideup Sheet Functions */
+const yourDataSheet = document.getElementById("yourDataSheet");
+const openYourDataBtn = document.getElementById("openYourDataSheetBtn");
+const closeYourDataSheet = document.getElementById("closeYourDataSheet");
+
+async function renderYourDataStats() {
+  const totalLikesEl = document.getElementById("yourDataTotalLikes");
+  const postCountEl = document.getElementById("yourDataPostCount");
+  const followingCountEl = document.getElementById("yourDataFollowingCount");
+  const avatarEl = document.getElementById("yourDataAvatar");
+  const displayNameEl = document.getElementById("yourDataDisplayName");
+
+  if (!totalLikesEl || !postCountEl || !followingCountEl) return;
+
+  const currentUserId = getCurrentUserId();
+  const profileData = getCurrentUserProfileData(currentUserId) || {};
+  const directName = String(profileData.name || profileData.displayName || "").trim();
+  const firstName = String(profileData.firstName || profileData.first_name || "").trim();
+  const lastName = String(profileData.lastName || profileData.last_name || "").trim();
+  const fallbackDisplayName = [directName || [firstName, lastName].filter(Boolean).join(" "), auth?.currentUser?.displayName || "", auth?.currentUser?.email ? auth.currentUser.email.split("@")[0] : ""].filter(Boolean)[0] || "User";
+
+  if (displayNameEl) {
+    displayNameEl.textContent = fallbackDisplayName;
+  }
+
+  if (avatarEl) {
+    const avatarUrl = getProfilePicForUser(currentUserId);
+    if (avatarUrl) {
+      avatarEl.innerHTML = `<img src="${avatarUrl}" alt="Profile picture" />`;
+    } else {
+      avatarEl.innerHTML = '<i class="fa-solid fa-circle-user"></i>';
+    }
+  }
+
+  if (!currentUserId || currentUserId === "guest") {
+    totalLikesEl.textContent = "0";
+    postCountEl.textContent = "0";
+    followingCountEl.textContent = "0";
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/users/${encodeURIComponent(currentUserId)}/stats`);
+    if (!response.ok) {
+      throw new Error("Failed to load user stats");
+    }
+
+    const data = await response.json();
+    totalLikesEl.textContent = String(Number(data?.total_likes || 0));
+    postCountEl.textContent = String(Number(data?.post_count || 0));
+    followingCountEl.textContent = String(Number(data?.following_count || 0));
+  } catch (error) {
+    console.error("USER STATS ERROR:", error);
+    const allPosts = Array.isArray(window.__feedPostsCache) ? window.__feedPostsCache : [];
+    const userPosts = allPosts.filter((post) => {
+      const authorId = post && post.user_id ? String(post.user_id) : "";
+      return authorId && authorId === String(currentUserId);
+    });
+
+    const fallbackTotalLikes = userPosts.reduce((sum, post) => {
+      const value = Number(post?.likes_count ?? post?.like_count ?? 0);
+      return sum + (Number.isFinite(value) ? value : 0);
+    }, 0);
+
+    totalLikesEl.textContent = String(fallbackTotalLikes);
+    postCountEl.textContent = String(userPosts.length);
+    followingCountEl.textContent = "0";
+  }
+}
+
+if (openYourDataBtn) {
+  openYourDataBtn.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    await renderYourDataStats();
+    openSheet(yourDataSheet);
+  });
+}
+
+if (closeYourDataSheet) {
+  closeYourDataSheet.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeSheet(yourDataSheet);
+  });
+}
+
+if (yourDataSheet) {
+  yourDataSheet.addEventListener("click", (event) => {
+    if (event.target === yourDataSheet) {
+      closeSheet(yourDataSheet);
+    }
+  });
+}
+
 /* ============================================================
    AUTH + PROFILE FUNCTIONS
    Handles login state, profile data, local storage, and avatar work.
@@ -934,10 +1039,11 @@ function updateSideMenuUserName() {
   if (!sideMenuUserName) return;
 
   const userId = getCurrentUserId();
-  const data = getCurrentUserProfileData(userId);
-  const firstName = (data.firstName || "").trim();
-  const lastName = (data.lastName || "").trim();
-  const customName = [firstName, lastName].filter(Boolean).join(" ");
+  const data = getCurrentUserProfileData(userId) || {};
+  const firstName = (data.firstName || data.first_name || "").trim();
+  const lastName = (data.lastName || data.last_name || "").trim();
+  const directName = (data.name || data.displayName || "").trim();
+  const customName = [directName || [firstName, lastName].filter(Boolean).join(" ")].filter(Boolean)[0];
 
   let displayName = "User";
 
@@ -1101,7 +1207,7 @@ function saveCurrentUserProfileData(data, userId = getCurrentUserId()) {
   }
 
   const currentData = getCurrentUserProfileData(userId);
-  const merged = { ...currentData, ...data };
+  const merged = { ...currentData, ...data, name: fullName || currentData?.name || "" };
   localStorage.setItem(getUserProfileKey(userId), JSON.stringify(merged));
 
   const profilePayload = {
@@ -1360,10 +1466,11 @@ function renderUserNameWithVerification(displayName, userId = getCurrentUserId()
 
 function getCurrentUserDisplayNameForApi() {
   const currentUserId = getCurrentUserId();
-  const data = getCurrentUserProfileData(currentUserId);
-  const firstName = (data.firstName || "").trim();
-  const lastName = (data.lastName || "").trim();
-  const customDisplayName = [firstName, lastName].filter(Boolean).join(" ");
+  const data = getCurrentUserProfileData(currentUserId) || {};
+  const directName = String(data.name || data.displayName || "").trim();
+  const firstName = (data.firstName || data.first_name || "").trim();
+  const lastName = (data.lastName || data.last_name || "").trim();
+  const customDisplayName = [directName || [firstName, lastName].filter(Boolean).join(" ")].filter(Boolean)[0];
 
   if (customDisplayName) {
     return customDisplayName;
@@ -1381,10 +1488,11 @@ function getCurrentUserDisplayNameForApi() {
 }
 
 function getDisplayNameForUser(userId = getCurrentUserId()) {
-  const data = getCurrentUserProfileData(userId);
-  const firstName = (data.firstName || "").trim();
-  const lastName = (data.lastName || "").trim();
-  const customDisplayName = [firstName, lastName].filter(Boolean).join(" ");
+  const data = getCurrentUserProfileData(userId) || {};
+  const directName = String(data.name || data.displayName || "").trim();
+  const firstName = (data.firstName || data.first_name || "").trim();
+  const lastName = (data.lastName || data.last_name || "").trim();
+  const customDisplayName = [directName || [firstName, lastName].filter(Boolean).join(" ")].filter(Boolean)[0];
 
   if (customDisplayName) {
     return customDisplayName;
@@ -1748,7 +1856,7 @@ function closeSheet(sheet) {
 }
 
 function getAllSheets() {
-  return [searchSheet, writePostSheet, uploadSheet, notificationSheet].filter(Boolean);
+  return [yourDataSheet, searchSheet, writePostSheet, uploadSheet, notificationSheet].filter(Boolean);
 }
 
 function openSheet(targetSheet) {
@@ -1768,6 +1876,10 @@ function openSheet(targetSheet) {
 
   targetSheet.classList.add("show");
   targetSheet.style.bottom = "0";
+
+  if (targetSheet === yourDataSheet && typeof renderYourDataStats === "function") {
+    renderYourDataStats();
+  }
 }
 
 function closeAllSheets(exceptSheet = null) {
