@@ -1866,6 +1866,7 @@ app.get("/api/users/:userId/stats", (req, res) => {
       user_id: userId,
       post_count: 0,
       total_likes: 0,
+      follower_count: 0,
       following_count: 0
     });
   }
@@ -1895,18 +1896,116 @@ app.get("/api/users/:userId/stats", (req, res) => {
 
           const totalLikes = Number(likeRows?.[0]?.total_likes || 0);
 
-          db.query("SELECT COUNT(*) AS following_count FROM follows WHERE user_id = ?", [userId], (followingErr, followingRows) => {
-            if (followingErr) {
-              console.error("USER FOLLOWING COUNT ERROR:", followingErr);
-              return res.status(500).json({ error: followingErr.message });
+          db.query("SELECT COUNT(*) AS follower_count FROM follows WHERE following_user_id = ?", [userId], (followerErr, followerRows) => {
+            if (followerErr) {
+              console.error("USER FOLLOWER COUNT ERROR:", followerErr);
+              return res.status(500).json({ error: followerErr.message });
             }
 
-            return res.json({
-              user_id: userId,
-              post_count: postCount,
-              total_likes: totalLikes,
-              following_count: Number(followingRows?.[0]?.following_count || 0)
+            db.query("SELECT COUNT(*) AS following_count FROM follows WHERE user_id = ?", [userId], (followingErr, followingRows) => {
+              if (followingErr) {
+                console.error("USER FOLLOWING COUNT ERROR:", followingErr);
+                return res.status(500).json({ error: followingErr.message });
+              }
+
+              return res.json({
+                user_id: userId,
+                post_count: postCount,
+                total_likes: totalLikes,
+                follower_count: Number(followerRows?.[0]?.follower_count || 0),
+                following_count: Number(followingRows?.[0]?.following_count || 0)
+              });
             });
+          });
+        }
+      );
+    }
+  );
+});
+
+app.get("/api/users/:userId/activity", (req, res) => {
+  const userId = String(req.params.userId || "").trim();
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({
+      user_id: userId,
+      range: "12_months",
+      data: Array.from({ length: 12 }, (_, index) => {
+        const now = new Date();
+        const month = new Date(now.getFullYear(), now.getMonth() - (11 - index), 1);
+        return {
+          month: month.toLocaleString("en-US", { month: "short" }),
+          posts: 0,
+          likes: 0
+        };
+      })
+    });
+  }
+
+  const activityPayload = Array.from({ length: 12 }, (_, index) => {
+    const now = new Date();
+    const month = new Date(now.getFullYear(), now.getMonth() - (11 - index), 1);
+    return {
+      key: `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`,
+      label: month.toLocaleString("en-US", { month: "short" }),
+      posts: 0,
+      likes: 0
+    };
+  });
+
+  const monthMap = new Map(activityPayload.map((item) => [item.key, item]));
+
+  db.query(
+    `SELECT DATE_FORMAT(created_at, '%Y-%m') AS month_key, COUNT(*) AS posts
+     FROM posts
+     WHERE user_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+     GROUP BY DATE_FORMAT(created_at, '%Y-%m')`,
+    [userId],
+    (postErr, postRows) => {
+      if (postErr) {
+        console.error("USER ACTIVITY POST COUNT ERROR:", postErr);
+        return res.status(500).json({ error: postErr.message });
+      }
+
+      (postRows || []).forEach((row) => {
+        const key = String(row?.month_key || "");
+        if (monthMap.has(key)) {
+          monthMap.get(key).posts = Number(row?.posts || 0);
+        }
+      });
+
+      db.query(
+        `SELECT DATE_FORMAT(p.created_at, '%Y-%m') AS month_key, COUNT(*) AS likes
+         FROM likes l
+         INNER JOIN posts p ON p.id = l.post_id
+         WHERE p.user_id = ? AND p.created_at >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+         GROUP BY DATE_FORMAT(p.created_at, '%Y-%m')`,
+        [userId],
+        (likeErr, likeRows) => {
+          if (likeErr) {
+            console.error("USER ACTIVITY LIKE COUNT ERROR:", likeErr);
+            return res.status(500).json({ error: likeErr.message });
+          }
+
+          (likeRows || []).forEach((row) => {
+            const key = String(row?.month_key || "");
+            if (monthMap.has(key)) {
+              monthMap.get(key).likes = Number(row?.likes || 0);
+            }
+          });
+
+          return res.json({
+            user_id: userId,
+            range: "12_months",
+            data: activityPayload.map((item) => ({
+              month: item.label,
+              posts: item.posts,
+              likes: item.likes
+            }))
           });
         }
       );

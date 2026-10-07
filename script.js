@@ -918,15 +918,147 @@ applyTheme(getPreferredTheme());
 const yourDataSheet = document.getElementById("yourDataSheet");
 const openYourDataBtn = document.getElementById("openYourDataSheetBtn");
 const closeYourDataSheet = document.getElementById("closeYourDataSheet");
+let selectedUserDataChartType = "bar";
+let currentUserActivityData = [];
+let currentUserDataTotals = { post_count: 0, total_likes: 0, follower_count: 0, following_count: 0 };
+
+function getLast12MonthsFallback() {
+  const months = [];
+  const now = new Date();
+
+  for (let i = 11; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({
+      month: date.toLocaleString("en-US", { month: "short" }),
+      posts: 0,
+      likes: 0
+    });
+  }
+
+  return months;
+}
+
+function renderYourDataChart(type = selectedUserDataChartType, data = currentUserActivityData, totals = currentUserDataTotals) {
+  const chartContainer = document.getElementById("yourDataChart");
+  if (!chartContainer) return;
+
+  const activity = Array.isArray(data) && data.length ? data : getLast12MonthsFallback();
+  const chartTotals = totals || { post_count: 0, total_likes: 0, following_count: 0 };
+
+  if (type === "pie") {
+    const pieSeries = [
+      { label: "Posts", value: Number(chartTotals.post_count || 0), color: "#111111" },
+      { label: "Likes", value: Number(chartTotals.total_likes || 0), color: "#f4b400" },
+      { label: "Followers", value: Number(chartTotals.follower_count || 0), color: "#4caf50" },
+      { label: "Following", value: Number(chartTotals.following_count || 0), color: "#0ea5e9" }
+    ];
+
+    const pieTotal = pieSeries.reduce((sum, item) => sum + Math.max(item.value, 0), 0) || 1;
+    const cx = 110;
+    const cy = 86;
+    const radius = 62;
+
+    let angle = -Math.PI / 2;
+    const segments = pieSeries.map((item) => {
+      const slice = (Math.max(item.value, 0) / pieTotal) * Math.PI * 2;
+      const start = angle;
+      const end = angle + slice;
+      angle = end;
+
+      const x1 = cx + Math.cos(start) * radius;
+      const y1 = cy + Math.sin(start) * radius;
+      const x2 = cx + Math.cos(end) * radius;
+      const y2 = cy + Math.sin(end) * radius;
+      const largeArc = slice > Math.PI ? 1 : 0;
+      return `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+    });
+
+    const legend = pieSeries.map((item) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.color};"></span>
+          <span style="font-size:0.78rem;color:#111;">${item.label}</span>
+        </div>
+        <span style="font-size:0.78rem;color:#111;font-weight:700;">${item.value}</span>
+      </div>
+    `).join("");
+
+    chartContainer.innerHTML = `
+      <svg viewBox="0 0 220 170" width="100%" height="170" style="display:block;">
+        ${pieSeries.map((item, index) => `<path d="${segments[index]}" fill="${item.color}" opacity="0.95"></path>`).join("")}
+        <circle cx="${cx}" cy="${cy}" r="24" fill="#ffffff"></circle>
+        <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="12" font-weight="700" fill="#111111">${pieTotal}</text>
+      </svg>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">${legend}</div>
+    `;
+    return;
+  }
+
+  if (type === "plot") {
+    const plotValues = activity.map((item) => Number(item?.posts || 0) + Number(item?.likes || 0));
+    const maxPlotValue = Math.max(...plotValues, 1);
+    const points = plotValues.map((value, index) => {
+      const x = 18 + index * (264 / Math.max(plotValues.length - 1, 1));
+      const y = 136 - (value / maxPlotValue) * 96;
+      return `${x},${y}`;
+    }).join(" ");
+
+    const gridLines = Array.from({ length: 4 }, (_, index) => {
+      const y = 18 + index * 28;
+      return `<line x1="18" y1="${y}" x2="282" y2="${y}" stroke="rgba(17,17,17,0.12)" stroke-width="1"></line>`;
+    }).join("");
+
+    const labels = activity.map((item, index) => {
+      const x = 18 + index * (264 / Math.max(activity.length - 1, 1));
+      return `<text x="${x}" y="154" text-anchor="middle" font-size="8" fill="#111111">${item?.month || ""}</text>`;
+    }).join("");
+
+    chartContainer.innerHTML = `
+      <svg viewBox="0 0 300 170" width="100%" height="170" style="display:block;overflow:visible;">
+        ${gridLines}
+        <polyline fill="none" stroke="#111111" stroke-width="3" points="${points}" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        ${plotValues.map((value, index) => {
+          const x = 18 + index * (264 / Math.max(plotValues.length - 1, 1));
+          const y = 136 - (value / maxPlotValue) * 96;
+          return `<circle cx="${x}" cy="${y}" r="3.5" fill="#f4b400"></circle>`;
+        }).join("")}
+        ${labels}
+      </svg>
+    `;
+    return;
+  }
+
+  const barSeries = activity.map((item) => ({
+    month: item?.month || "",
+    value: Number(item?.posts || 0) + Number(item?.likes || 0)
+  }));
+  const maxValue = Math.max(...barSeries.map((item) => item.value), 1);
+
+  chartContainer.innerHTML = barSeries.map((item) => {
+    const width = item.value <= 0 ? 0 : Math.max((item.value / maxValue) * 100, 8);
+    return `
+      <div class="your-data-chart-row">
+        <div class="your-data-bar-label-wrap">
+          <span>${item.month || "Month"}</span>
+          <span class="your-data-bar-value">${item.value}</span>
+        </div>
+        <div class="your-data-bar-wrap">
+          <span class="your-data-bar" style="width: ${width}%; background: linear-gradient(90deg, #111111 0%, #111111 55%, #f4b400 100%);"></span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
 
 async function renderYourDataStats() {
   const totalLikesEl = document.getElementById("yourDataTotalLikes");
   const postCountEl = document.getElementById("yourDataPostCount");
+  const followerCountEl = document.getElementById("yourDataFollowerCount");
   const followingCountEl = document.getElementById("yourDataFollowingCount");
   const avatarEl = document.getElementById("yourDataAvatar");
   const displayNameEl = document.getElementById("yourDataDisplayName");
 
-  if (!totalLikesEl || !postCountEl || !followingCountEl) return;
+  if (!totalLikesEl || !postCountEl || !followerCountEl || !followingCountEl) return;
 
   const currentUserId = getCurrentUserId();
   const profileData = getCurrentUserProfileData(currentUserId) || {};
@@ -952,19 +1084,40 @@ async function renderYourDataStats() {
     totalLikesEl.textContent = "0";
     postCountEl.textContent = "0";
     followingCountEl.textContent = "0";
+    currentUserDataTotals = { post_count: 0, total_likes: 0, follower_count: 0, following_count: 0 };
+    currentUserActivityData = getLast12MonthsFallback();
+    renderYourDataChart(selectedUserDataChartType, currentUserActivityData, currentUserDataTotals);
     return;
   }
 
   try {
-    const response = await fetch(`/api/users/${encodeURIComponent(currentUserId)}/stats`);
-    if (!response.ok) {
+    const [statsResponse, activityResponse] = await Promise.all([
+      fetch(`/api/users/${encodeURIComponent(currentUserId)}/stats`),
+      fetch(`/api/users/${encodeURIComponent(currentUserId)}/activity`)
+    ]);
+
+    if (!statsResponse.ok) {
       throw new Error("Failed to load user stats");
     }
 
-    const data = await response.json();
-    totalLikesEl.textContent = String(Number(data?.total_likes || 0));
-    postCountEl.textContent = String(Number(data?.post_count || 0));
-    followingCountEl.textContent = String(Number(data?.following_count || 0));
+    const statsData = await statsResponse.json();
+    const activityData = activityResponse.ok ? await activityResponse.json() : { data: [] };
+
+    const normalizedStats = {
+      post_count: Number(statsData?.post_count || 0),
+      total_likes: Number(statsData?.total_likes || 0),
+      follower_count: Number(statsData?.follower_count || 0),
+      following_count: Number(statsData?.following_count || 0)
+    };
+
+    currentUserDataTotals = normalizedStats;
+    currentUserActivityData = Array.isArray(activityData?.data) && activityData.data.length ? activityData.data : getLast12MonthsFallback();
+
+    totalLikesEl.textContent = String(normalizedStats.total_likes);
+    postCountEl.textContent = String(normalizedStats.post_count);
+    followerCountEl.textContent = String(normalizedStats.follower_count);
+    followingCountEl.textContent = String(normalizedStats.following_count);
+    renderYourDataChart(selectedUserDataChartType, currentUserActivityData, currentUserDataTotals);
   } catch (error) {
     console.error("USER STATS ERROR:", error);
     const allPosts = Array.isArray(window.__feedPostsCache) ? window.__feedPostsCache : [];
@@ -978,10 +1131,34 @@ async function renderYourDataStats() {
       return sum + (Number.isFinite(value) ? value : 0);
     }, 0);
 
-    totalLikesEl.textContent = String(fallbackTotalLikes);
-    postCountEl.textContent = String(userPosts.length);
-    followingCountEl.textContent = "0";
+    const fallbackStats = {
+      post_count: userPosts.length,
+      total_likes: fallbackTotalLikes,
+      follower_count: 0,
+      following_count: 0
+    };
+
+    currentUserDataTotals = fallbackStats;
+    currentUserActivityData = getLast12MonthsFallback();
+
+    totalLikesEl.textContent = String(fallbackStats.total_likes);
+    postCountEl.textContent = String(fallbackStats.post_count);
+    followerCountEl.textContent = String(fallbackStats.follower_count);
+    followingCountEl.textContent = String(fallbackStats.following_count);
+    renderYourDataChart(selectedUserDataChartType, currentUserActivityData, currentUserDataTotals);
   }
+}
+
+if (document.querySelectorAll(".chart-type-btn").length) {
+  document.querySelectorAll(".chart-type-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedUserDataChartType = button.dataset.chartType || "bar";
+      document.querySelectorAll(".chart-type-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn === button);
+      });
+      renderYourDataChart(selectedUserDataChartType, currentUserActivityData, currentUserDataTotals);
+    });
+  });
 }
 
 if (openYourDataBtn) {
@@ -4588,11 +4765,9 @@ function syncCommentReplyInputState() {
 
   if (activeReplyCommentId && activeReplyCommentName) {
     commentInput.placeholder = `Replying to ${activeReplyCommentName}...`;
-    submitCommentBtn.textContent = "Reply";
     commentInput.setAttribute("aria-label", `Reply to ${activeReplyCommentName}`);
   } else {
     commentInput.placeholder = "Write a comment...";
-    submitCommentBtn.textContent = "Post";
     commentInput.setAttribute("aria-label", "Write a comment");
   }
 }
@@ -4622,6 +4797,39 @@ function setCommentReplyMode(commentId, authorName = "") {
   }
 }
 
+function getCommentReplyVisibility(commentId) {
+  if (!commentId) return false;
+
+  try {
+    const raw = localStorage.getItem(`bookme_comment_replies_open_${commentId}`);
+    return raw === "true";
+  } catch (error) {
+    return false;
+  }
+}
+
+function setCommentReplyVisibility(commentId, shouldShow) {
+  if (!commentId) return;
+
+  try {
+    localStorage.setItem(`bookme_comment_replies_open_${commentId}`, String(Boolean(shouldShow)));
+  } catch (error) {
+    // Ignore storage issues and keep the UI functional.
+  }
+}
+
+function toggleCommentReplyVisibility(commentId) {
+  if (!commentId) return;
+
+  const nextState = !getCommentReplyVisibility(commentId);
+  setCommentReplyVisibility(commentId, nextState);
+  const replyContainer = document.querySelector(`.comment-thread[data-comment-id="${CSS.escape(String(commentId))}"] .comment-replies`);
+  if (replyContainer) {
+    replyContainer.classList.toggle("expanded", nextState);
+    replyContainer.style.display = nextState ? "block" : "none";
+  }
+}
+
 function renderCommentNode(comment, depth = 0) {
   const commentId = String(comment?.id ?? "");
   const authorId = comment?.user_id || "";
@@ -4645,17 +4853,18 @@ function renderCommentNode(comment, depth = 0) {
   const isLiked = Boolean(existingState.liked);
   const repliedToThisComment = activeReplyCommentId === String(commentId);
   const indentStyle = depth > 0 ? `style="margin-left: ${Math.min(depth * 18, 36)}px;"` : "";
+  const repliesAreVisible = getCommentReplyVisibility(commentId);
 
   const avatarMarkup = profilePic
     ? `<img src="${escapeHtml(profilePic)}" alt="${escapeHtml(author)} profile" class="comment-avatar-img" />`
     : `<span class="comment-avatar-fallback"><i class="fa-solid fa-circle-user fa-lg" style="color: rgb(108, 108, 105);"></i></span>`;
 
   const childReplies = Array.isArray(comment?.replies) && comment.replies.length
-    ? `<div class="comment-replies">${comment.replies.map((child) => renderCommentNode(child, depth + 1)).join("")}</div>`
+    ? `<div class="comment-replies ${repliesAreVisible ? "expanded" : "collapsed"}" style="display: ${repliesAreVisible ? "block" : "none"};">${comment.replies.map((child) => renderCommentNode(child, depth + 1)).join("")}</div>`
     : "";
 
   return `
-    <div class="comment-thread ${depth > 0 ? "is-reply" : ""}" ${indentStyle}>
+    <div class="comment-thread ${depth > 0 ? "is-reply" : ""}" data-comment-id="${escapeHtml(commentId)}" ${indentStyle}>
       <div class="comment-item ${repliedToThisComment ? "replying" : ""} ${depth > 0 ? "is-reply-item" : ""}" data-comment-id="${escapeHtml(commentId)}" data-author-name="${escapeHtml(author)}">
         <div class="comment-user-row">
           <div class="comment-avatar profile-avatar-trigger" data-user-id="${escapeHtml(authorId || getCurrentUserId())}">${avatarMarkup}</div>
@@ -4718,10 +4927,17 @@ async function loadCommentsForCurrentPost() {
     commentsList.querySelectorAll(".comment-item").forEach((commentItem) => {
       commentItem.addEventListener("click", (event) => {
         if (event.target.closest("button")) return;
+
         const commentId = commentItem.dataset.commentId;
-        const authorName = commentItem.dataset.authorName || "this user";
         if (!commentId) return;
 
+        const hasReplies = commentItem.parentElement?.querySelector(".comment-replies") || commentItem.closest(".comment-thread")?.querySelector(".comment-replies");
+        if (hasReplies) {
+          toggleCommentReplyVisibility(commentId);
+          return;
+        }
+
+        const authorName = commentItem.dataset.authorName || "this user";
         if (activeReplyCommentId === String(commentId)) {
           clearCommentReplyMode();
           return;
@@ -4732,7 +4948,7 @@ async function loadCommentsForCurrentPost() {
     });
 
     commentsList.querySelectorAll(".comment-like-btn").forEach((button) => {
-      button.addEventListener("click", (event) => {
+      button.addEventListener("click", async (event) => {
         event.stopPropagation();
         const commentId = button.dataset.commentId;
         if (!commentId) return;
@@ -4740,24 +4956,63 @@ async function loadCommentsForCurrentPost() {
         const currentState = getCommentLocalState(commentId);
         const currentLikeCount = Number(button.dataset.likeCount || currentState.likeCount || 0);
         const nextLiked = !currentState.liked;
-        const nextLikeCount = Math.max(0, nextLiked ? currentLikeCount + 1 : currentLikeCount - 1);
 
-        setCommentLocalState(commentId, {
-          liked: nextLiked,
-          likeCount: nextLikeCount,
-          replyCount: currentState.replyCount || 0
-        });
+        try {
+          const response = await apiFetch(`/api/comments/${encodeURIComponent(commentId)}/like`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+            body: JSON.stringify({
+              user_id: getCurrentUserId(),
+              name: getCurrentUserDisplayNameForApi()
+            })
+          });
 
-        const icon = button.querySelector("i");
-        const count = button.querySelector("span");
-        if (icon) {
-          icon.className = nextLiked ? "fa-solid fa-heart" : "fa-regular fa-heart";
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(data?.error || "Unable to update comment like.");
+          }
+
+          const serverLikeCount = Number(data?.likeCount ?? data?.likes_count ?? currentLikeCount ?? 0);
+          const serverLiked = Boolean(data?.liked ?? nextLiked);
+          const storedState = {
+            liked: serverLiked,
+            likeCount: serverLikeCount,
+            replyCount: Number(currentState.replyCount || 0)
+          };
+
+          setCommentLocalState(commentId, storedState);
+
+          const icon = button.querySelector("i");
+          const count = button.querySelector("span");
+          if (icon) {
+            icon.className = serverLiked ? "fa-solid fa-heart" : "fa-regular fa-heart";
+          }
+          if (count) {
+            count.textContent = formatCompactCount(serverLikeCount);
+          }
+          button.dataset.likeCount = String(serverLikeCount);
+          button.classList.toggle("liked", serverLiked);
+        } catch (error) {
+          console.error("Comment like error:", error);
+          const fallbackLikeCount = Math.max(0, nextLiked ? currentLikeCount + 1 : currentLikeCount - 1);
+          setCommentLocalState(commentId, {
+            liked: nextLiked,
+            likeCount: fallbackLikeCount,
+            replyCount: currentState.replyCount || 0
+          });
+
+          const icon = button.querySelector("i");
+          const count = button.querySelector("span");
+          if (icon) {
+            icon.className = nextLiked ? "fa-solid fa-heart" : "fa-regular fa-heart";
+          }
+          if (count) {
+            count.textContent = formatCompactCount(fallbackLikeCount);
+          }
+          button.dataset.likeCount = String(fallbackLikeCount);
+          button.classList.toggle("liked", nextLiked);
         }
-        if (count) {
-          count.textContent = String(nextLikeCount);
-        }
-        button.dataset.likeCount = String(nextLikeCount);
-        button.classList.toggle("liked", nextLiked);
       });
     });
 
@@ -7124,7 +7379,6 @@ if (submitCommentBtn && commentInput && commentsSheet) {
 
     try {
       submitCommentBtn.disabled = true;
-      submitCommentBtn.textContent = activeReplyCommentId ? "Replying..." : "Posting...";
 
       const response = await apiFetch("/api/comments", {
         method: "POST",
