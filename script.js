@@ -5808,7 +5808,16 @@ async function sharePost(postId = "") {
   }
 }
 
+saveLastNonReelsPage();
+
 if (document.getElementById("reelsContainer")) {
+  const reelsBackBtn = document.getElementById("reelsBackBtn");
+  if (reelsBackBtn) {
+    reelsBackBtn.addEventListener("click", () => {
+      goBackToLastPage();
+    });
+  }
+
   const reelsContainer = document.getElementById("reelsContainer");
   reelsContainer.addEventListener("click", async (event) => {
     const shareButton = event.target.closest(".share-btn");
@@ -6841,6 +6850,41 @@ function unwrapThreadWrappers() {
       threadWrapper.replaceWith(card);
     }
   });
+}
+
+function saveLastNonReelsPage() {
+  try {
+    const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}` || "index.html";
+    if (!/reels\.html/i.test(currentPath)) {
+      sessionStorage.setItem("bookme-last-page", currentPath || "index.html");
+    }
+  } catch (error) {
+    console.warn("Unable to save last page:", error);
+  }
+}
+
+function goBackToLastPage() {
+  try {
+    const lastPage = sessionStorage.getItem("bookme-last-page");
+    if (lastPage && !/reels\.html/i.test(lastPage)) {
+      window.location.href = lastPage;
+      return;
+    }
+  } catch (error) {
+    console.warn("Unable to read last page:", error);
+  }
+
+  if (document.referrer && document.referrer.startsWith(window.location.origin)) {
+    window.location.href = document.referrer;
+    return;
+  }
+
+  if (window.history.length > 1) {
+    window.history.back();
+    return;
+  }
+
+  window.location.href = "index.html";
 }
 
 function bindReadMoreButtons() {

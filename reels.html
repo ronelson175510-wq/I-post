@@ -49,6 +49,29 @@
             background-clip: padding-box;
         }
 
+        .reel-back-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.14);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .reel-back-btn:hover,
+        .reel-back-btn:focus-visible {
+            transform: translateY(-1px) scale(1.04);
+            background: rgba(255, 255, 255, 0.16);
+            outline: none;
+        }
+
         .header-icons {
             margin-left: auto;
             display: flex;
@@ -403,7 +426,7 @@
         .reel-actions {
             position: absolute;
             right: 12px;
-            bottom: 76px;
+            bottom: 96px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -416,20 +439,17 @@
             width: 62px;
             height: auto;
             min-height: 62px;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 24px;
-            background: rgba(17, 17, 17, 0.42);
-            color: #fff;
+            
+            background: none;
             display: inline-flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 5px;
             cursor: pointer;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(6px);
-            -webkit-backdrop-filter: blur(6px);
-            padding: 10px 8px;
+           
+        border-radius: 20px;
+        border:1.4px solid rgba(255, 255, 255, 0.18);
         }
 
         .reel-action-btn:active {
@@ -442,10 +462,11 @@
         }
 
         .reel-action-count {
-            display: block;
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 700;
-            line-height: 1.1;
+            line-height: 1;
+            color: #2b2b2b;
+            min-width: 18px;
             color: #fff;
             letter-spacing: 0.02em;
         }
@@ -518,35 +539,54 @@
         }
 
         .reel-caption {
-            margin-top: 2px;
-            max-width: 80%;
-            margin-left: 34px;
-            color: #fff;
-            font-size: 14px;
+            margin: 8px 0 0;
+            width: 90%;
+            font-weight: 640;
+            color: #ffffff;
             line-height: 1.5;
-            word-break: break-word;
+            font-size: 16px;
+            
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: block;
+            text-align: left;
             white-space: normal;
+            position: relative;
+            z-index: 1;
         }
 
         .reel-caption-text {
             display: inline;
             white-space: normal;
-            color: #fff;
+            color: #ffffff;
+            line-height: 1.7;
+            text-align: left;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         .reel-read-more-btn {
-            display: inline;
-            margin-left: 2px;
-            padding: 0;
+            appearance: none;
             background: transparent;
             border: none;
-            color: rgba(242, 224, 22, 0.9);
-            font-size: 12px;
+            color: rgba(255, 255, 255, 0.82);
             font-weight: 700;
+            padding: 0;
+            margin-left: 2px;
+            margin-top: 0;
             cursor: pointer;
-            text-align: left;
+            font-size: 0.78rem;
+            line-height: 1.2;
+            border-radius: 0;
+            font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            transition: opacity 0.18s ease;
+            display: inline;
             vertical-align: baseline;
+        }
+
+        .reel-read-more-btn:hover,
+        .reel-read-more-btn:focus-visible {
+            opacity: 0.8;
+            outline: none;
         }
 
         .reel-caption.expanded .reel-caption-text {
@@ -853,6 +893,9 @@
 </head>
 <body>
     <div class="reelpage-header">
+        <button id="reelsBackBtn" class="reel-back-btn" type="button" aria-label="Go back">
+            <i class="fa-solid fa-arrow-left fa-lg"></i>
+        </button>
         <div style="flex: 1;"></div>
         <div class="header-icons">
             <a href="search.html" id="searchBtn" class="header-nav-link" aria-label="Open search page" style="color: rgb(237, 230, 18);">
