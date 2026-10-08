@@ -8,6 +8,7 @@ const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const { db, isDbEnabled } = require("./db");
 const { sanitizeRecentSearchQuery, dedupeRecentSearchEntries } = require("./recentSearches");
+const { normalizePostAccessSettings, canUserViewPost, canUserCommentOnPost } = require("./postAccess");
 
 const app = express();
 cloudinary.config({
@@ -781,208 +782,237 @@ function initializeDatabaseSchema() {
     });
   };
 
-  ensureColumn("users", "verified", "TINYINT(1) DEFAULT 0", (err0) => {
-    if (err0) return;
-
-    runSchemaQuery(`
-      CREATE TABLE IF NOT EXISTS posts (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        user_id VARCHAR(255) NOT NULL,
-        content TEXT,
-        media_type ENUM('text', 'photo', 'video') DEFAULT 'text',
-        media_url VARCHAR(255),
-        media_urls TEXT,
-        likes_count INT DEFAULT 0,
-        report_count INT DEFAULT 0,
-        is_flagged TINYINT(1) DEFAULT 0,
-        report_status ENUM('active', 'taken_down') DEFAULT 'active',
-        viewer_discretion TINYINT(1) DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )
-    `, () => {
-      ensureColumn("posts", "report_count", "INT DEFAULT 0", (err1) => {
-        if (err1) return;
-
-        ensureColumn("posts", "is_flagged", "TINYINT(1) DEFAULT 0", (err2) => {
-          if (err2) return;
-
-          ensureColumn("posts", "report_status", "ENUM('active', 'taken_down') DEFAULT 'active'", (err3) => {
-            if (err3) return;
-
-            ensureColumn("posts", "original_name", "VARCHAR(255) NULL", (err4) => {
-              if (err4) return;
-
-              ensureColumn("posts", "saved_filename", "VARCHAR(255) NULL", (err5) => {
-                if (err5) return;
-
-                ensureColumn("posts", "viewer_discretion", "TINYINT(1) DEFAULT 0", (err6) => {
-                  if (err6) return;
-
-                  runSchemaQuery(`
-                    CREATE TABLE IF NOT EXISTS comments (
-                      id INT PRIMARY KEY AUTO_INCREMENT,
-                      user_id VARCHAR(255) NOT NULL,
-                      post_id INT NOT NULL,
-                      reply_to INT NULL,
-                      comment TEXT NOT NULL,
-                      like_count INT DEFAULT 0,
-                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                      FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-                      FOREIGN KEY (reply_to) REFERENCES comments(id) ON DELETE CASCADE
-                    )
-                  `, () => {
-                    ensureColumn("comments", "reply_to", "INT NULL", (err7) => {
-                      if (err7) return;
-
-                      ensureColumn("comments", "like_count", "INT DEFAULT 0", (err8) => {
-                        if (err8) return;
-
-                        runSchemaQuery(`
-                          CREATE TABLE IF NOT EXISTS comment_likes (
-                            id INT PRIMARY KEY AUTO_INCREMENT,
-                            user_id VARCHAR(255) NOT NULL,
-                            comment_id INT NOT NULL,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            UNIQUE KEY unique_comment_like (user_id, comment_id),
-                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                            FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
-                          )
-                        `, () => {
-                          runSchemaQuery(`
-                            CREATE TABLE IF NOT EXISTS follows (
-                              id INT PRIMARY KEY AUTO_INCREMENT,
-                              user_id VARCHAR(255) NOT NULL,
-                              following_user_id VARCHAR(255) NOT NULL,
-                              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                              UNIQUE KEY unique_follow (user_id, following_user_id),
-                              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                              FOREIGN KEY (following_user_id) REFERENCES users(id) ON DELETE CASCADE
-                            )
-                          `, () => {
-                            runSchemaQuery(`
-                              CREATE TABLE IF NOT EXISTS recommendation_events (
-                                id INT PRIMARY KEY AUTO_INCREMENT,
-                                user_id VARCHAR(255) NOT NULL,
-                                post_id INT NULL,
-                                target_user_id VARCHAR(255) NULL,
-                                event_type ENUM('like', 'share', 'comment', 'follow_user', 'comment_like', 'view') NOT NULL,
-                                weight DECIMAL(5,2) DEFAULT 1.00,
-                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                INDEX idx_recommendation_user_created (user_id, created_at DESC),
-                                INDEX idx_recommendation_post (post_id),
-                                INDEX idx_recommendation_target_user (target_user_id),
-                                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                                FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-                                FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE
-                              )
-                            `, () => {
-                              runSchemaQuery(`
-                                CREATE TABLE IF NOT EXISTS post_topics (
-                                  id INT PRIMARY KEY AUTO_INCREMENT,
-                                  post_id INT NOT NULL,
-                                  topic VARCHAR(100) NOT NULL,
-                                  source ENUM('hashtag', 'keyword', 'manual', 'auto') DEFAULT 'auto',
-                                  weight DECIMAL(5,2) DEFAULT 1.00,
-                                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                  UNIQUE KEY unique_post_topic (post_id, topic),
-                                  INDEX idx_post_topic_topic (topic),
-                                  FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
-                                )
-                              `, () => {
-                                runSchemaQuery(`
-                                  CREATE TABLE IF NOT EXISTS user_topic_weights (
-                                    id INT PRIMARY KEY AUTO_INCREMENT,
-                                    user_id VARCHAR(255) NOT NULL,
-                                    topic VARCHAR(100) NOT NULL,
-                                    weight DECIMAL(7,2) DEFAULT 0.00,
-                                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                                    UNIQUE KEY unique_user_topic (user_id, topic),
-                                    INDEX idx_user_topic_weight (user_id, topic),
-                                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                                  )
-                                `, () => {
-                                  runSchemaQuery(`
-                                    CREATE TABLE IF NOT EXISTS recent_searches (
-                                      id INT PRIMARY KEY AUTO_INCREMENT,
-                                      user_id VARCHAR(255) NOT NULL,
-                                      query VARCHAR(255) NOT NULL,
-                                      searched_user_id VARCHAR(255) NULL,
-                                      searched_user_name VARCHAR(255) NULL,
-                                      searched_user_avatar VARCHAR(500) NULL,
-                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                      INDEX idx_recent_search_user_created (user_id, created_at DESC),
-                                      INDEX idx_recent_search_query (query),
-                                      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                                    )
-                                  `, () => {
-                                    ensureColumn("recent_searches", "searched_user_id", "VARCHAR(255) NULL", (err9) => {
-                                      if (err9) return;
-                                      ensureColumn("recent_searches", "searched_user_name", "VARCHAR(255) NULL", (err10) => {
-                                        if (err10) return;
-                                        ensureColumn("recent_searches", "searched_user_avatar", "VARCHAR(500) NULL", (err11) => {
-                                          if (err11) return;
-
-                                          runSchemaQuery(`
-                                            CREATE TABLE IF NOT EXISTS messages (
-                                              id INT PRIMARY KEY AUTO_INCREMENT,
-                                              sender_user_id VARCHAR(255) NOT NULL,
-                                              recipient_user_id VARCHAR(255) NOT NULL,
-                                              message TEXT NOT NULL,
-                                              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                              INDEX idx_messages_thread (sender_user_id, recipient_user_id, created_at),
-                                              INDEX idx_messages_recipient_created (recipient_user_id, created_at DESC),
-                                              FOREIGN KEY (sender_user_id) REFERENCES users(id) ON DELETE CASCADE,
-                                              FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE
-                                            )
-                                          `, () => {
-                                            runSchemaQuery(`
-                                              CREATE TABLE IF NOT EXISTS notifications (
-                                                id INT PRIMARY KEY AUTO_INCREMENT,
-                                                recipient_user_id VARCHAR(255) NOT NULL,
-                                                actor_user_id VARCHAR(255) NOT NULL,
-                                                type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome', 'message') NOT NULL,
-                                                target_type ENUM('user', 'post', 'comment') NOT NULL,
-                                                target_id VARCHAR(255) NULL,
-                                                message TEXT NOT NULL,
-                                                is_read TINYINT(1) DEFAULT 0,
-                                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                                INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
-                                                INDEX idx_notifications_unread (recipient_user_id, is_read),
-                                                FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
-                                                FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
-                                              )
-                                            `, () => {
-                                              runSchemaQuery(`
-                                                ALTER TABLE notifications
-                                                MODIFY COLUMN type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome', 'message') NOT NULL
-                                              `, () => {
-                                                console.log("Database schema initialized.");
-                                              });
-                                            });
-                                          });
-                                        });
-                                      });
-                                    });
-                                  });
-                                });
-                              });
-                            });
-                          });
-                        });
-                      });
-                    });
-                  });
-                });
-              });
-            });
-          });
-        });
+  const createSchema = async () => {
+    try {
+      await new Promise((resolve, reject) => {
+        runSchemaQuery(`
+          CREATE TABLE IF NOT EXISTS posts (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            user_id VARCHAR(255) NOT NULL,
+            content TEXT,
+            media_type ENUM('text', 'photo', 'video') DEFAULT 'text',
+            media_url VARCHAR(255),
+            media_urls TEXT,
+            likes_count INT DEFAULT 0,
+            report_count INT DEFAULT 0,
+            is_flagged TINYINT(1) DEFAULT 0,
+            report_status ENUM('active', 'taken_down') DEFAULT 'active',
+            viewer_discretion TINYINT(1) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `, (err) => err ? reject(err) : resolve());
       });
-    });
-  });
+
+      await new Promise((resolve, reject) => {
+        ensureColumn("posts", "report_count", "INT DEFAULT 0", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("posts", "is_flagged", "TINYINT(1) DEFAULT 0", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("posts", "report_status", "ENUM('active', 'taken_down') DEFAULT 'active'", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("posts", "original_name", "VARCHAR(255) NULL", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("posts", "saved_filename", "VARCHAR(255) NULL", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("posts", "viewer_discretion", "TINYINT(1) DEFAULT 0", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("posts", "followers_only", "TINYINT(1) DEFAULT 0", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("posts", "comments_disabled", "TINYINT(1) DEFAULT 0", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("posts", "followers_comments_only", "TINYINT(1) DEFAULT 0", (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        runSchemaQuery(`
+          CREATE TABLE IF NOT EXISTS comments (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            user_id VARCHAR(255) NOT NULL,
+            post_id INT NOT NULL,
+            reply_to INT NULL,
+            comment TEXT NOT NULL,
+            like_count INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+            FOREIGN KEY (reply_to) REFERENCES comments(id) ON DELETE CASCADE
+          )
+        `, (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        ensureColumn("comments", "reply_to", "INT NULL", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("comments", "like_count", "INT DEFAULT 0", (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        runSchemaQuery(`
+          CREATE TABLE IF NOT EXISTS comment_likes (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            user_id VARCHAR(255) NOT NULL,
+            comment_id INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_comment_like (user_id, comment_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
+          )
+        `, (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        runSchemaQuery(`
+          CREATE TABLE IF NOT EXISTS follows (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            user_id VARCHAR(255) NOT NULL,
+            following_user_id VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_follow (user_id, following_user_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (following_user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `, (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        runSchemaQuery(`
+          CREATE TABLE IF NOT EXISTS recommendation_events (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            user_id VARCHAR(255) NOT NULL,
+            post_id INT NULL,
+            target_user_id VARCHAR(255) NULL,
+            event_type ENUM('like', 'share', 'comment', 'follow_user', 'comment_like', 'view') NOT NULL,
+            weight DECIMAL(5,2) DEFAULT 1.00,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_recommendation_user_created (user_id, created_at DESC),
+            INDEX idx_recommendation_post (post_id),
+            INDEX idx_recommendation_target_user (target_user_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+            FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `, (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        runSchemaQuery(`
+          CREATE TABLE IF NOT EXISTS post_topics (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            post_id INT NOT NULL,
+            topic VARCHAR(100) NOT NULL,
+            source ENUM('hashtag', 'keyword', 'manual', 'auto') DEFAULT 'auto',
+            weight DECIMAL(5,2) DEFAULT 1.00,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_post_topic (post_id, topic),
+            INDEX idx_post_topic_topic (topic),
+            FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+          )
+        `, (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        runSchemaQuery(`
+          CREATE TABLE IF NOT EXISTS user_topic_weights (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            user_id VARCHAR(255) NOT NULL,
+            topic VARCHAR(100) NOT NULL,
+            weight DECIMAL(7,2) DEFAULT 0.00,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_user_topic (user_id, topic),
+            INDEX idx_user_topic_weight (user_id, topic),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `, (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        runSchemaQuery(`
+          CREATE TABLE IF NOT EXISTS recent_searches (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            user_id VARCHAR(255) NOT NULL,
+            query VARCHAR(255) NOT NULL,
+            searched_user_id VARCHAR(255) NULL,
+            searched_user_name VARCHAR(255) NULL,
+            searched_user_avatar VARCHAR(500) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_recent_search_user_created (user_id, created_at DESC),
+            INDEX idx_recent_search_query (query),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `, (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        ensureColumn("recent_searches", "searched_user_id", "VARCHAR(255) NULL", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("recent_searches", "searched_user_name", "VARCHAR(255) NULL", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("recent_searches", "searched_user_avatar", "VARCHAR(500) NULL", (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        runSchemaQuery(`
+          CREATE TABLE IF NOT EXISTS messages (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            sender_user_id VARCHAR(255) NOT NULL,
+            recipient_user_id VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_messages_thread (sender_user_id, recipient_user_id, created_at),
+            INDEX idx_messages_recipient_created (recipient_user_id, created_at DESC),
+            FOREIGN KEY (sender_user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `, (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        runSchemaQuery(`
+          CREATE TABLE IF NOT EXISTS notifications (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            recipient_user_id VARCHAR(255) NOT NULL,
+            actor_user_id VARCHAR(255) NOT NULL,
+            type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome', 'message') NOT NULL,
+            target_type ENUM('user', 'post', 'comment') NOT NULL,
+            target_id VARCHAR(255) NULL,
+            message TEXT NOT NULL,
+            is_read TINYINT(1) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_notifications_user_created (recipient_user_id, created_at DESC),
+            INDEX idx_notifications_unread (recipient_user_id, is_read),
+            FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `, (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
+        runSchemaQuery(`
+          ALTER TABLE notifications
+          MODIFY COLUMN type ENUM('follow', 'like', 'comment', 'comment_like', 'share', 'welcome', 'message') NOT NULL
+        `, (err) => err ? reject(err) : resolve());
+      });
+
+      console.log("Database schema initialized.");
+    } catch (error) {
+      console.error("SCHEMA INIT ERROR:", error.message);
+    }
+  };
+
+  createSchema();
 }
 
 function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic, verified }, callback) {
@@ -1795,6 +1825,106 @@ app.get("/api/profile/:userId", (req, res) => {
   );
 });
 
+app.get("/api/users/:userId/following", (req, res) => {
+  const userId = String(req.params.userId || "").trim();
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({
+      user_id: userId,
+      following: []
+    });
+  }
+
+  db.execute(
+    `SELECT u.id, u.name, u.first_name, u.last_name, u.profile_pic, f.created_at
+     FROM follows f
+     INNER JOIN users u ON u.id = f.following_user_id
+     WHERE f.user_id = ?
+     ORDER BY f.created_at DESC`,
+    [userId],
+    (err, rows) => {
+      if (err) {
+        console.error("FOLLOWING LIST ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      const following = (rows || []).map((row) => {
+        const displayName = String(row?.name || [row?.first_name, row?.last_name].filter(Boolean).join(" ") || "User").trim() || "User";
+
+        return {
+          id: row?.id || null,
+          name: displayName,
+          first_name: row?.first_name || "",
+          last_name: row?.last_name || "",
+          profile_pic: row?.profile_pic || null,
+          created_at: row?.created_at || null
+        };
+      });
+
+      return res.json({
+        user_id: userId,
+        following
+      });
+    }
+  );
+});
+
+app.get("/api/users/:userId/following-suggestions", (req, res) => {
+  const userId = String(req.params.userId || "").trim();
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing user id" });
+  }
+
+  if (!isDbEnabled()) {
+    return res.json({
+      user_id: userId,
+      suggestions: []
+    });
+  }
+
+  db.execute(
+    `SELECT DISTINCT u.id, u.name, u.first_name, u.last_name, u.profile_pic
+     FROM follows f1
+     INNER JOIN follows f2 ON f2.user_id = f1.following_user_id
+     INNER JOIN users u ON u.id = f2.following_user_id
+     LEFT JOIN follows existing ON existing.user_id = ? AND existing.following_user_id = u.id
+     WHERE f1.user_id = ?
+       AND u.id <> ?
+       AND existing.id IS NULL
+     ORDER BY u.name ASC
+     LIMIT 20`,
+    [userId, userId, userId],
+    (err, rows) => {
+      if (err) {
+        console.error("FOLLOWING SUGGESTIONS ERROR:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      const suggestions = (rows || []).map((row) => {
+        const displayName = String(row?.name || [row?.first_name, row?.last_name].filter(Boolean).join(" ") || "User").trim() || "User";
+
+        return {
+          id: row?.id || null,
+          name: displayName,
+          first_name: row?.first_name || "",
+          last_name: row?.last_name || "",
+          profile_pic: row?.profile_pic || null
+        };
+      });
+
+      return res.json({
+        user_id: userId,
+        suggestions
+      });
+    }
+  );
+});
+
 app.get("/api/users/:userId/follow-status", (req, res) => {
   const targetUserId = String(req.params.userId || "").trim();
   const viewerUserId = String(req.query?.user_id || "").trim();
@@ -2497,6 +2627,7 @@ app.post("/api/profile", (req, res) => {
 app.post("/api/posts", upload.array("file", 3), async (req, res) => {
   const user_id = req.body.user_id || "anonymous";
   const commonContent = (req.body.content || "").trim();
+  const postAccessSettings = normalizePostAccessSettings(req.body || {});
   const viewerDiscretion = req.body?.viewer_discretion !== undefined && req.body?.viewer_discretion !== null
     ? Number(Boolean(Number(req.body.viewer_discretion)))
     : 0;
@@ -2557,8 +2688,8 @@ app.post("/api/posts", upload.array("file", 3), async (req, res) => {
     }
 
     const query = `
-      INSERT INTO posts (user_id, content, media_type, media_url, media_urls, original_name, saved_filename, viewer_discretion)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO posts (user_id, content, media_type, media_url, media_urls, original_name, saved_filename, viewer_discretion, followers_only, comments_disabled, followers_comments_only)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     ensureUserRecord(user_id, {
@@ -2571,7 +2702,19 @@ app.post("/api/posts", upload.array("file", 3), async (req, res) => {
         return res.status(500).json({ error: userErr.message });
       }
 
-      db.query(query, [String(user_id), content, media_type, mediaUrls[0] || null, JSON.stringify(mediaUrls), firstOriginalName, files[0]?.filename || null, viewerDiscretion], (err, results) => {
+      db.query(query, [
+        String(user_id),
+        content,
+        media_type,
+        mediaUrls[0] || null,
+        JSON.stringify(mediaUrls),
+        firstOriginalName,
+        files[0]?.filename || null,
+        viewerDiscretion,
+        postAccessSettings.followersOnly ? 1 : 0,
+        postAccessSettings.commentsDisabled ? 1 : 0,
+        postAccessSettings.followersCommentsOnly ? 1 : 0
+      ], (err, results) => {
         if (err) {
           console.error("DB INSERT ERROR:", err);
           return res.status(500).json({ error: err.message });
@@ -2587,6 +2730,9 @@ app.post("/api/posts", upload.array("file", 3), async (req, res) => {
           saved_filename: files[0]?.filename || null,
           original_name: firstOriginalName,
           viewer_discretion: viewerDiscretion,
+          followers_only: postAccessSettings.followersOnly ? 1 : 0,
+          comments_disabled: postAccessSettings.commentsDisabled ? 1 : 0,
+          followers_comments_only: postAccessSettings.followersCommentsOnly ? 1 : 0,
           success: true,
           is_gallery: mediaUrls.length > 1
         };
@@ -2679,13 +2825,16 @@ app.get("/api/posts", (req, res) => {
           ? storedMediaUrls.map((url) => normalizeMediaUrlForPublic(url, req))
           : (post.media_url ? [normalizeMediaUrlForPublic(post.media_url, req)] : []);
 
-        return {
+        const normalizedPost = {
           ...post,
           media_urls: resolvedMediaUrls,
           media_url: resolvedMediaUrls[0] || null,
           is_flagged: Boolean(post.is_flagged),
           report_count: Number(post.report_count || 0),
           viewer_discretion: Number(post.viewer_discretion || post.content_view_discretion || 0),
+          followers_only: Number(post.followers_only || 0),
+          comments_disabled: Number(post.comments_disabled || 0),
+          followers_comments_only: Number(post.followers_comments_only || 0),
           likes_count: Number(post.like_count || post.likes_count || 0),
           like_count: Number(post.like_count || post.likes_count || 0),
           comment_count: Number(post.comment_count || 0),
@@ -2693,8 +2842,14 @@ app.get("/api/posts", (req, res) => {
           liked: Boolean(viewerUserId && Number(post.liked_by_current_user || 0)),
           followed_creator: Boolean(Number(post.followed_creator || 0))
         };
+
+        return {
+          ...normalizedPost,
+          can_view: canUserViewPost(normalizedPost, { viewerUserId, isFollowing: Boolean(normalizedPost.followed_creator) }),
+          can_comment: canUserCommentOnPost(normalizedPost, { viewerUserId, isFollowing: Boolean(normalizedPost.followed_creator) })
+        };
       })
-      .filter(post => !(post.is_flagged || Number(post.report_count || 0) >= 10));
+      .filter(post => !(post.is_flagged || Number(post.report_count || 0) >= 10 || (viewerUserId && !post.can_view)));
 
     if (!viewerUserId) {
       return res.json(fixedResults);
@@ -3135,42 +3290,54 @@ app.get("/api/comments/:postId", (req, res) => {
     return res.json(comments);
   }
 
-  db.query(
-    `
-      SELECT c.*, 
-        u.name,
-        u.first_name,
-        u.last_name,
-        u.profile_pic,
-        CONCAT(COALESCE(u.first_name, ''), IF(COALESCE(u.last_name, '') = '', '', CONCAT(' ', u.last_name))) AS user_name,
-        COALESCE((SELECT COUNT(*) FROM comments reply WHERE reply.reply_to = c.id), 0) AS reply_count,
-        COALESCE((SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id), 0) AS like_count
-      FROM comments c
-      LEFT JOIN users u ON u.id = c.user_id AND u.is_hidden = 0 AND u.account_status = 'active'
-      WHERE c.post_id = ?
-      ORDER BY c.created_at ASC
-    `,
-    [postId],
-    (err, results) => {
-      if (err) {
-        console.error("DB COMMENT SELECT ERROR:", err);
-        return res.status(500).json({ error: err.message });
-      }
-
-      const comments = buildNestedCommentTree((results || []).map((comment) => ({
-        ...comment,
-        user_name: comment.user_name || comment.name || comment.first_name || "User",
-        profile_pic: comment.profile_pic || null,
-        created_at: comment.created_at || new Date().toISOString(),
-        reply_count: Number(comment.reply_count || 0),
-        like_count: Number(comment.like_count || 0),
-        reply_to: comment.reply_to ?? null,
-        replies: []
-      })));
-
-      return res.json(comments);
+  db.query("SELECT user_id, comments_disabled FROM posts WHERE id = ? LIMIT 1", [postId], (postErr, postRows) => {
+    if (postErr) {
+      console.error("COMMENT CHECK POST ERROR:", postErr);
+      return res.status(500).json({ error: postErr.message });
     }
-  );
+
+    const post = postRows && postRows[0] ? postRows[0] : null;
+    if (post && Number(post.comments_disabled || 0) === 1) {
+      return res.json([]);
+    }
+
+    db.query(
+      `
+        SELECT c.*, 
+          u.name,
+          u.first_name,
+          u.last_name,
+          u.profile_pic,
+          CONCAT(COALESCE(u.first_name, ''), IF(COALESCE(u.last_name, '') = '', '', CONCAT(' ', u.last_name))) AS user_name,
+          COALESCE((SELECT COUNT(*) FROM comments reply WHERE reply.reply_to = c.id), 0) AS reply_count,
+          COALESCE((SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id), 0) AS like_count
+        FROM comments c
+        LEFT JOIN users u ON u.id = c.user_id AND u.is_hidden = 0 AND u.account_status = 'active'
+        WHERE c.post_id = ?
+        ORDER BY c.created_at ASC
+      `,
+      [postId],
+      (err, results) => {
+        if (err) {
+          console.error("DB COMMENT SELECT ERROR:", err);
+          return res.status(500).json({ error: err.message });
+        }
+
+        const comments = buildNestedCommentTree((results || []).map((comment) => ({
+          ...comment,
+          user_name: comment.user_name || comment.name || comment.first_name || "User",
+          profile_pic: comment.profile_pic || null,
+          created_at: comment.created_at || new Date().toISOString(),
+          reply_count: Number(comment.reply_count || 0),
+          like_count: Number(comment.like_count || 0),
+          reply_to: comment.reply_to ?? null,
+          replies: []
+        })));
+
+        return res.json(comments);
+      }
+    );
+  });
 });
 
 app.post("/api/comments", (req, res) => {
@@ -3192,86 +3359,126 @@ app.post("/api/comments", (req, res) => {
     return res.status(400).json({ error: "Invalid reply target" });
   }
 
-  if (!isDbEnabled()) {
-    const comment = {
-      id: Date.now(),
-      user_id: safeUserId,
-      post_id: safePostId,
-      comment: safeContent,
-      reply_to: safeReplyTo,
-      like_count: 0,
-      reply_count: 0,
-      created_at: new Date().toISOString()
-    };
-
-    inMemoryComments.unshift(comment);
-    saveCommentsToFile();
-
-    return res.json({ success: true, comment });
-  }
-
-  ensureUserRecord(safeUserId, {
-    name: req.body?.name,
-    email: req.body?.email,
-    profile_pic: req.body?.profile_pic
-  }, (userErr) => {
-    if (userErr) {
-      console.error("COMMENT USER ENSURE ERROR:", userErr);
-      return res.status(500).json({ error: userErr.message });
+  db.query("SELECT user_id, comments_disabled, followers_comments_only FROM posts WHERE id = ? LIMIT 1", [safePostId], (postCheckErr, postRows) => {
+    if (postCheckErr) {
+      console.error("COMMENT POLICY CHECK ERROR:", postCheckErr);
+      return res.status(500).json({ error: postCheckErr.message });
     }
 
-    db.query(
-      "INSERT INTO comments (user_id, post_id, comment, reply_to) VALUES (?, ?, ?, ?)",
-      [safeUserId, safePostId, safeContent, safeReplyTo],
-      (err, results) => {
-        if (err) {
-          console.error("DB COMMENT INSERT ERROR:", err);
-          return res.status(500).json({ error: err.message });
+    const post = postRows && postRows[0] ? postRows[0] : null;
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    const shouldBlockComments = Number(post.comments_disabled || 0) === 1;
+    const followersOnlyComments = Number(post.followers_comments_only || 0) === 1;
+    const isAuthor = String(post.user_id) === String(safeUserId);
+
+    if (shouldBlockComments) {
+      return res.status(403).json({ error: "Comments are disabled for this post." });
+    }
+
+    if (followersOnlyComments && !isAuthor) {
+      db.query("SELECT 1 FROM follows WHERE user_id = ? AND following_user_id = ? LIMIT 1", [safeUserId, post.user_id], (followErr, followRows) => {
+        if (followErr) {
+          console.error("COMMENT FOLLOW CHECK ERROR:", followErr);
+          return res.status(500).json({ error: followErr.message });
         }
 
-        db.query("SELECT user_id, content FROM posts WHERE id = ? LIMIT 1", [safePostId], (postErr, postRows) => {
-          if (!postErr && postRows?.[0]) {
-            if (String(postRows[0].content || "").trim()) {
-              addUserTopicWeight(safeUserId, String(postRows[0].content || ""), 6, () => {});
-            }
-            trackRecommendationEvent({
-              userId: safeUserId,
-              postId: safePostId,
-              targetUserId: String(postRows[0].user_id || "").trim() || null,
-              eventType: "comment",
-              weight: 1.5
-            });
-          }
-          if (!postErr && postRows?.[0] && String(postRows[0].user_id) !== String(safeUserId)) {
-            insertNotification({
-              recipient_user_id: postRows[0].user_id,
-              actor_user_id: safeUserId,
-              type: "comment",
-              target_type: "post",
-              target_id: String(safePostId),
-              message: `${req.body?.name || "Someone"} commented on your post.`
-            }).catch((notificationErr) => {
-              console.warn("COMMENT NOTIFICATION ERROR:", notificationErr.message);
-            });
+        if (!followRows || !followRows.length) {
+          return res.status(403).json({ error: "Only followers can comment on this post." });
+        }
+
+        continueCommentCreate();
+      });
+      return;
+    }
+
+    continueCommentCreate();
+  });
+
+  function continueCommentCreate() {
+    if (!isDbEnabled()) {
+      const comment = {
+        id: Date.now(),
+        user_id: safeUserId,
+        post_id: safePostId,
+        comment: safeContent,
+        reply_to: safeReplyTo,
+        like_count: 0,
+        reply_count: 0,
+        created_at: new Date().toISOString()
+      };
+
+      inMemoryComments.unshift(comment);
+      saveCommentsToFile();
+
+      return res.json({ success: true, comment });
+    }
+
+    ensureUserRecord(safeUserId, {
+      name: req.body?.name,
+      email: req.body?.email,
+      profile_pic: req.body?.profile_pic
+    }, (userErr) => {
+      if (userErr) {
+        console.error("COMMENT USER ENSURE ERROR:", userErr);
+        return res.status(500).json({ error: userErr.message });
+      }
+
+      db.query(
+        "INSERT INTO comments (user_id, post_id, comment, reply_to) VALUES (?, ?, ?, ?)",
+        [safeUserId, safePostId, safeContent, safeReplyTo],
+        (err, results) => {
+          if (err) {
+            console.error("DB COMMENT INSERT ERROR:", err);
+            return res.status(500).json({ error: err.message });
           }
 
-          return res.json({
-            success: true,
-            comment: {
-              id: results.insertId,
-              user_id: safeUserId,
-              post_id: safePostId,
-              comment: safeContent,
-              reply_to: safeReplyTo,
-              like_count: 0,
-              reply_count: 0,
-              created_at: new Date().toISOString()
+          db.query("SELECT user_id, content FROM posts WHERE id = ? LIMIT 1", [safePostId], (postErr, postRows) => {
+            if (!postErr && postRows?.[0]) {
+              if (String(postRows[0].content || "").trim()) {
+                addUserTopicWeight(safeUserId, String(postRows[0].content || ""), 6, () => {});
+              }
+              trackRecommendationEvent({
+                userId: safeUserId,
+                postId: safePostId,
+                targetUserId: String(postRows[0].user_id || "").trim() || null,
+                eventType: "comment",
+                weight: 1.5
+              });
             }
+            if (!postErr && postRows?.[0] && String(postRows[0].user_id) !== String(safeUserId)) {
+              insertNotification({
+                recipient_user_id: postRows[0].user_id,
+                actor_user_id: safeUserId,
+                type: "comment",
+                target_type: "post",
+                target_id: String(safePostId),
+                message: `${req.body?.name || "Someone"} commented on your post.`
+              }).catch((notificationErr) => {
+                console.warn("COMMENT NOTIFICATION ERROR:", notificationErr.message);
+              });
+            }
+
+            return res.json({
+              success: true,
+              comment: {
+                id: results.insertId,
+                user_id: safeUserId,
+                post_id: safePostId,
+                comment: safeContent,
+                reply_to: safeReplyTo,
+                like_count: 0,
+                reply_count: 0,
+                created_at: new Date().toISOString()
+              }
+            });
           });
-        });
-      }
-    );
-  });
+        }
+      );
+    });
+  }
 });
 
 app.post("/api/comments/:id/like", (req, res) => {

@@ -184,9 +184,11 @@ if ("serviceWorker" in navigator) {
     }).catch(() => {});
   } else {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./service-worker.js").catch((error) => {
-        console.warn("Service worker registration failed:", error);
-      });
+      navigator.serviceWorker.register("./service-worker.js")
+        .then((registration) => registration.update())
+        .catch((error) => {
+          console.warn("Service worker registration failed:", error);
+        });
     });
   }
 }
@@ -918,7 +920,16 @@ applyTheme(getPreferredTheme());
 const yourDataSheet = document.getElementById("yourDataSheet");
 const openYourDataBtn = document.getElementById("openYourDataSheetBtn");
 const closeYourDataSheet = document.getElementById("closeYourDataSheet");
+const friendsSheet = document.getElementById("friendsSheet");
+const openFriendsSheetBtn = document.getElementById("friendsSheetBtn");
+const closeFriendsSheetBtn = document.getElementById("closeFriendsSheet");
+const friendsSheetList = document.getElementById("friendsSheetList");
+const friendsSuggestionsList = document.getElementById("friendsSuggestionsList");
+const friendsSuggestionSearchInput = document.getElementById("friendsSuggestionSearchInput");
+const friendsSheetSlider = document.getElementById("friendsSheetSlider");
+const friendsSheetModeButtons = document.querySelectorAll(".friends-sheet-mode-btn");
 let selectedUserDataChartType = "bar";
+let currentFriendsSuggestionData = [];
 let currentUserActivityData = [];
 let currentUserDataTotals = { post_count: 0, total_likes: 0, follower_count: 0, following_count: 0 };
 
@@ -1182,6 +1193,259 @@ if (yourDataSheet) {
   yourDataSheet.addEventListener("click", (event) => {
     if (event.target === yourDataSheet) {
       closeSheet(yourDataSheet);
+    }
+  });
+}
+
+function renderFriendsSheetPlaceholder(message = "No friends yet.") {
+  if (!friendsSheetList) return;
+
+  friendsSheetList.innerHTML = `
+    <div class="friends-empty-state">${escapeHtml(message)}</div>
+  `;
+}
+
+async function loadFriendsListForCurrentUser() {
+  if (!friendsSheetList) return;
+
+  const currentUserId = getCurrentUserId();
+  if (!currentUserId || currentUserId === "guest") {
+    renderFriendsSheetPlaceholder("Sign in to see your friends.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/users/${encodeURIComponent(currentUserId)}/following`);
+    if (!response.ok) {
+      throw new Error(`Failed to load friends: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const following = Array.isArray(data?.following) ? data.following : [];
+
+    if (!following.length) {
+      renderFriendsSheetPlaceholder("No friends yet.");
+      return;
+    }
+
+    friendsSheetList.innerHTML = following.map((user) => {
+      const userId = user?.id || "";
+      const displayName = String(user?.name || [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "User").trim() || "User";
+      const avatarUrl = user?.profile_pic || "";
+      const avatarMarkup = avatarUrl
+        ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(displayName)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+        : `<i class="fa-solid fa-circle-user" aria-hidden="true"></i>`;
+
+      return `
+        <div class="friend-sheet-item">
+          <div class="friend-sheet-user">
+            <div class="friend-sheet-avatar">${avatarMarkup}</div>
+            <div>
+              <div class="friend-sheet-name">${escapeHtml(displayName)}</div>
+              <div class="friend-sheet-status">Following</div>
+            </div>
+          </div>
+          <button type="button" class="friend-sheet-pill" data-user-id="${escapeHtml(userId)}">View</button>
+        </div>
+      `;
+    }).join("");
+
+    friendsSheetList.querySelectorAll(".friend-sheet-pill").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const targetUserId = button.dataset.userId || "";
+        if (targetUserId) {
+          closeSheet(friendsSheet);
+          if (typeof openUserProfileSheet === "function") {
+            openUserProfileSheet(targetUserId);
+          }
+        }
+      });
+    });
+  } catch (error) {
+    console.error("FRIENDS SHEET ERROR:", error);
+    renderFriendsSheetPlaceholder("Unable to load friends right now.");
+  }
+}
+
+function renderFriendsSuggestionsPlaceholder(message = "No suggestions yet.") {
+  if (!friendsSuggestionsList) return;
+  friendsSuggestionsList.innerHTML = `<div class="friends-empty-state">${escapeHtml(message)}</div>`;
+}
+
+function renderSuggestionMatches(query = "") {
+  if (!friendsSuggestionsList) return;
+
+  const normalizedQuery = String(query || "").trim().toLowerCase();
+  const filteredSuggestions = !normalizedQuery
+    ? currentFriendsSuggestionData
+    : currentFriendsSuggestionData.filter((user) => {
+        const displayName = String(user?.name || [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "").trim() || "";
+        return displayName.toLowerCase().includes(normalizedQuery);
+      });
+
+  if (!filteredSuggestions.length) {
+    renderFriendsSuggestionsPlaceholder(normalizedQuery ? "No matching suggestions." : "Type to see suggestions.");
+    return;
+  }
+
+  friendsSuggestionsList.innerHTML = filteredSuggestions.map((user) => {
+    const userId = user?.id || "";
+    const displayName = String(user?.name || [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "User").trim() || "User";
+    const avatarUrl = user?.profile_pic || "";
+    const avatarMarkup = avatarUrl
+      ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(displayName)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+      : `<i class="fa-solid fa-circle-user" aria-hidden="true"></i>`;
+
+    return `
+      <div class="friend-sheet-item">
+        <div class="friend-sheet-user">
+          <div class="friend-sheet-avatar">${avatarMarkup}</div>
+          <div>
+            <div class="friend-sheet-name">${escapeHtml(displayName)}</div>
+            <div class="friend-sheet-status">Suggested</div>
+          </div>
+        </div>
+        <button type="button" class="friend-sheet-follow-btn" data-user-id="${escapeHtml(userId)}">Follow</button>
+      </div>
+    `;
+  }).join("");
+
+  friendsSuggestionsList.querySelectorAll(".friend-sheet-follow-btn").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const targetUserId = button.dataset.userId || "";
+      if (!targetUserId || getCurrentUserId() === "guest") {
+        alert("Please sign in to follow someone.");
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/users/${encodeURIComponent(targetUserId)}/follow`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: getCurrentUserId(),
+            name: getCurrentUserDisplayNameForApi()
+          })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to follow user.");
+        }
+
+        await Promise.all([
+          loadFriendsListForCurrentUser(),
+          loadFriendsSuggestionsForCurrentUser()
+        ]);
+      } catch (error) {
+        console.error("FOLLOW SUGGESTION ERROR:", error);
+        alert(error.message || "Unable to follow user right now.");
+      }
+    });
+  });
+}
+
+async function loadFriendsSuggestionsForCurrentUser() {
+  if (!friendsSuggestionsList) return;
+
+  const currentUserId = getCurrentUserId();
+  if (!currentUserId || currentUserId === "guest") {
+    currentFriendsSuggestionData = [];
+    renderFriendsSuggestionsPlaceholder("Sign in to see suggestions.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/users/${encodeURIComponent(currentUserId)}/following-suggestions`);
+    if (!response.ok) {
+      throw new Error(`Failed to load suggestions: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const suggestions = Array.isArray(data?.suggestions) ? data.suggestions : [];
+    currentFriendsSuggestionData = suggestions;
+
+    if (friendsSuggestionSearchInput) {
+      renderSuggestionMatches(friendsSuggestionSearchInput.value || "");
+    } else {
+      renderSuggestionMatches();
+    }
+  } catch (error) {
+    console.error("FRIENDS SUGGESTIONS ERROR:", error);
+    currentFriendsSuggestionData = [];
+    renderFriendsSuggestionsPlaceholder("Unable to load suggestions right now.");
+  }
+}
+
+function setFriendsSheetMode(mode = "friends") {
+  const nextMode = mode === "suggestions" ? "suggestions" : "friends";
+
+  if (friendsSheetSlider) {
+    friendsSheetSlider.classList.toggle("is-suggestions", nextMode === "suggestions");
+  }
+
+  friendsSheetModeButtons.forEach((button) => {
+    const isActive = button.dataset.friendsMode === nextMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+setFriendsSheetMode("friends");
+
+if (friendsSheetModeButtons.length) {
+  friendsSheetModeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setFriendsSheetMode(button.dataset.friendsMode || "friends");
+    });
+  });
+}
+
+if (friendsSuggestionSearchInput) {
+  const syncSuggestionInputState = (value = friendsSuggestionSearchInput.value || "") => {
+    const hasValue = String(value).trim().length > 0;
+    friendsSuggestionSearchInput.classList.toggle("active", hasValue || friendsSuggestionSearchInput === document.activeElement);
+  };
+
+  friendsSuggestionSearchInput.addEventListener("input", (event) => {
+    const value = event.target.value || "";
+    syncSuggestionInputState(value);
+    renderSuggestionMatches(value);
+  });
+
+  friendsSuggestionSearchInput.addEventListener("focus", () => syncSuggestionInputState(friendsSuggestionSearchInput.value || ""));
+  friendsSuggestionSearchInput.addEventListener("blur", () => syncSuggestionInputState(friendsSuggestionSearchInput.value || ""));
+}
+
+if (openFriendsSheetBtn) {
+  openFriendsSheetBtn.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setFriendsSheetMode("friends");
+    await Promise.all([
+      loadFriendsListForCurrentUser(),
+      loadFriendsSuggestionsForCurrentUser()
+    ]);
+    openSheet(friendsSheet);
+  });
+}
+
+if (closeFriendsSheetBtn) {
+  closeFriendsSheetBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeSheet(friendsSheet);
+  });
+}
+
+if (friendsSheet) {
+  friendsSheet.addEventListener("click", (event) => {
+    if (event.target === friendsSheet) {
+      closeSheet(friendsSheet);
     }
   });
 }
@@ -2033,7 +2297,7 @@ function closeSheet(sheet) {
 }
 
 function getAllSheets() {
-  return [yourDataSheet, searchSheet, writePostSheet, uploadSheet, notificationSheet].filter(Boolean);
+  return [yourDataSheet, friendsSheet, searchSheet, writePostSheet, uploadSheet, notificationSheet].filter(Boolean);
 }
 
 function openSheet(targetSheet) {
@@ -4772,6 +5036,26 @@ function syncCommentReplyInputState() {
   }
 }
 
+function getPostCommentAccessState(postId = "") {
+  const cache = Array.isArray(window.__feedPostsCache) ? window.__feedPostsCache : [];
+  const post = cache.find((item) => String(item?.id) === String(postId));
+  const currentUserId = getCurrentUserId();
+  const commentsDisabled = Number(post?.comments_disabled || 0) === 1;
+  const followersCommentsOnly = Number(post?.followers_comments_only || 0) === 1;
+  const isAuthor = Boolean(post?.user_id) && String(post.user_id) === String(currentUserId);
+  const isFollowing = Boolean(post?.followed_creator || post?.followedCreator || false);
+  const canComment = !commentsDisabled && !(followersCommentsOnly && currentUserId && currentUserId !== "guest" && !isAuthor && !isFollowing);
+
+  return {
+    commentsDisabled,
+    followersCommentsOnly,
+    canComment,
+    isAuthor,
+    isFollowing,
+    post
+  };
+}
+
 function syncCommentReplyUiState() {
   const items = document.querySelectorAll(".comment-item");
   items.forEach((item) => {
@@ -5858,6 +6142,12 @@ async function loadReels() {
       const compactCommentCount = formatCompactCount(commentCount);
       const isLikedByCurrentUser = Boolean(post?.liked_by_current_user || post?.liked === true);
       const isSavedByCurrentUser = Boolean(post?.saved_by_current_user || post?.saved === true);
+      const commentsDisabled = Number(post?.comments_disabled || 0) === 1;
+      const followersCommentsOnly = Number(post?.followers_comments_only || 0) === 1;
+      const currentUserId = getCurrentUserId();
+      const isCurrentUserAuthor = Boolean(post?.user_id) && String(post.user_id) === String(currentUserId);
+      const isCurrentUserFollowing = Boolean(post?.followed_creator || post?.followedCreator || false);
+      const commentsLocked = commentsDisabled || (followersCommentsOnly && currentUserId && currentUserId !== "guest" && !isCurrentUserAuthor && !isCurrentUserFollowing);
 
       return `
         <div class="reel-item" data-post-id="${postId}">
@@ -5876,8 +6166,8 @@ async function loadReels() {
               <i class="${isLikedByCurrentUser ? "fa-solid fa-heart" : "fa-regular fa-heart"}" style="color: ${isLikedByCurrentUser ? "rgb(255, 93, 93)" : "rgba(242, 224, 22, 0.9)"};"></i>
               <span class="reel-action-count">${compactLikeCount}</span>
             </button>
-            <button class="reel-action-btn comment-btn" type="button" aria-label="Open comments" data-post-id="${postId}">
-              <i class="fa-regular fa-comment" style="color: rgba(242, 224, 22, 0.9)"></i>
+            <button class="reel-action-btn comment-btn ${commentsLocked ? "comments-disabled" : ""}" type="button" aria-label="${commentsLocked ? "Comments disabled" : "Open comments"}" data-post-id="${postId}" data-comments-disabled="${commentsLocked ? "true" : "false"}">
+              <i class="${commentsLocked ? "fa-solid fa-comment-slash" : "fa-regular fa-comment"}" style="color: ${commentsLocked ? "rgba(255,255,255,0.7)" : "rgba(242, 224, 22, 0.9)"}"></i>
               <span class="reel-action-count">${compactCommentCount}</span>
             </button>
             <button class="reel-action-btn save-btn ${isSavedByCurrentUser ? "saved" : ""}" type="button" aria-label="Save reel" data-post-id="${postId}" data-saved="${isSavedByCurrentUser ? "true" : "false"}">
@@ -6182,20 +6472,108 @@ const uploadFilesBtn = document.getElementById("uploadFilesBtn");
 const submitFilesBtn = document.getElementById("submitFilesBtn");
 const uploadDescription = document.getElementById("uploadDescription");
 const previewContainer = document.getElementById("previewContainer");
+const uploadSettingsBtn = document.getElementById("uploadSettingsBtn");
+const uploadSettingsMenu = document.getElementById("uploadSettingsMenu");
+const uploadSettingsOptions = Array.from(document.querySelectorAll(".upload-setting-option"));
+let isUploadSettingsMenuOpen = false;
+
+const uploadSettingsState = {
+  followersOnly: false,
+  commentsDisabled: false,
+  followersCommentsOnly: false
+};
 
 if (uploadDescription) {
   initHashtagSuggestions(uploadDescription);
+}
+
+function toggleUploadSettingsMenu(forceOpen) {
+  if (!uploadSettingsMenu || !uploadSettingsBtn) return;
+
+  if (typeof forceOpen === "boolean") {
+    isUploadSettingsMenuOpen = forceOpen;
+  } else {
+    isUploadSettingsMenuOpen = !isUploadSettingsMenuOpen;
+  }
+
+  uploadSettingsMenu.hidden = !isUploadSettingsMenuOpen;
+  uploadSettingsBtn.setAttribute("aria-expanded", String(isUploadSettingsMenuOpen));
+}
+
+function updateUploadSettingButtons() {
+  uploadSettingsOptions.forEach((option) => {
+    const settingName = option.dataset.setting;
+    const isActive = Boolean(uploadSettingsState[settingName]);
+    option.classList.toggle("active", isActive);
+    option.setAttribute("aria-checked", String(isActive));
+  });
+}
+
+if (uploadSettingsBtn && uploadSettingsMenu) {
+  uploadSettingsMenu.hidden = true;
+  isUploadSettingsMenuOpen = false;
+  uploadSettingsBtn.setAttribute("aria-expanded", "false");
+
+  uploadSettingsBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isUploadSettingsMenuOpen) {
+      isUploadSettingsMenuOpen = false;
+      uploadSettingsMenu.hidden = true;
+      uploadSettingsBtn.setAttribute("aria-expanded", "false");
+      return;
+    }
+
+    isUploadSettingsMenuOpen = true;
+    uploadSettingsMenu.hidden = false;
+    uploadSettingsBtn.setAttribute("aria-expanded", "true");
+  });
+
+  uploadSettingsOptions.forEach((option) => {
+    option.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const settingName = option.dataset.setting;
+      if (!settingName) return;
+
+      uploadSettingsState[settingName] = !uploadSettingsState[settingName];
+      updateUploadSettingButtons();
+      isUploadSettingsMenuOpen = false;
+      uploadSettingsMenu.hidden = true;
+      uploadSettingsBtn.setAttribute("aria-expanded", "false");
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    const clickedInsideButton = event.target.closest("#uploadSettingsBtn");
+    const clickedInsideMenu = event.target.closest("#uploadSettingsMenu");
+
+    if (!clickedInsideButton && !clickedInsideMenu) {
+      isUploadSettingsMenuOpen = false;
+      uploadSettingsMenu.hidden = true;
+      uploadSettingsBtn.setAttribute("aria-expanded", "false");
+    }
+  });
 }
 
 function resetUploadForm() {
   if (mediaInput) mediaInput.value = "";
   if (uploadDescription) uploadDescription.value = "";
   if (previewContainer) previewContainer.innerHTML = "";
+
+  Object.keys(uploadSettingsState).forEach((key) => {
+    uploadSettingsState[key] = false;
+  });
+  updateUploadSettingButtons();
+  toggleUploadSettingsMenu(false);
 }
 
-const MAX_UPLOAD_ITEMS = 3;
+updateUploadSettingButtons();
+
+const MAX_UPLOAD_ITEMS = 6;
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
-const MAX_VIDEO_DURATION_SECONDS = 30;
+const MAX_VIDEO_DURATION_SECONDS = 60;
 
 function validateUploadFiles(files = []) {
   const selectedFiles = Array.from(files || []);
@@ -6217,7 +6595,7 @@ function validateUploadFiles(files = []) {
   }
 
   if (imageCount + videoCount > MAX_UPLOAD_ITEMS) {
-    return { valid: false, error: `You can upload up to ${MAX_UPLOAD_ITEMS} items per post. Choose up to 3 images or 1 video.` };
+    return { valid: false, error: `You can upload up to ${MAX_UPLOAD_ITEMS} items per post. Choose up to 6 images or 1 video.` };
   }
 
   return { valid: true, files: selectedFiles };
@@ -6274,7 +6652,7 @@ async function prepareUploadFiles(files = []) {
   }
 
   if (imageCount + videoCount > MAX_UPLOAD_ITEMS) {
-    return { valid: false, error: `You can upload up to ${MAX_UPLOAD_ITEMS} items per post. Choose up to 3 images or 1 video.` };
+    return { valid: false, error: `You can upload up to ${MAX_UPLOAD_ITEMS} items per post. Choose up to 6 images or 1 video.` };
   }
 
   const videoFiles = preparedFiles.filter((file) => file.type.startsWith("video/"));
@@ -6395,6 +6773,9 @@ async function submitUploadedFiles() {
   });
   formData.append("content", caption);
   formData.append("user_id", currentUserId);
+  formData.append("followers_only", String(Boolean(uploadSettingsState.followersOnly)));
+  formData.append("comments_disabled", String(Boolean(uploadSettingsState.commentsDisabled)));
+  formData.append("followers_comments_only", String(Boolean(uploadSettingsState.followersCommentsOnly)));
 
   try {
     if (submitFilesBtn) {
@@ -6708,9 +7089,25 @@ function bindMediaGalleryControls(gallery) {
    Loads post data, renders feed cards, and handles user profile sheets.
    ============================================================ */
 
+function buildOptimizedCloudinaryImageUrl(url, { width = 240, height = 240, crop = "fill", quality = "auto", format = "auto" } = {}) {
+  if (!url || typeof url !== "string") return url;
+  const trimmedUrl = url.trim();
+
+  if (!/cloudinary\.com|res\.cloudinary\.com/i.test(trimmedUrl)) {
+    return trimmedUrl;
+  }
+
+  if (/\/upload\/(?:w_|h_|c_|q_|f_)/i.test(trimmedUrl)) {
+    return trimmedUrl;
+  }
+
+  return trimmedUrl.replace(/\/upload\//i, `/upload/w_${width},h_${height},c_${crop},q_${quality},f_${format}/`);
+}
+
 function getCacheBustedImageUrl(url) {
   if (!url) return url;
-  return `${url}${url.includes("?") ? "&" : "?"}v=${Date.now()}`;
+  const optimizedUrl = buildOptimizedCloudinaryImageUrl(url, { width: 240, height: 240, crop: "fill", quality: "auto", format: "auto" });
+  return `${optimizedUrl}${optimizedUrl.includes("?") ? "&" : "?"}v=${Date.now()}`;
 }
 
 function getCurrentUserAvatarMarkup(userId = getCurrentUserId()) {
@@ -6914,6 +7311,12 @@ function renderFeedPost(post) {
   const compactLikeCount = formatCompactCount(likeCount);
   const compactCommentCount = formatCompactCount(commentCount);
   const isLikedByCurrentUser = Boolean(post?.liked_by_current_user || post?.liked === true);
+  const commentsDisabled = Number(post?.comments_disabled || 0) === 1;
+  const followersCommentsOnly = Number(post?.followers_comments_only || 0) === 1;
+  const currentUserId = getCurrentUserId();
+  const isCurrentUserAuthor = Boolean(post?.user_id) && String(post.user_id) === String(currentUserId);
+  const isCurrentUserFollowing = Boolean(post?.followed_creator || post?.followedCreator || false);
+  const commentsLocked = commentsDisabled || (followersCommentsOnly && currentUserId && currentUserId !== "guest" && !isCurrentUserAuthor && !isCurrentUserFollowing);
   const captionPreviewLimit = 80;
 
   const renderCaptionMarkup = (text) => {
@@ -7080,8 +7483,8 @@ function renderFeedPost(post) {
           <span class="like-count">${compactLikeCount}</span>
         </button>
 
-        <button class="comment-btn" type="button" aria-label="Open comments" data-post-id="${post?.id || ""}">
-          <i class="fa-regular fa-comments fa-xl" style="color: rgb(76, 76, 76);"></i>
+        <button class="comment-btn ${commentsLocked ? "comments-disabled" : ""}" type="button" aria-label="${commentsLocked ? "Comments disabled" : "Open comments"}" data-post-id="${post?.id || ""}" data-comments-disabled="${commentsLocked ? "true" : "false"}">
+          <i class="${commentsLocked ? "fa-solid fa-comment-slash" : "fa-regular fa-comments"} fa-xl" style="color: ${commentsLocked ? "rgb(146, 146, 146)" : "rgb(76, 76, 76)"};"></i>
           <span class="comment-count">${compactCommentCount}</span>
         </button>
 
@@ -7341,6 +7744,34 @@ function openCommentsSheet(postId = "") {
 
   activeCommentsPostId = String(postId || "");
   clearCommentReplyMode();
+
+  const currentUserId = getCurrentUserId();
+  const postState = getPostCommentAccessState(activeCommentsPostId);
+  const commentsDisabled = postState.commentsDisabled || (postState.followersCommentsOnly && currentUserId && currentUserId !== "guest" && !postState.isAuthor && !postState.isFollowing);
+
+  if (commentsDisabled) {
+    commentsSheet.classList.add("show");
+    commentsSheet.style.pointerEvents = "auto";
+    commentsList.innerHTML = '<div class="comment-empty">Comments are disabled for this post.</div>';
+    if (commentInput) {
+      commentInput.disabled = true;
+      commentInput.value = "";
+      commentInput.placeholder = "Comments are disabled";
+    }
+    if (submitCommentBtn) {
+      submitCommentBtn.disabled = true;
+    }
+    return;
+  }
+
+  if (commentInput) {
+    commentInput.disabled = false;
+    commentInput.placeholder = "Write a comment...";
+  }
+  if (submitCommentBtn) {
+    submitCommentBtn.disabled = false;
+  }
+
   commentsSheet.classList.add("show");
   commentsSheet.style.pointerEvents = "auto";
   commentsList.innerHTML = '<div class="comment-empty">Loading comments...</div>';
@@ -7367,13 +7798,15 @@ if (submitCommentBtn && commentInput && commentsSheet) {
       return;
     }
 
-    const commentText = commentInput.value.trim();
-    if (!commentText) {
+    const postId = activeCommentsPostId;
+    const postState = getPostCommentAccessState(postId);
+    if (!postId || (postState.commentsDisabled || (postState.followersCommentsOnly && getCurrentUserId() && getCurrentUserId() !== "guest" && !postState.isAuthor && !postState.isFollowing))) {
+      alert("Comments are disabled for this post.");
       return;
     }
 
-    const postId = activeCommentsPostId;
-    if (!postId) {
+    const commentText = commentInput.value.trim();
+    if (!commentText) {
       return;
     }
 

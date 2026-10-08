@@ -1,16 +1,23 @@
 {
-  "name": "bookme",
+  "name": "chat-mini",
   "version": "1.0.0",
-  "description": "",
+  "description": "Chat Mini social app",
   "main": ".tmp-summary-check.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "chat",
+    "social",
+    "mini-app"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3"
   }
 }

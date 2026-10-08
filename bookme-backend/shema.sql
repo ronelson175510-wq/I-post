@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS posts (
   is_flagged TINYINT(1) DEFAULT 0,
   report_status ENUM('active', 'taken_down') DEFAULT 'active',
   viewer_discretion TINYINT(1) DEFAULT 0,
+  followers_only TINYINT(1) DEFAULT 0,
+  comments_disabled TINYINT(1) DEFAULT 0,
+  followers_comments_only TINYINT(1) DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

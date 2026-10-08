@@ -1,7 +1,7 @@
 {
-  "name": "Bookme",
-  "short_name": "Bookme",
-  "description": "Bookme social app",
+  "name": "Chat Mini",
+  "short_name": "Chat Mini",
+  "description": "Chat Mini social app",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
