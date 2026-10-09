@@ -423,12 +423,23 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
       --menu-text: #111111;
       --icon-soft: rgb(104, 93, 104);
       --icon-strong: rgb(43, 43, 44);
+      --chart-followers: #f4b400;
+      --chart-likes: #ef4444;
+      --chart-following: #3b82f6;
+      --chart-posts: #6a5acd;
+      --app-font: "Times New Roman", Times, serif;
     }
 
     body {
       background-color: var(--app-bg);
       color: var(--app-text);
       transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .your-data-chart-header,
+    .your-data-chart-controls,
+    .chart-type-btn {
+      font-family: var(--app-font);
     }
 
     body.dark-mode {
@@ -928,7 +939,7 @@ const friendsSuggestionsList = document.getElementById("friendsSuggestionsList")
 const friendsSuggestionSearchInput = document.getElementById("friendsSuggestionSearchInput");
 const friendsSheetSlider = document.getElementById("friendsSheetSlider");
 const friendsSheetModeButtons = document.querySelectorAll(".friends-sheet-mode-btn");
-let selectedUserDataChartType = "bar";
+let selectedUserDataChartType = "column";
 let currentFriendsSuggestionData = [];
 let currentUserActivityData = [];
 let currentUserDataTotals = { post_count: 0, total_likes: 0, follower_count: 0, following_count: 0 };
@@ -947,6 +958,19 @@ function getLast12MonthsFallback() {
   }
 
   return months;
+}
+
+function formatCompactNumber(value) {
+  const safeValue = Number(value || 0);
+  if (!Number.isFinite(safeValue) || safeValue === 0) return "0";
+  if (safeValue >= 1000000) {
+    const millions = safeValue / 1000000;
+    return `${millions >= 10 ? Math.round(millions) : millions.toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (safeValue >= 1000) {
+    return `${Math.round(safeValue / 1000)}k`;
+  }
+  return String(safeValue);
 }
 
 function renderYourDataChart(type = selectedUserDataChartType, data = currentUserActivityData, totals = currentUserDataTotals) {
@@ -1039,27 +1063,84 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
     return;
   }
 
-  const barSeries = activity.map((item) => ({
-    month: item?.month || "",
-    value: Number(item?.posts || 0) + Number(item?.likes || 0)
-  }));
-  const maxValue = Math.max(...barSeries.map((item) => item.value), 1);
+  const columnSeries = [
+    { label: "Followers", value: Number(chartTotals.follower_count || 0), color: "#f4b400" },
+    { label: "Likes", value: Number(chartTotals.total_likes || 0), color: "#ef4444" },
+    { label: "Following", value: Number(chartTotals.following_count || 0), color: "#3b82f6" },
+    { label: "Posts", value: Number(chartTotals.post_count || 0), color: "#6a5acd" }
+  ];
 
-  chartContainer.innerHTML = barSeries.map((item) => {
-    const width = item.value <= 0 ? 0 : Math.max((item.value / maxValue) * 100, 8);
-    return `
-      <div class="your-data-chart-row">
-        <div class="your-data-bar-label-wrap">
-          <span>${item.month || "Month"}</span>
-          <span class="your-data-bar-value">${item.value}</span>
-        </div>
-        <div class="your-data-bar-wrap">
-          <span class="your-data-bar" style="width: ${width}%; background: linear-gradient(90deg, #111111 0%, #111111 55%, #f4b400 100%);"></span>
-        </div>
-      </div>
-    `;
-  }).join("");
+  const chartWidth = 380;
+  const chartHeight = 160;
+  const chartPlotTop = 20;
+  const chartPlotBottom = 170;
+  const axisMax = 1000000;
+  const axisValues = [0, 100000, 200000, 400000, 600000, 800000, 1000000];
+  const startX = 92;
+  const gap = 32;
+  const barWidth = 46;
+  const axisX = 68;
+  const chartRange = chartPlotBottom - chartPlotTop;
+
+  chartContainer.innerHTML = `
+    <svg viewBox="0 0 ${chartWidth} 245" width="100%" height="260" style="display:block;">
+      <g transform="translate(0 12)">
+        <text x="${chartWidth / 2}" y="18" text-anchor="middle" font-size="16" font-weight="700" fill="#111111" font-family="'Times New Roman', Times, serif" style="margin-top:10px;"></text>
+
+        <g>
+          ${axisValues.map((value) => {
+            const actualY = chartPlotBottom - ((value / axisMax) * (chartPlotBottom - chartPlotTop));
+            return `
+              <g>
+                <line x1="${axisX}" y1="${actualY}" x2="${chartWidth - 26}" y2="${actualY}" stroke="rgba(17,17,17,0.12)" stroke-width="1"></line>
+                <line x1="${axisX}" y1="${actualY}" x2="${axisX}" y2="${actualY}" stroke="rgba(17,17,17,0.38)" stroke-width="1"></line>
+                <text x="${axisX - 8}" y="${actualY + 4}" text-anchor="end" font-size="9" fill="#111111" font-family="'Times New Roman', Times, serif">${formatCompactNumber(value)}</text>
+              </g>
+            `;
+          }).join("")}
+        </g>
+
+        <g>
+          ${columnSeries.map((item, index) => {
+            const x = startX + index * (barWidth + gap);
+            const safeValue = Math.min(Math.max(Number(item.value || 0), 0), axisMax);
+            const visibleHeight = (safeValue / axisMax) * chartRange;
+            const y = chartPlotBottom - visibleHeight;
+            return `
+              <g>
+                <rect x="${x}" y="${y}" width="${barWidth}" height="${visibleHeight}" fill="${item.color}" opacity="0.95"></rect>
+                <text x="${x + barWidth / 2}" y="${chartPlotBottom + 20}" text-anchor="middle" font-size="11" fill="${item.color}" font-family="'Times New Roman', Times, serif">${item.label}</text>
+              </g>
+            `;
+          }).join("")}
+        </g>
+      </g>
+    </svg>
+  `;
 }
+
+window.forceYourDataChartTest = function (values = { post_count: 1000000, total_likes: 1000000, follower_count: 1000000, following_count: 1000000 }) {
+  const nextTotals = {
+    post_count: Number(values.post_count || 0),
+    total_likes: Number(values.total_likes || 0),
+    follower_count: Number(values.follower_count || 0),
+    following_count: Number(values.following_count || 0)
+  };
+
+  currentUserDataTotals = nextTotals;
+
+  const totalLikesEl = document.getElementById("yourDataTotalLikes");
+  const postCountEl = document.getElementById("yourDataPostCount");
+  const followerCountEl = document.getElementById("yourDataFollowerCount");
+  const followingCountEl = document.getElementById("yourDataFollowingCount");
+
+  if (totalLikesEl) totalLikesEl.textContent = formatCompactNumber(nextTotals.total_likes);
+  if (postCountEl) postCountEl.textContent = formatCompactNumber(nextTotals.post_count);
+  if (followerCountEl) followerCountEl.textContent = formatCompactNumber(nextTotals.follower_count);
+  if (followingCountEl) followingCountEl.textContent = formatCompactNumber(nextTotals.following_count);
+
+  renderYourDataChart(selectedUserDataChartType, currentUserActivityData, currentUserDataTotals);
+};
 
 async function renderYourDataStats() {
   const totalLikesEl = document.getElementById("yourDataTotalLikes");
@@ -1124,10 +1205,10 @@ async function renderYourDataStats() {
     currentUserDataTotals = normalizedStats;
     currentUserActivityData = Array.isArray(activityData?.data) && activityData.data.length ? activityData.data : getLast12MonthsFallback();
 
-    totalLikesEl.textContent = String(normalizedStats.total_likes);
-    postCountEl.textContent = String(normalizedStats.post_count);
-    followerCountEl.textContent = String(normalizedStats.follower_count);
-    followingCountEl.textContent = String(normalizedStats.following_count);
+    totalLikesEl.textContent = formatCompactNumber(normalizedStats.total_likes);
+    postCountEl.textContent = formatCompactNumber(normalizedStats.post_count);
+    followerCountEl.textContent = formatCompactNumber(normalizedStats.follower_count);
+    followingCountEl.textContent = formatCompactNumber(normalizedStats.following_count);
     renderYourDataChart(selectedUserDataChartType, currentUserActivityData, currentUserDataTotals);
   } catch (error) {
     console.error("USER STATS ERROR:", error);
@@ -1152,10 +1233,10 @@ async function renderYourDataStats() {
     currentUserDataTotals = fallbackStats;
     currentUserActivityData = getLast12MonthsFallback();
 
-    totalLikesEl.textContent = String(fallbackStats.total_likes);
-    postCountEl.textContent = String(fallbackStats.post_count);
-    followerCountEl.textContent = String(fallbackStats.follower_count);
-    followingCountEl.textContent = String(fallbackStats.following_count);
+    totalLikesEl.textContent = formatCompactNumber(fallbackStats.total_likes);
+    postCountEl.textContent = formatCompactNumber(fallbackStats.post_count);
+    followerCountEl.textContent = formatCompactNumber(fallbackStats.follower_count);
+    followingCountEl.textContent = formatCompactNumber(fallbackStats.following_count);
     renderYourDataChart(selectedUserDataChartType, currentUserActivityData, currentUserDataTotals);
   }
 }
@@ -1163,7 +1244,7 @@ async function renderYourDataStats() {
 if (document.querySelectorAll(".chart-type-btn").length) {
   document.querySelectorAll(".chart-type-btn").forEach((button) => {
     button.addEventListener("click", () => {
-      selectedUserDataChartType = button.dataset.chartType || "bar";
+      selectedUserDataChartType = button.dataset.chartType || "column";
       document.querySelectorAll(".chart-type-btn").forEach((btn) => {
         btn.classList.toggle("active", btn === button);
       });
