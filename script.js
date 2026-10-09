@@ -991,7 +991,7 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
     const pieTotal = pieSeries.reduce((sum, item) => sum + Math.max(item.value, 0), 0) || 1;
     const cx = 110;
     const cy = 86;
-    const radius = 62;
+    const radius = 82;
 
     let angle = -Math.PI / 2;
     const segments = pieSeries.map((item) => {
@@ -1012,7 +1012,7 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.color};"></span>
-          <span style="font-size:0.78rem;color:#111;">${item.label}</span>
+          <span style="font-size:0.78rem;color:white;">${item.label}</span>
         </div>
         <span style="font-size:0.78rem;color:#111;font-weight:700;">${item.value}</span>
       </div>
@@ -1076,7 +1076,7 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
   const chartPlotBottom = 170;
   const axisMax = 1000000;
   const axisValues = [0, 100000, 200000, 400000, 600000, 800000, 1000000];
-  const startX = 92;
+  const startX = 82;
   const gap = 32;
   const barWidth = 46;
   const axisX = 68;
@@ -1088,13 +1088,14 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
         <text x="${chartWidth / 2}" y="18" text-anchor="middle" font-size="16" font-weight="700" fill="#111111" font-family="'Times New Roman', Times, serif" style="margin-top:10px;"></text>
 
         <g>
-          ${axisValues.map((value) => {
-            const actualY = chartPlotBottom - ((value / axisMax) * (chartPlotBottom - chartPlotTop));
+          ${axisValues.map((value, index) => {
+            const totalSteps = Math.max(axisValues.length - 1, 1);
+            const actualY = chartPlotBottom - ((index / totalSteps) * (chartPlotBottom - chartPlotTop));
             return `
               <g>
-                <line x1="${axisX}" y1="${actualY}" x2="${chartWidth - 26}" y2="${actualY}" stroke="rgba(17,17,17,0.12)" stroke-width="1"></line>
-                <line x1="${axisX}" y1="${actualY}" x2="${axisX}" y2="${actualY}" stroke="rgba(17,17,17,0.38)" stroke-width="1"></line>
-                <text x="${axisX - 8}" y="${actualY + 4}" text-anchor="end" font-size="9" fill="#111111" font-family="'Times New Roman', Times, serif">${formatCompactNumber(value)}</text>
+                <line x1="${axisX}" y1="${actualY}" x2="${chartWidth - 26}" y2="${actualY}" stroke="rgba(255,255,255,0.38)" stroke-width="1"></line>
+                <line x1="${axisX}" y1="${actualY}" x2="${axisX}" y2="${actualY}" stroke="rgba(255,255,255,0.7)" stroke-width="1"></line>
+                <text x="${axisX - 8}" y="${actualY + 4}" text-anchor="end" font-size="14" fill="#ffffff" font-family="'Times New Roman', Times, serif">${formatCompactNumber(value)}</text>
               </g>
             `;
           }).join("")}
@@ -1109,7 +1110,7 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
             return `
               <g>
                 <rect x="${x}" y="${y}" width="${barWidth}" height="${visibleHeight}" fill="${item.color}" opacity="0.95"></rect>
-                <text x="${x + barWidth / 2}" y="${chartPlotBottom + 20}" text-anchor="middle" font-size="11" fill="${item.color}" font-family="'Times New Roman', Times, serif">${item.label}</text>
+                <text x="${x + barWidth / 2}" y="${chartPlotBottom + 20}" text-anchor="middle" font-size="14" fill="${item.color}" font-family="arial, sans-serif">${item.label}</text>
               </g>
             `;
           }).join("")}
