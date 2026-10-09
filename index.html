@@ -1333,7 +1333,7 @@ width: 100px;
 
 .your-data-chart {
   margin-top: 22px;
-  background: black;
+  background: white;
   border: 1px solid rgba(17, 17, 17, 0.08);
   border-radius: 18px;
   padding: 18px 16px 14px;
@@ -1347,7 +1347,7 @@ width: 100px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: white;
+  color: Black;
 }
 
 .your-data-chart-controls {
@@ -1361,7 +1361,7 @@ width: 100px;
 .chart-type-btn {
   border: 1px solid rgba(17, 17, 17, 0.12);
   background: rgba(17, 17, 17, 0.02);
-  color: white;
+  color: black;
   padding: 8px 12px;
   border-radius: 999px;
   font-size: 12px;
@@ -1753,16 +1753,32 @@ width: 30px;
 
 .translate-btn{
   background-color: rgb(249, 249, 249);
-  padding: 1px 8px;
+  padding: 5px 12px;
   color: black;
   font-size: 16px;
-font-weight: 590;
+  font-weight: 590;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   border:1.5px solid rgb(234, 231, 231);
   border-radius: 12px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  min-height: 14px;
+  line-height: 1;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.translate-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.translate-btn .translate-label,
+.translate-btn i {
+  pointer-events: none;
 }
 
 .translate-btn:focus{

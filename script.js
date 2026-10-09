@@ -1085,7 +1085,7 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
   chartContainer.innerHTML = `
     <svg viewBox="0 0 ${chartWidth} 245" width="100%" height="260" style="display:block;">
       <g transform="translate(0 12)">
-        <text x="${chartWidth / 2}" y="18" text-anchor="middle" font-size="16" font-weight="700" fill="#111111" font-family="'Times New Roman', Times, serif" style="margin-top:10px;"></text>
+        <text x="${chartWidth / 2}" y="88" text-anchor="middle" font-size="16" font-weight="900" fill="#111111" font-family="'Times New Roman', Times, serif" style="margin-top:10px;"></text>
 
         <g>
           ${axisValues.map((value, index) => {
@@ -1093,9 +1093,9 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
             const actualY = chartPlotBottom - ((index / totalSteps) * (chartPlotBottom - chartPlotTop));
             return `
               <g>
-                <line x1="${axisX}" y1="${actualY}" x2="${chartWidth - 26}" y2="${actualY}" stroke="rgba(255,255,255,0.38)" stroke-width="1"></line>
-                <line x1="${axisX}" y1="${actualY}" x2="${axisX}" y2="${actualY}" stroke="rgba(255,255,255,0.7)" stroke-width="1"></line>
-                <text x="${axisX - 8}" y="${actualY + 4}" text-anchor="end" font-size="14" fill="#ffffff" font-family="'Times New Roman', Times, serif">${formatCompactNumber(value)}</text>
+                <line x1="${axisX}" y1="${actualY}" x2="${chartWidth - 26}" y2="${actualY}" stroke="rgba(27, 27, 27, 0.38)" stroke-width="1"></line>
+                <line x1="${axisX}" y1="${actualY}" x2="${axisX}" y2="${actualY}" stroke="rgba(35, 35, 35, 0.7)" stroke-width="1"></line>
+                <text x="${axisX - 8}" y="${actualY + 4}" text-anchor="end" font-size="14" fill="#0c0c0c" font-family="'Times New Roman', Times, serif">${formatCompactNumber(value)}</text>
               </g>
             `;
           }).join("")}
@@ -1110,7 +1110,7 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
             return `
               <g>
                 <rect x="${x}" y="${y}" width="${barWidth}" height="${visibleHeight}" fill="${item.color}" opacity="0.95"></rect>
-                <text x="${x + barWidth / 2}" y="${chartPlotBottom + 20}" text-anchor="middle" font-size="14" fill="${item.color}" font-family="arial, sans-serif">${item.label}</text>
+                <text x="${x + barWidth / 2}" y="${chartPlotBottom + 20}" text-anchor="middle" font-size="16" fill="${item.color}" font-family="arial, sans-serif">${item.label}</text>
               </g>
             `;
           }).join("")}
@@ -1278,6 +1278,8 @@ if (yourDataSheet) {
     }
   });
 }
+
+/* Friends sheet functionality */
 
 function renderFriendsSheetPlaceholder(message = "No friends yet.") {
   if (!friendsSheetList) return;
@@ -3449,16 +3451,188 @@ function getPreferredLanguage() {
   return getDeviceLanguage();
 }
 
-function translateTextForCurrentLocale(text) {
+function ensureMlKitTranslationBridge() {
+  if (typeof window === "undefined") return;
+
+  if (!window.mlKitTranslate) {
+    window.mlKitTranslate = {
+      translate(text, targetLanguage) {
+        const input = String(text || "").trim();
+        if (!input) return text;
+
+        const languageCode = String(targetLanguage || "en").toLowerCase();
+        if (!languageCode) return text;
+
+        const dictionary = LOCAL_CAPTION_TRANSLATIONS[languageCode] || {};
+        if (!Object.keys(dictionary).length) return text;
+
+        const normalized = input.toLowerCase();
+        if (dictionary[normalized]) {
+          return dictionary[normalized];
+        }
+
+        const words = normalized.split(/\s+/).filter(Boolean);
+        const translatedWords = words.map((word) => dictionary[word] || word);
+        const translated = translatedWords.join(" ");
+
+        return translated === normalized ? text : translated;
+      }
+    };
+  }
+}
+
+function getGoogleTargetLanguageCode(language) {
+  const normalized = String(language || "en").trim().toLowerCase();
+  const mapping = {
+    en: "en",
+    es: "es",
+    fr: "fr",
+    de: "de",
+    it: "it",
+    pt: "pt",
+    hi: "hi",
+    ar: "ar",
+    zh: "zh-cn",
+    bn: "bn",
+    ur: "ur",
+    ja: "ja",
+    ko: "ko",
+    ru: "ru"
+  };
+
+  return mapping[normalized] || normalized;
+}
+
+async function translateTextWithGoogleApi(text, targetLanguage) {
   if (!text || !text.trim()) return text;
 
-  const targetLang = getPreferredLanguage();
-  if (!targetLang || targetLang === "en") return text;
+  const segments = String(text).split(/(#[A-Za-z0-9_]+)/g);
+  if (segments.length <= 1) {
+    const sourceText = String(text).trim();
+    const targetCode = getGoogleTargetLanguageCode(targetLanguage);
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(targetCode)}&dt=t&q=${encodeURIComponent(sourceText)}`;
+
+    try {
+      const response = await fetch(url, { method: "GET", mode: "cors" });
+      if (!response.ok) {
+        throw new Error(`Google Translate request failed: ${response.status}`);
+      }
+
+      const payload = await response.json();
+      if (Array.isArray(payload) && Array.isArray(payload[0])) {
+        const translated = payload[0]
+          .map((entry) => (Array.isArray(entry) && entry[0]) ? entry[0] : "")
+          .join("");
+
+        if (translated && translated.trim()) {
+          return translated.trim();
+        }
+      }
+    } catch (error) {
+      console.warn("Google Translate fallback failed:", error);
+    }
+
+    return text;
+  }
+
+  const translatedSegments = await Promise.all(segments.map(async (segment) => {
+    if (!segment) return "";
+    if (/^#[A-Za-z0-9_]+$/.test(segment)) return segment;
+    return await translateTextWithGoogleApi(segment, targetLanguage);
+  }));
+
+  return translatedSegments.join("").trim();
+}
+
+function isTextLikelyInDeviceLanguage(text, deviceLanguage = getDeviceLanguage()) {
+  if (!text || !text.trim()) return false;
+
+  const value = String(text).trim();
+  const normalized = value.toLowerCase();
+  const hasNonAscii = /[^\u0000-\u007F]/.test(value);
+
+  if (!deviceLanguage) return false;
+
+  const lang = String(deviceLanguage).toLowerCase();
+
+  if (lang === "en") {
+    if (hasNonAscii) return false;
+
+    const plainEnglishText = /^[A-Za-z0-9\s.,!?"'()\-:;@#/]+$/.test(value);
+    if (!plainEnglishText) return false;
+
+    const obviousNonEnglishMarkers = [
+      "hola", "gracias", "porfavor", "buenos", "buenas", "adios", "adiós", "bonjour", "merci", "salut",
+      "hallo", "danke", "guten", "morgen", "heute", "ciao", "grazie", "buongiorno", "buonasera",
+      "olá", "obrigado", "como", "onde", "quando", "porque", "quiero", "tengo", "donde", "dónde"
+    ];
+
+    if (obviousNonEnglishMarkers.some((marker) => normalized.includes(marker))) {
+      return false;
+    }
+
+    return true;
+  }
+
+  if (lang === "es") {
+    return /[áéíóúüñ¿¡]/.test(value) || /(hola|gracias|por|para|como|pero|donde|cuando|porque|tengo|quiero|buenos|dias|buenas)/.test(normalized);
+  }
+
+  if (lang === "fr") {
+    return /[éèàùç]/.test(value) || /(bonjour|merci|pour|avec|comment|français|bonjour|aujourd|ici)/.test(normalized);
+  }
+
+  if (lang === "de") {
+    return /[äöüß]/.test(value) || /(hallo|danke|mit|für|wann|wo|ich|bin|morgen|heute|guten)/.test(normalized);
+  }
+
+  if (lang === "it") {
+    return /[àèéìòù]/.test(value) || /(ciao|grazie|per|come|dove|quando|sono|buongiorno|buonasera)/.test(normalized);
+  }
+
+  if (lang === "pt") {
+    return /[ãõáéíóúç]/.test(value) || /(olá|obrigado|para|como|onde|quando|quero|bom|dias)/.test(normalized);
+  }
+
+  return false;
+}
+
+function translateTextPreservingHashtags(text, targetLanguage) {
+  if (!text || !text.trim()) return text;
+
+  const segments = String(text).split(/(#[A-Za-z0-9_]+)/g);
+  return segments.map((segment) => {
+    if (!segment || /^#[A-Za-z0-9_]+$/.test(segment)) {
+      return segment;
+    }
+    return translateTextForCurrentLocale(segment, targetLanguage);
+  }).join("");
+}
+
+function translateTextForCurrentLocale(text, targetLanguageOverride = null) {
+  if (!text || !text.trim()) return text;
+
+  const targetLang = targetLanguageOverride || getPreferredLanguage();
+  if (!targetLang) return text;
+
+  const hashtagSegments = String(text).split(/(#[A-Za-z0-9_]+)/g);
+  if (hashtagSegments.length > 1) {
+    return hashtagSegments.map((segment) => {
+      if (!segment || /^#[A-Za-z0-9_]+$/.test(segment)) {
+        return segment;
+      }
+      return translateTextForCurrentLocale(segment, targetLang);
+    }).join("");
+  }
+
+  ensureMlKitTranslationBridge();
 
   if (typeof window !== "undefined" && window.mlKitTranslate && typeof window.mlKitTranslate.translate === "function") {
     try {
       const translated = window.mlKitTranslate.translate(text, targetLang);
-      if (translated && translated.trim()) return translated;
+      if (translated && translated.trim() && translated.trim() !== text.trim()) {
+        return translated;
+      }
     } catch (error) {
       console.warn("ML Kit translation fallback failed:", error);
     }
@@ -3475,6 +3649,35 @@ function translateTextForCurrentLocale(text) {
   const translated = translatedWords.join(" ");
 
   return translated === normalized ? text : translated;
+}
+
+async function resolveTranslatedTextForButton(text, targetLanguage) {
+  if (!text || !text.trim()) return text;
+
+  const normalizedText = String(text).trim();
+  const wordCount = normalizedText.split(/\s+/).filter(Boolean).length;
+  const shouldUseGoogleFirst = wordCount > 3 || /[A-Z]/.test(normalizedText) || /[#@]/.test(normalizedText) || /[.!?]/.test(normalizedText);
+
+  if (shouldUseGoogleFirst) {
+    const googleTranslation = await translateTextWithGoogleApi(normalizedText, targetLanguage);
+    if (googleTranslation && googleTranslation.trim() && googleTranslation.trim() !== normalizedText.trim()) {
+      return googleTranslation;
+    }
+  }
+
+  const currentTranslation = translateTextPreservingHashtags(normalizedText, targetLanguage);
+  if (currentTranslation && currentTranslation.trim() !== normalizedText.trim()) {
+    return currentTranslation;
+  }
+
+  if (!shouldUseGoogleFirst) {
+    const googleTranslation = await translateTextWithGoogleApi(normalizedText, targetLanguage);
+    if (googleTranslation && googleTranslation.trim() && googleTranslation.trim() !== normalizedText.trim()) {
+      return googleTranslation;
+    }
+  }
+
+  return normalizedText;
 }
 
 function applyTranslations(lang = getPreferredLanguage()) {
@@ -7366,6 +7569,7 @@ function renderFeedPost(post) {
   const mediaList = normalizeMediaList(post);
   const mediaUrl = mediaList[0] || post?.media_url;
   const currentLang = getPreferredLanguage();
+  const deviceLang = getDeviceLanguage();
   const dict = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
   const translateText = dict.translate || "Translate";
   const videoText = dict.video || "Video";
@@ -7380,6 +7584,7 @@ function renderFeedPost(post) {
     /^[A-Za-z0-9_\-() ]{3,80}$/.test(content) && /(?:IMG|VID|PHOTO|PXL|Screenshot|DCIM|image|video)/i.test(content)
   );
   const caption = content && !isLikelyNumericCaption && !isLikelyFilenameCaption ? translatedContent : "";
+  const originalCaptionText = content && !isLikelyNumericCaption && !isLikelyFilenameCaption ? content : "";
   const isViewerDiscretionRestricted = Number(post?.viewer_discretion || 0) === 1;
   const isVideo = isVideoMediaUrl(mediaUrl);
   const isGallery = mediaList.length > 1;
@@ -7429,7 +7634,7 @@ function renderFeedPost(post) {
     const fullTextAttr = encodeAttribute(normalizedText);
 
     return `
-      <div class="feed-caption" data-full-text="${fullTextAttr}">
+      <div class="feed-caption" data-full-text="${fullTextAttr}" data-original-text="${encodeAttribute(originalCaptionText || normalizedText)}" data-translated-text="${encodeAttribute(caption || normalizedText)}">
         <span class="feed-caption-text">${safeText}</span>
         ${isLongCaption ? '<button class="feed-read-more-btn" type="button" aria-expanded="false">Read more</button>' : ""}
       </div>
@@ -7514,6 +7719,7 @@ function renderFeedPost(post) {
   }
 
   const isOwnPost = Boolean(post?.user_id) && String(post.user_id) === String(getCurrentUserId());
+  const shouldShowTranslationButton = Boolean(originalCaptionText);
   const reportButtonMarkup = !isOwnPost ? `
     <button class="post-report-btn" type="button" data-post-id="${post?.id || ""}" data-action="report">
       <i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i> Report this content
@@ -7569,6 +7775,13 @@ function renderFeedPost(post) {
           <i class="${commentsLocked ? "fa-solid fa-comment-slash" : "fa-regular fa-comments"} fa-xl" style="color: ${commentsLocked ? "rgb(146, 146, 146)" : "rgb(76, 76, 76)"};"></i>
           <span class="comment-count">${compactCommentCount}</span>
         </button>
+
+        ${shouldShowTranslationButton ? `
+          <button class="translate-btn" type="button" data-post-id="${post?.id || ""}" data-original-text="${escapeHtml(originalCaptionText)}" data-translated-text="${escapeHtml(caption || originalCaptionText)}" data-state="translated">
+            <span class="translate-label">Original</span>
+            <i class="fa-solid fa-language" style="color: rgb(244, 228, 136);"></i>
+          </button>
+        ` : ""}
 
         <i class="fa-regular fa-bookmark" style="color: rgb(123, 117, 117);"></i>
 
@@ -7648,6 +7861,41 @@ function bindReadMoreButtons() {
         button.textContent = "Read less";
         button.setAttribute("aria-expanded", "true");
         caption.classList.add("expanded");
+      }
+    });
+  });
+}
+
+function bindTranslateButtons() {
+  document.querySelectorAll(".translate-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const card = button.closest(".feed-post-card");
+      const caption = card?.querySelector(".feed-caption");
+      if (!caption) return;
+
+      const textEl = caption.querySelector(".feed-caption-text");
+      if (!textEl) return;
+
+      const originalText = (button.dataset.originalText || caption.dataset.originalText || textEl.textContent || "").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+      const targetLanguage = getPreferredLanguage();
+      let translatedText = button.dataset.translatedText || caption.dataset.translatedText || "";
+
+      if (!translatedText || translatedText === originalText) {
+        translatedText = await resolveTranslatedTextForButton(originalText, targetLanguage);
+        button.dataset.translatedText = translatedText;
+        caption.dataset.translatedText = translatedText;
+      }
+
+      const isShowingOriginal = button.dataset.state === "original";
+      const nextText = isShowingOriginal ? translatedText : originalText;
+
+      textEl.innerHTML = nextText.replace(/\n/g, "<br>");
+      caption.dataset.fullText = nextText;
+      button.dataset.state = isShowingOriginal ? "translated" : "original";
+
+      const label = button.querySelector(".translate-label");
+      if (label) {
+        label.textContent = isShowingOriginal ? "Original" : (TRANSLATIONS[targetLanguage]?.translate || "Translate");
       }
     });
   });
@@ -7780,6 +8028,7 @@ async function loadPosts() {
       feedPosts.innerHTML = visiblePosts.map(renderFeedPost).join("");
       unwrapThreadWrappers();
       bindReadMoreButtons();
+      bindTranslateButtons();
       bindViewerDiscretionGate();
       bindProfileAvatarButtons(feedPosts);
       feedPosts.querySelectorAll(".video-shell").forEach((videoShell, index) => {
