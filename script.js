@@ -2234,12 +2234,16 @@ async function loadNotificationCount() {
 function renderNotificationList(rows = []) {
   if (!notificationList) return;
 
-  if (!Array.isArray(rows) || !rows.length) {
+  const visibleRows = Array.isArray(rows)
+    ? rows.filter((item) => String(item?.type || "").toLowerCase() !== "welcome")
+    : [];
+
+  if (!visibleRows.length) {
     notificationList.innerHTML = '<div class="notification-empty">No notifications yet.</div>';
     return;
   }
 
-  notificationList.innerHTML = rows.map((item) => {
+  notificationList.innerHTML = visibleRows.map((item) => {
     const actorId = item.actor_user_id || item.actor_id || null;
     const rawActorName = String(item.actor_name || "").trim();
     const genericActorNames = new Set(["User", "user", "Someone", "someone", "Anonymous", "anonymous"]);
@@ -7988,7 +7992,7 @@ function bindTranslateButtons() {
 
       const label = button.querySelector(".translate-label");
       if (label) {
-        label.textContent = isShowingOriginal ? "Original" : (TRANSLATIONS[targetLanguage]?.translate || "Translate");
+        label.textContent = isShowingOriginal ? "View original language" : (TRANSLATIONS[targetLanguage]?.translate || "Translate");
       }
     });
   });

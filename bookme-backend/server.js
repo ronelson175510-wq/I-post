@@ -333,39 +333,10 @@ function extractActorNameFromMessage(message = "") {
 }
 
 function maybeCreateWelcomeNotification(userId, callback = null) {
-  const safeUserId = String(userId || "").trim();
-  if (!safeUserId || !db) {
-    if (callback) callback(null);
-    return Promise.resolve(null);
+  if (callback) {
+    callback(null);
   }
-
-  db.query(
-    "SELECT id FROM notifications WHERE recipient_user_id = ? AND actor_user_id = ? AND type = 'welcome' LIMIT 1",
-    [safeUserId, safeUserId],
-    (selectErr, rows) => {
-      if (selectErr) {
-        console.warn("WELCOME CHECK ERROR:", selectErr.message);
-        if (callback) callback(selectErr);
-        return;
-      }
-
-      if (rows && rows.length) {
-        if (callback) callback(null);
-        return;
-      }
-
-      db.query(
-        "INSERT INTO notifications (recipient_user_id, actor_user_id, type, target_type, target_id, message) VALUES (?, ?, 'welcome', 'user', ?, ?)",
-        [safeUserId, safeUserId, safeUserId, "Welcome to Chat-mini! Start following creators and sharing your moments."],
-        (insertErr) => {
-          if (insertErr) {
-            console.warn("WELCOME NOTIFICATION ERROR:", insertErr.message);
-          }
-          if (callback) callback(insertErr || null);
-        }
-      );
-    }
-  );
+  return Promise.resolve(null);
 }
 
 const recommendationStopWords = new Set([
