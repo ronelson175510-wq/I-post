@@ -1922,6 +1922,23 @@ function isUserVerified(userId = getCurrentUserId()) {
   return normalizeVerificationValue(fallbackState);
 }
 
+function matchesConversationSearch(searchTerm, displayName = "", threadEntries = []) {
+  const normalizedSearch = String(searchTerm || "").trim().toLowerCase();
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  const name = String(displayName || "").toLowerCase();
+  if (name.includes(normalizedSearch)) {
+    return true;
+  }
+
+  return (Array.isArray(threadEntries) ? threadEntries : []).some((entry) => {
+    const messageText = String(entry?.text || "").toLowerCase();
+    return messageText.includes(normalizedSearch);
+  });
+}
+
 function getVerifiedBadgeMarkup() {
   return `
     <span class="verified-user-badge" title="Verified user" aria-label="Verified user">
@@ -3451,6 +3468,10 @@ function getPreferredLanguage() {
   return getDeviceLanguage();
 }
 
+function getTranslationTargetLanguage() {
+  return getDeviceLanguage();
+}
+
 function ensureMlKitTranslationBridge() {
   if (typeof window === "undefined") return;
 
@@ -3468,14 +3489,15 @@ function ensureMlKitTranslationBridge() {
 
         const normalized = input.toLowerCase();
         if (dictionary[normalized]) {
-          return dictionary[normalized];
+          return preserveWhitespaceAroundTranslatedText(input, dictionary[normalized]);
         }
 
         const words = normalized.split(/\s+/).filter(Boolean);
         const translatedWords = words.map((word) => dictionary[word] || word);
         const translated = translatedWords.join(" ");
+        const translatedWithSpacing = preserveWhitespaceAroundTranslatedText(input, translated);
 
-        return translated === normalized ? text : translated;
+        return translated === normalized ? input : translatedWithSpacing;
       }
     };
   }
@@ -3503,12 +3525,44 @@ function getGoogleTargetLanguageCode(language) {
   return mapping[normalized] || normalized;
 }
 
+function normalizeCaptionTextForTranslation(text) {
+  return String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+function preserveWhitespaceAroundTranslatedText(originalText, translatedText) {
+  const original = String(originalText || "");
+  const translated = String(translatedText ?? original);
+  const leadingWhitespace = original.match(/^\s*/)?.[0] || "";
+  const trailingWhitespace = original.match(/\s*$/)?.[0] || "";
+  const innerOriginal = original.trim();
+  const innerTranslated = translated.trim();
+
+  if (!innerOriginal) {
+    return original;
+  }
+
+  return `${leadingWhitespace}${innerTranslated}${trailingWhitespace}`;
+}
+
 async function translateTextWithGoogleApi(text, targetLanguage) {
   if (!text || !text.trim()) return text;
 
-  const segments = String(text).split(/(#[A-Za-z0-9_]+)/g);
+  const normalizedText = normalizeCaptionTextForTranslation(text);
+  const newlineSegments = normalizedText.split(/(\n+)/g);
+
+  if (newlineSegments.length > 1) {
+    const translatedSegments = await Promise.all(newlineSegments.map(async (segment) => {
+      if (!segment) return "";
+      if (/^\n+$/.test(segment)) return segment;
+      return await translateTextWithGoogleApi(segment, targetLanguage);
+    }));
+
+    return translatedSegments.join("").trim();
+  }
+
+  const segments = normalizedText.split(/(#[A-Za-z0-9_]+|@[A-Za-z0-9_]+)/g);
   if (segments.length <= 1) {
-    const sourceText = String(text).trim();
+    const sourceText = normalizedText.trim();
     const targetCode = getGoogleTargetLanguageCode(targetLanguage);
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(targetCode)}&dt=t&q=${encodeURIComponent(sourceText)}`;
 
@@ -3525,23 +3579,23 @@ async function translateTextWithGoogleApi(text, targetLanguage) {
           .join("");
 
         if (translated && translated.trim()) {
-          return translated.trim();
+          return preserveWhitespaceAroundTranslatedText(normalizedText, translated);
         }
       }
     } catch (error) {
       console.warn("Google Translate fallback failed:", error);
     }
 
-    return text;
+    return normalizeCaptionTextForTranslation(text);
   }
 
   const translatedSegments = await Promise.all(segments.map(async (segment) => {
     if (!segment) return "";
-    if (/^#[A-Za-z0-9_]+$/.test(segment)) return segment;
+    if (/^#[A-Za-z0-9_]+$/.test(segment) || /^@[A-Za-z0-9_]+$/.test(segment)) return segment;
     return await translateTextWithGoogleApi(segment, targetLanguage);
   }));
 
-  return translatedSegments.join("").trim();
+  return translatedSegments.join("");
 }
 
 function isTextLikelyInDeviceLanguage(text, deviceLanguage = getDeviceLanguage()) {
@@ -3600,9 +3654,21 @@ function isTextLikelyInDeviceLanguage(text, deviceLanguage = getDeviceLanguage()
 function translateTextPreservingHashtags(text, targetLanguage) {
   if (!text || !text.trim()) return text;
 
-  const segments = String(text).split(/(#[A-Za-z0-9_]+)/g);
+  const normalizedText = normalizeCaptionTextForTranslation(text);
+  const newlineSegments = normalizedText.split(/(\n+)/g);
+
+  if (newlineSegments.length > 1) {
+    return newlineSegments.map((segment) => {
+      if (!segment || /^\n+$/.test(segment)) {
+        return segment;
+      }
+      return translateTextPreservingHashtags(segment, targetLanguage);
+    }).join("");
+  }
+
+  const segments = normalizedText.split(/(#[A-Za-z0-9_]+|@[A-Za-z0-9_]+)/g);
   return segments.map((segment) => {
-    if (!segment || /^#[A-Za-z0-9_]+$/.test(segment)) {
+    if (!segment || /^#[A-Za-z0-9_]+$/.test(segment) || /^@[A-Za-z0-9_]+$/.test(segment)) {
       return segment;
     }
     return translateTextForCurrentLocale(segment, targetLanguage);
@@ -3612,13 +3678,24 @@ function translateTextPreservingHashtags(text, targetLanguage) {
 function translateTextForCurrentLocale(text, targetLanguageOverride = null) {
   if (!text || !text.trim()) return text;
 
-  const targetLang = targetLanguageOverride || getPreferredLanguage();
+  const targetLang = targetLanguageOverride || getTranslationTargetLanguage();
   if (!targetLang) return text;
 
-  const hashtagSegments = String(text).split(/(#[A-Za-z0-9_]+)/g);
+  const normalizedText = normalizeCaptionTextForTranslation(text);
+  const newlineSegments = normalizedText.split(/(\n+)/g);
+  if (newlineSegments.length > 1) {
+    return newlineSegments.map((segment) => {
+      if (!segment || /^\n+$/.test(segment)) {
+        return segment;
+      }
+      return translateTextForCurrentLocale(segment, targetLang);
+    }).join("");
+  }
+
+  const hashtagSegments = normalizedText.split(/(#[A-Za-z0-9_]+|@[A-Za-z0-9_]+)/g);
   if (hashtagSegments.length > 1) {
     return hashtagSegments.map((segment) => {
-      if (!segment || /^#[A-Za-z0-9_]+$/.test(segment)) {
+      if (!segment || /^#[A-Za-z0-9_]+$/.test(segment) || /^@[A-Za-z0-9_]+$/.test(segment)) {
         return segment;
       }
       return translateTextForCurrentLocale(segment, targetLang);
@@ -3629,9 +3706,9 @@ function translateTextForCurrentLocale(text, targetLanguageOverride = null) {
 
   if (typeof window !== "undefined" && window.mlKitTranslate && typeof window.mlKitTranslate.translate === "function") {
     try {
-      const translated = window.mlKitTranslate.translate(text, targetLang);
-      if (translated && translated.trim() && translated.trim() !== text.trim()) {
-        return translated;
+      const translated = window.mlKitTranslate.translate(normalizedText, targetLang);
+      if (translated && translated.trim() && translated.trim() !== normalizedText.trim()) {
+        return preserveWhitespaceAroundTranslatedText(normalizedText, translated);
       }
     } catch (error) {
       console.warn("ML Kit translation fallback failed:", error);
@@ -3639,16 +3716,17 @@ function translateTextForCurrentLocale(text, targetLanguageOverride = null) {
   }
 
   const dictionary = LOCAL_CAPTION_TRANSLATIONS[targetLang] || {};
-  const normalized = text.trim().toLowerCase();
+  const normalized = normalizedText.trim().toLowerCase();
   if (dictionary[normalized]) {
-    return dictionary[normalized];
+    return preserveWhitespaceAroundTranslatedText(normalizedText, dictionary[normalized]);
   }
 
   const words = normalized.split(/\s+/).filter(Boolean);
   const translatedWords = words.map((word) => dictionary[word] || word);
   const translated = translatedWords.join(" ");
+  const translatedWithSpacing = preserveWhitespaceAroundTranslatedText(normalizedText, translated);
 
-  return translated === normalized ? text : translated;
+  return translated === normalized ? normalizedText : translatedWithSpacing;
 }
 
 async function resolveTranslatedTextForButton(text, targetLanguage) {
@@ -7606,6 +7684,35 @@ function renderFeedPost(post) {
   const commentsLocked = commentsDisabled || (followersCommentsOnly && currentUserId && currentUserId !== "guest" && !isCurrentUserAuthor && !isCurrentUserFollowing);
   const captionPreviewLimit = 80;
 
+  const encodeHtml = (value) => String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;");
+
+  const encodeAttribute = (value) => String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  const formatCaptionTextForDisplay = (value, usePreview = false) => {
+    const normalizedText = String(value || "")
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n");
+
+    const previewText = usePreview && normalizedText.length > 90
+      ? `${normalizedText.slice(0, 90).trim()}...`
+      : normalizedText;
+
+    const escapedText = encodeHtml(previewText)
+      .replace(/\n{2,}/g, "<br><br>")
+      .replace(/\n/g, "<br>");
+
+    return escapedText
+      .replace(/(^|[\s>])(#(?:[a-zA-Z0-9_]+))/g, '$1<span class="hashtag-highlight">$2</span>');
+  };
+
   const renderCaptionMarkup = (text) => {
     if (!text) return "";
 
@@ -7613,29 +7720,14 @@ function renderFeedPost(post) {
       .replace(/\r\n/g, "\n")
       .replace(/\r/g, "\n");
 
-    const encodeHtml = (value) => value
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\"/g, "&quot;")
-      .replace(/\n/g, "<br>");
-
-    const encodeAttribute = (value) => value
-      .replace(/&/g, "&amp;")
-      .replace(/"/g, "&quot;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-
     const captionPreviewLimit = 90;
     const isLongCaption = normalizedText.length > captionPreviewLimit;
     const previewText = isLongCaption ? `${normalizedText.slice(0, captionPreviewLimit).trim()}...` : normalizedText;
-    const safeText = encodeHtml(previewText)
-      .replace(/(^|[\s>])(#(?:[a-zA-Z0-9_]+))/g, '$1<span class="hashtag-highlight">$2</span>');
     const fullTextAttr = encodeAttribute(normalizedText);
 
     return `
       <div class="feed-caption" data-full-text="${fullTextAttr}" data-original-text="${encodeAttribute(originalCaptionText || normalizedText)}" data-translated-text="${encodeAttribute(caption || normalizedText)}">
-        <span class="feed-caption-text">${safeText}</span>
+        <span class="feed-caption-text">${formatCaptionTextForDisplay(previewText, false)}</span>
         ${isLongCaption ? '<button class="feed-read-more-btn" type="button" aria-expanded="false">Read more</button>' : ""}
       </div>
     `;
@@ -7720,6 +7812,12 @@ function renderFeedPost(post) {
 
   const isOwnPost = Boolean(post?.user_id) && String(post.user_id) === String(getCurrentUserId());
   const shouldShowTranslationButton = Boolean(originalCaptionText);
+  const translationButtonMarkup = shouldShowTranslationButton ? `
+    <button class="translate-btn" type="button" data-post-id="${post?.id || ""}" data-original-text="${escapeHtml(originalCaptionText)}" data-translated-text="${escapeHtml(caption || originalCaptionText)}" data-state="translated">
+      <span class="translate-label">Original</span>
+      <i class="fa-solid fa-language" style="color: rgb(8, 8, 8);"></i>
+    </button>
+  ` : "";
   const reportButtonMarkup = !isOwnPost ? `
     <button class="post-report-btn" type="button" data-post-id="${post?.id || ""}" data-action="report">
       <i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i> Report this content
@@ -7763,6 +7861,7 @@ function renderFeedPost(post) {
       </div>
       ${mediaWrap}
       ${renderCaptionMarkup(caption)}
+      ${translationButtonMarkup}
 
       <div class="feed-actions actions">
 
@@ -7775,13 +7874,6 @@ function renderFeedPost(post) {
           <i class="${commentsLocked ? "fa-solid fa-comment-slash" : "fa-regular fa-comments"} fa-xl" style="color: ${commentsLocked ? "rgb(146, 146, 146)" : "rgb(76, 76, 76)"};"></i>
           <span class="comment-count">${compactCommentCount}</span>
         </button>
-
-        ${shouldShowTranslationButton ? `
-          <button class="translate-btn" type="button" data-post-id="${post?.id || ""}" data-original-text="${escapeHtml(originalCaptionText)}" data-translated-text="${escapeHtml(caption || originalCaptionText)}" data-state="translated">
-            <span class="translate-label">Original</span>
-            <i class="fa-solid fa-language" style="color: rgb(244, 228, 136);"></i>
-          </button>
-        ` : ""}
 
         <i class="fa-regular fa-bookmark" style="color: rgb(123, 117, 117);"></i>
 
@@ -7877,7 +7969,7 @@ function bindTranslateButtons() {
       if (!textEl) return;
 
       const originalText = (button.dataset.originalText || caption.dataset.originalText || textEl.textContent || "").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
-      const targetLanguage = getPreferredLanguage();
+      const targetLanguage = getTranslationTargetLanguage();
       let translatedText = button.dataset.translatedText || caption.dataset.translatedText || "";
 
       if (!translatedText || translatedText === originalText) {
@@ -7888,9 +7980,13 @@ function bindTranslateButtons() {
 
       const isShowingOriginal = button.dataset.state === "original";
       const nextText = isShowingOriginal ? translatedText : originalText;
+      const displayText = String(nextText || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-      textEl.innerHTML = nextText.replace(/\n/g, "<br>");
-      caption.dataset.fullText = nextText;
+      textEl.innerHTML = displayText
+        .replace(/\n{2,}/g, "<br><br>")
+        .replace(/\n/g, "<br>")
+        .replace(/(^|[\s>])(#(?:[a-zA-Z0-9_]+))/g, '$1<span class="hashtag-highlight">$2</span>');
+      caption.dataset.fullText = displayText;
       button.dataset.state = isShowingOriginal ? "translated" : "original";
 
       const label = button.querySelector(".translate-label");
