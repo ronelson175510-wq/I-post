@@ -485,6 +485,11 @@ const themeStyleTag = document.getElementById("bookme-theme-styles") || (() => {
       color: var(--brand-yellow);
     }
 
+    body.dark-mode .hashtag-highlight {
+      color: #f5c94a;
+      font-weight: 700;
+    }
+
     body.dark-mode .search-icon,
     body.dark-mode .header-brand-icon,
     body.dark-mode .openbtn,
