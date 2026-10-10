@@ -6533,9 +6533,7 @@ async function loadReels() {
               <i class="${commentsLocked ? "fa-solid fa-comment-slash" : "fa-regular fa-comment"}" style="color: ${commentsLocked ? "rgba(255,255,255,0.7)" : "rgba(242, 224, 22, 0.9)"}"></i>
               <span class="reel-action-count">${compactCommentCount}</span>
             </button>
-            <button class="reel-action-btn save-btn ${isSavedByCurrentUser ? "saved" : ""}" type="button" aria-label="Save reel" data-post-id="${postId}" data-saved="${isSavedByCurrentUser ? "true" : "false"}">
-              <i class="${isSavedByCurrentUser ? "fa-solid fa-bookmark" : "fa-regular fa-bookmark"}" style="color: ${isSavedByCurrentUser ? "rgb(242, 224, 22)" : "rgb(123, 117, 117)"};"></i>
-            </button>
+            
             <button class="reel-action-btn share-btn" type="button" aria-label="Share reel" data-post-id="${postId}">
               <i class="fa-solid fa-share-nodes" style="color: rgba(242, 224, 22, 0.9);"></i>
             </button>
@@ -7661,8 +7659,9 @@ function renderFeedPost(post) {
     /^(IMG|VID|VIDEO|PHOTO|PXL|Screenshot|Screenshot_)/i.test(content) ||
     /^[A-Za-z0-9_\-() ]{3,80}$/.test(content) && /(?:IMG|VID|PHOTO|PXL|Screenshot|DCIM|image|video)/i.test(content)
   );
-  const caption = content && !isLikelyNumericCaption && !isLikelyFilenameCaption ? translatedContent : "";
   const originalCaptionText = content && !isLikelyNumericCaption && !isLikelyFilenameCaption ? content : "";
+  const caption = originalCaptionText;
+  const translatedCaptionText = translatedContent && originalCaptionText ? translatedContent : originalCaptionText;
   const isViewerDiscretionRestricted = Number(post?.viewer_discretion || 0) === 1;
   const isVideo = isVideoMediaUrl(mediaUrl);
   const isGallery = mediaList.length > 1;
@@ -7726,7 +7725,7 @@ function renderFeedPost(post) {
     const fullTextAttr = encodeAttribute(normalizedText);
 
     return `
-      <div class="feed-caption" data-full-text="${fullTextAttr}" data-original-text="${encodeAttribute(originalCaptionText || normalizedText)}" data-translated-text="${encodeAttribute(caption || normalizedText)}">
+      <div class="feed-caption" data-full-text="${fullTextAttr}" data-original-text="${encodeAttribute(originalCaptionText || normalizedText)}" data-translated-text="${encodeAttribute(translatedCaptionText || normalizedText)}">
         <span class="feed-caption-text">${formatCaptionTextForDisplay(previewText, false)}</span>
         ${isLongCaption ? '<button class="feed-read-more-btn" type="button" aria-expanded="false">Read more</button>' : ""}
       </div>
@@ -7813,8 +7812,8 @@ function renderFeedPost(post) {
   const isOwnPost = Boolean(post?.user_id) && String(post.user_id) === String(getCurrentUserId());
   const shouldShowTranslationButton = Boolean(originalCaptionText);
   const translationButtonMarkup = shouldShowTranslationButton ? `
-    <button class="translate-btn" type="button" data-post-id="${post?.id || ""}" data-original-text="${escapeHtml(originalCaptionText)}" data-translated-text="${escapeHtml(caption || originalCaptionText)}" data-state="translated">
-      <span class="translate-label">Original</span>
+    <button class="translate-btn" type="button" data-post-id="${post?.id || ""}" data-original-text="${escapeHtml(originalCaptionText)}" data-translated-text="${escapeHtml(translatedCaptionText || originalCaptionText)}" data-state="original">
+      <span class="translate-label">Translate</span>
       <i class="fa-solid fa-language" style="color: rgb(8, 8, 8);"></i>
     </button>
   ` : "";
@@ -7823,9 +7822,7 @@ function renderFeedPost(post) {
       <i class="fa-solid fa-flag fa-lg" style="color: rgb(109, 108, 111);"></i> Report this content
       
     </button>
-    <button class="see-more-like-this" type="button" data-post-id="${post?.id || ""}" data-action="see-more-like-this">
-      <i class="fa-solid fa-star" style="color: rgb(1, 1, 1);"></i> See more like this
-    </button>
+    
   ` : "";
   const deleteButtonMarkup = isOwner ? `
     <button class="post-delete-btn" type="button" data-post-id="${post?.id || ""}" data-action="delete">
@@ -7875,7 +7872,7 @@ function renderFeedPost(post) {
           <span class="comment-count">${compactCommentCount}</span>
         </button>
 
-        <i class="fa-regular fa-bookmark" style="color: rgb(123, 117, 117);"></i>
+        
 
         <i class="fa-solid fa-retweet fa-xl" style="color: rgb(252, 218, 0);"></i>
 

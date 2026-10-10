@@ -1755,22 +1755,24 @@ width: 30px;
   background: transparent;
   border: none;
   border-radius: 8px;
-  padding: 4px 0 0 0;
-  margin-left: 18px;
+  margin-left: 11px;
+  margin-top: 8px;
   color: black;
-  font-size: 13px;
+  font-size: 16px;
+  float: left;
   font-weight: 700;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
+  justify-content: center;
+  gap: 7px;
   cursor: pointer;
   user-select: none;
-  line-height: 1.2;
+  line-height: 1;
   box-shadow: none;
   transition: opacity 0.15s ease, transform 0.15s ease;
   width: fit-content;
+  padding: 2px 0;
 }
 
 .translate-btn:hover{
@@ -1789,6 +1791,18 @@ width: 30px;
 .translate-btn .translate-label,
 .translate-btn i {
   pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.translate-btn .translate-label {
+  transform: translateY(-1px);
+}
+
+.translate-btn i {
+  margin-top: 1px;
 }
 
 
@@ -3201,16 +3215,19 @@ background: rgba(255, 255, 255, 0.08);
 
 
 .feed-post-card .feed-actions {
-  margin-top: 0;
-  gap: 4px;
-  margin-right: 10px;
+  margin-top: 30px;
+  gap: 8px;
   background: none;
   border-top: none;
-  float: right;
-  padding: 8px 10px 10px;
-  width: 100%;
+  float: left;
+  padding: 18px 10px 10px 0;
+  width: fit-content;
   border-bottom: none;
-  margin-bottom: 0;
+  
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-left: -112px;
 }
 
 
