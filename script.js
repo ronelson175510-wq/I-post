@@ -3675,9 +3675,8 @@ function isTextLikelyInDeviceLanguage(text, deviceLanguage = getDeviceLanguage()
 function shouldShowTranslateButtonForCaption(text, deviceLanguage = getDeviceLanguage()) {
   const content = String(text || "").trim();
   if (!content) return false;
-  if (isTextLikelyInDeviceLanguage(content, deviceLanguage)) {
-    return false;
-  }
+
+  // Keep the translate action visible on all captions again.
   return true;
 }
 
@@ -7996,6 +7995,13 @@ function bindTranslateButtons() {
       if (!textEl) return;
 
       const originalText = (button.dataset.originalText || caption.dataset.originalText || textEl.textContent || "").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+      const deviceLanguage = getDeviceLanguage();
+
+      if (isTextLikelyInDeviceLanguage(originalText, deviceLanguage)) {
+        showUploadToast("Already in your language");
+        return;
+      }
+
       const targetLanguage = getTranslationTargetLanguage();
       let translatedText = button.dataset.translatedText || caption.dataset.translatedText || "";
 
