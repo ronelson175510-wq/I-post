@@ -157,7 +157,7 @@
             display: flex;
             align-items: center;
             position: absolute;
-            left: 46%;
+           margin-left: 60px;
             transform: translateX(-50%);
             margin-top: -20px;
             
@@ -165,7 +165,7 @@
 
         .title-wrap.brand-title-font {
             color: rgb(249, 245, 3);
-            font-size: 28px;
+            font-size: 22px;
             text-transform: uppercase;
             font-weight: 800;
             font-style: bold;
@@ -3113,18 +3113,21 @@ background: rgba(255, 255, 255, 0.08);
 
 .feed-post-card .post-menu-wrapper {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   z-index: 30;
   display: flex;
 }
 
 .feed-post-card .post-menu-toggle {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(40, 39, 39, 0.12);
+  background: transparent;
+  border: none;
   width: 28px;
   height: 28px;
   font-size: 20px;
+  color: #060606;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .text-post-menu.open .text-post-menu-options,
@@ -3167,14 +3170,6 @@ background: rgba(255, 255, 255, 0.08);
   padding-bottom: 9px;
   border-bottom: 3.5px solid rgba(29, 29, 30, 0.12);
 
-}
-
-.feed-post-card .post-menu-wrapper {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 30;
-  display: flex;
 }
 
 .feed-post-card .post-menu {
@@ -4097,31 +4092,36 @@ background: rgba(255, 255, 255, 0.08);
 }
 
 .feed-mode-bar {
+  position: absolute;
+  left: -192px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: calc(100% - 24px);
-  margin: 12px auto 0;
-  padding: 6px;
+  gap: 4px;
+  width: auto;
+  padding: 8px 10px;
   background: rgba(255, 255, 255, 0.08);
-            border: 1.5px solid rgb(255, 255, 255);
-            border-radius: 25px;
-            box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
-            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
-            cursor: pointer;
+  border: 1.5px solid rgb(255, 255, 255);
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  z-index: 3;
 }
 
 .feed-mode-btn {
-  flex: 1;
+  flex: 0 0 auto;
   border: none;
   border-radius: 999px;
   background: transparent;
   color: #4b5563;
   font-weight: 700;
-  font-size: 15px;
-   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 10px 12px;
+  font-size: 11px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 5px 8px;
   cursor: pointer;
+  line-height: 1.2;
   transition: all 0.2s ease;
 }
 
@@ -4159,12 +4159,7 @@ background: rgba(255, 255, 255, 0.08);
 
     <div class="header">
        
-        <div class="header-brand-icon">
-        
        
-          <a href="message.html" aria-label="Open messages"><i class="fa-brands fa-discourse fa-xl" style="color: rgb(109, 108, 111);"></i></a>
-
-        </div>
 
      
   
@@ -4175,6 +4170,11 @@ background: rgba(255, 255, 255, 0.08);
         </div>
 
         <div class="header-icons">
+
+           <div class="feed-mode-bar" aria-label="Feed mode selector">
+      <button type="button" class="feed-mode-btn active" data-feed-mode="for_you">For You</button>
+      <button type="button" class="feed-mode-btn" data-feed-mode="following">Following</button>
+    </div>
           
           <div class="notification-bell">
             <button id="notifyBell" type="button" aria-label="Notifications">
@@ -4210,10 +4210,7 @@ background: rgba(255, 255, 255, 0.08);
       </div>
     </div>
 
-    <div class="feed-mode-bar" aria-label="Feed mode selector">
-      <button type="button" class="feed-mode-btn active" data-feed-mode="for_you">For You</button>
-      <button type="button" class="feed-mode-btn" data-feed-mode="following">Following</button>
-    </div>
+   
 
     <div id="feedPosts" class="feed-posts" aria-live="polite"></div>
 

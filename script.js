@@ -3657,7 +3657,28 @@ function isTextLikelyInDeviceLanguage(text, deviceLanguage = getDeviceLanguage()
     return /[ãõáéíóúç]/.test(value) || /(olá|obrigado|para|como|onde|quando|quero|bom|dias)/.test(normalized);
   }
 
+  if (lang === "hi") {
+    return /[\u0900-\u097F]/.test(value) || /(namaste|dhanyavaad|aaj|kal|kaise|kya|main|tum|hume|hai)/.test(normalized);
+  }
+
+  if (lang === "ar") {
+    return /[\u0600-\u06FF]/.test(value) || /(مرحبا|شكر|كيف|أين|متى|لأن|أنا|نحن|اليوم|غدا)/.test(normalized);
+  }
+
+  if (lang === "zh") {
+    return /[\u4e00-\u9fff]/.test(value) || /(你好|谢谢|今天|明天|昨天|在哪里|为什么|请|我想)/.test(normalized);
+  }
+
   return false;
+}
+
+function shouldShowTranslateButtonForCaption(text, deviceLanguage = getDeviceLanguage()) {
+  const content = String(text || "").trim();
+  if (!content) return false;
+  if (isTextLikelyInDeviceLanguage(content, deviceLanguage)) {
+    return false;
+  }
+  return true;
 }
 
 function translateTextPreservingHashtags(text, targetLanguage) {
@@ -7819,7 +7840,7 @@ function renderFeedPost(post) {
   }
 
   const isOwnPost = Boolean(post?.user_id) && String(post.user_id) === String(getCurrentUserId());
-  const shouldShowTranslationButton = Boolean(originalCaptionText);
+  const shouldShowTranslationButton = shouldShowTranslateButtonForCaption(originalCaptionText, getDeviceLanguage());
   const translationButtonMarkup = shouldShowTranslationButton ? `
     <button class="translate-btn" type="button" data-post-id="${post?.id || ""}" data-original-text="${escapeHtml(originalCaptionText)}" data-translated-text="${escapeHtml(translatedCaptionText || originalCaptionText)}" data-state="original">
       <span class="translate-label">Translate</span>
@@ -7853,7 +7874,6 @@ function renderFeedPost(post) {
 
   return `
     <div class="feed-post-card ${isTextOnly ? "text-only-post" : ""}" data-post-id="${post?.id || ""}">
-      ${menuMarkup}
       <div class="feed-post-header">
         <button type="button" class="post-avatar-bubble profile-avatar-trigger feed-header-avatar" data-user-id="${ownerUserId}" aria-label="View profile">
           ${getCurrentUserAvatarMarkup(ownerUserId)}
@@ -7864,6 +7884,7 @@ function renderFeedPost(post) {
           </button>
           ${postDateLabel ? `<span class="feed-post-date">${postDateLabel}</span>` : ""}
         </div>
+        ${menuMarkup}
       </div>
       ${mediaWrap}
       ${renderCaptionMarkup(caption)}
