@@ -987,10 +987,10 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
 
   if (type === "pie") {
     const pieSeries = [
-      { label: "Posts", value: Number(chartTotals.post_count || 0), color: "#111111" },
-      { label: "Likes", value: Number(chartTotals.total_likes || 0), color: "#f4b400" },
-      { label: "Followers", value: Number(chartTotals.follower_count || 0), color: "#4caf50" },
-      { label: "Following", value: Number(chartTotals.following_count || 0), color: "#0ea5e9" }
+      { label: "Followers", value: Number(chartTotals.follower_count || 0), color: "#f4b400" },
+      { label: "Likes", value: Number(chartTotals.total_likes || 0), color: "#ef4444" },
+      { label: "Following", value: Number(chartTotals.following_count || 0), color: "#3b82f6" },
+      { label: "Posts", value: Number(chartTotals.post_count || 0), color: "#6a5acd" }
     ];
 
     const pieTotal = pieSeries.reduce((sum, item) => sum + Math.max(item.value, 0), 0) || 1;
@@ -1075,22 +1075,22 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
     { label: "Posts", value: Number(chartTotals.post_count || 0), color: "#6a5acd" }
   ];
 
-  const chartWidth = 380;
-  const chartHeight = 160;
+  const chartWidth = 480;
+  const chartHeight = 360;
   const chartPlotTop = 20;
   const chartPlotBottom = 170;
   const axisMax = 1000000;
   const axisValues = [0, 100000, 200000, 400000, 600000, 800000, 1000000];
-  const startX = 82;
-  const gap = 32;
-  const barWidth = 46;
-  const axisX = 68;
+  const startX = 60;
+  const gap = 20;
+  const barWidth = 92;
+  const axisX = 78;
   const chartRange = chartPlotBottom - chartPlotTop;
 
   chartContainer.innerHTML = `
-    <svg viewBox="0 0 ${chartWidth} 245" width="100%" height="260" style="display:block;">
+    <svg viewBox="0 0 ${chartWidth} 360" width="100%" height="360" style="display:block;">
       <g transform="translate(0 12)">
-        <text x="${chartWidth / 2}" y="88" text-anchor="middle" font-size="16" font-weight="900" fill="#111111" font-family="'Times New Roman', Times, serif" style="margin-top:10px;"></text>
+        <text x="${chartWidth / 2}" y="88" text-anchor="middle" font-size="18" font-weight="900" fill="#111111" font-family="'Times New Roman', Times, serif" style="margin-top:10px;"></text>
 
         <g>
           ${axisValues.map((value, index) => {
@@ -1099,8 +1099,8 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
             return `
               <g>
                 <line x1="${axisX}" y1="${actualY}" x2="${chartWidth - 26}" y2="${actualY}" stroke="rgba(27, 27, 27, 0.38)" stroke-width="1"></line>
-                <line x1="${axisX}" y1="${actualY}" x2="${axisX}" y2="${actualY}" stroke="rgba(35, 35, 35, 0.7)" stroke-width="1"></line>
-                <text x="${axisX - 8}" y="${actualY + 4}" text-anchor="end" font-size="14" fill="#0c0c0c" font-family="'Times New Roman', Times, serif">${formatCompactNumber(value)}</text>
+                <line x1="${axisX}" y1="${actualY}" x2="${axisX}" y2="${actualY}" stroke="rgba(40, 40, 40, 0.7)" stroke-width="1"></line>
+                <text x="${axisX - 8}" y="${actualY + 4}" text-anchor="end" font-size="17" fill="#0c0c0c" font-family="'Times New Roman', Times, serif">${formatCompactNumber(value)}</text>
               </g>
             `;
           }).join("")}
@@ -1115,7 +1115,7 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
             return `
               <g>
                 <rect x="${x}" y="${y}" width="${barWidth}" height="${visibleHeight}" fill="${item.color}" opacity="0.95"></rect>
-                <text x="${x + barWidth / 2}" y="${chartPlotBottom + 20}" text-anchor="middle" font-size="16" fill="${item.color}" font-family="arial, sans-serif">${item.label}</text>
+                <text x="${x + barWidth / 2}" y="${chartPlotBottom + 20}" text-anchor="middle" font-size="18" fill="${item.color}" font-family="Times New Roman, Times, serif">${item.label}</text>
               </g>
             `;
           }).join("")}
@@ -7995,13 +7995,6 @@ function bindTranslateButtons() {
       if (!textEl) return;
 
       const originalText = (button.dataset.originalText || caption.dataset.originalText || textEl.textContent || "").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
-      const deviceLanguage = getDeviceLanguage();
-
-      if (isTextLikelyInDeviceLanguage(originalText, deviceLanguage)) {
-        showUploadToast("Already in your language");
-        return;
-      }
-
       const targetLanguage = getTranslationTargetLanguage();
       let translatedText = button.dataset.translatedText || caption.dataset.translatedText || "";
 
