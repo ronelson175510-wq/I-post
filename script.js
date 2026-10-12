@@ -7839,6 +7839,14 @@ function renderFeedPost(post) {
   }
 
   const isOwnPost = Boolean(post?.user_id) && String(post.user_id) === String(getCurrentUserId());
+  const isFollowingCurrentCreator = Boolean(post?.followed_creator || post?.followedCreator || false);
+  const shouldShowContentFollowButton = !isOwnPost && currentUserId && currentUserId !== "guest" && !isFollowingCurrentCreator;
+  const contentFollowButtonMarkup = shouldShowContentFollowButton ? `
+    <button class="content-follow-btn" type="button" data-user-id="${ownerUserId}" data-post-id="${post?.id || ""}" aria-label="Follow ${displayName}" style="display: none;" data-follow-state="pending">
+      <span>Follow</span>
+      <i class="fa-solid fa-bell fa-sm" style="color: rgb(198, 200, 202);"></i>
+    </button>
+  ` : "";
   const shouldShowTranslationButton = shouldShowTranslateButtonForCaption(originalCaptionText, getDeviceLanguage());
   const translationButtonMarkup = shouldShowTranslationButton ? `
     <button class="translate-btn" type="button" data-post-id="${post?.id || ""}" data-original-text="${escapeHtml(originalCaptionText)}" data-translated-text="${escapeHtml(translatedCaptionText || originalCaptionText)}" data-state="original">
@@ -7878,9 +7886,12 @@ function renderFeedPost(post) {
           ${getCurrentUserAvatarMarkup(ownerUserId)}
         </button>
         <div class="feed-post-user-block">
-          <button type="button" class="feed-post-user profile-avatar-trigger" data-user-id="${ownerUserId}" aria-label="View ${displayName}'s profile">
-            <span class="feed-post-user-name">${renderUserNameWithVerification(displayName, ownerUserId)}</span>
-          </button>
+          <div class="feed-post-user-row">
+            <button type="button" class="feed-post-user profile-avatar-trigger" data-user-id="${ownerUserId}" aria-label="View ${displayName}'s profile">
+              <span class="feed-post-user-name">${renderUserNameWithVerification(displayName, ownerUserId)}</span>
+            </button>
+            ${contentFollowButtonMarkup}
+          </div>
           ${postDateLabel ? `<span class="feed-post-date">${postDateLabel}</span>` : ""}
         </div>
         ${menuMarkup}
@@ -7979,6 +7990,114 @@ function bindReadMoreButtons() {
         button.textContent = "Read less";
         button.setAttribute("aria-expanded", "true");
         caption.classList.add("expanded");
+      }
+    });
+  });
+}
+
+async function syncContentFollowButtonState() {
+  const currentUserId = getCurrentUserId();
+  const buttons = [...document.querySelectorAll(".content-follow-btn")];
+
+  if (!buttons.length || !currentUserId || currentUserId === "guest") {
+    return;
+  }
+
+  buttons.forEach((button) => {
+    button.style.display = "none";
+    button.disabled = true;
+    button.dataset.followState = "pending";
+  });
+
+  const uniqueUserIds = [...new Set(buttons
+    .map((button) => String(button.dataset.userId || "").trim())
+    .filter(Boolean))];
+
+  if (!uniqueUserIds.length) {
+    return;
+  }
+
+  const statuses = await Promise.all(uniqueUserIds.map(async (targetUserId) => {
+    try {
+      const response = await fetch(`/api/users/${encodeURIComponent(targetUserId)}/follow-status?user_id=${encodeURIComponent(currentUserId)}`, {
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        return { targetUserId, isFollowing: false };
+      }
+
+      const data = await response.json().catch(() => ({}));
+      return { targetUserId, isFollowing: Boolean(data?.isFollowing) };
+    } catch (error) {
+      console.warn("Content follow status unavailable:", error);
+      return { targetUserId, isFollowing: false };
+    }
+  }));
+
+  const followingUserIds = new Set(statuses.filter((entry) => entry.isFollowing).map((entry) => entry.targetUserId));
+
+  buttons.forEach((button) => {
+    const targetUserId = String(button.dataset.userId || "").trim();
+    if (!targetUserId) return;
+
+    if (followingUserIds.has(targetUserId)) {
+      button.remove();
+      return;
+    }
+
+    button.style.display = "inline-flex";
+    button.disabled = false;
+    button.dataset.followState = "visible";
+  });
+}
+
+function bindContentFollowButtons() {
+  syncContentFollowButtonState();
+
+  document.querySelectorAll(".content-follow-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const currentUserId = getCurrentUserId();
+      const targetUserId = button.dataset.userId || "";
+      if (!targetUserId || currentUserId === "guest") {
+        alert("Please sign in to follow someone.");
+        return;
+      }
+
+      const originalLabel = button.textContent.trim();
+      button.disabled = true;
+      button.textContent = "Following";
+
+      try {
+        const response = await fetch(`/api/users/${encodeURIComponent(targetUserId)}/follow`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: currentUserId,
+            name: getCurrentUserDisplayNameForApi()
+          })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to follow user.");
+        }
+
+        const isFollowing = Boolean(data?.isFollowing);
+        if (isFollowing) {
+          document.querySelectorAll(`.content-follow-btn[data-user-id="${CSS.escape(targetUserId)}"]`).forEach((entry) => {
+            entry.remove();
+          });
+          return;
+        }
+
+        button.disabled = false;
+        button.textContent = originalLabel;
+      } catch (error) {
+        console.error("Content follow toggle error:", error);
+        button.disabled = false;
+        button.textContent = originalLabel;
+        alert(error.message || "Unable to follow user right now.");
       }
     });
   });
@@ -8150,6 +8269,7 @@ async function loadPosts() {
       feedPosts.innerHTML = visiblePosts.map(renderFeedPost).join("");
       unwrapThreadWrappers();
       bindReadMoreButtons();
+      bindContentFollowButtons();
       bindTranslateButtons();
       bindViewerDiscretionGate();
       bindProfileAvatarButtons(feedPosts);
