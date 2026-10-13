@@ -423,16 +423,16 @@
 }
 
 .notification-close-btn {
-margin-top: 12px;
-border: 1.5px solid rgb(27, 26, 26)21)
-width: 100px;
-  background: transparent;
+margin-top: -6px;
+ background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgb(255, 255, 255);
   border-radius: 50%;
-  font-size: 12px;
-  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
+  border: none;
+  
+  font-size: 24px;
   cursor: pointer;
-  color: #111;
-  padding: 0;
+  z-index: 999;
   margin-left: auto;
 }
 
@@ -444,7 +444,7 @@ width: 100px;
 
 .notification-sheet-content {
   padding: 0 18px 18px;
-  margin-top: -12px;
+  margin-top: -6px;
   height: calc(100% - 52px);
   overflow-y: auto;
   scrollbar-width: none;
@@ -493,7 +493,7 @@ width: 100px;
   gap: 10px;
   padding: 12px 10px;
   width: 100%;
-  background: rgb(160, 163, 100, 0.1);
+  background: rgba(249, 249, 249, 0.1);
   border: 1.5px solid rgb(255, 255, 255);
   border-radius: 10px;
   font-family: 'Times New Roman', Times, serif;
@@ -2828,8 +2828,8 @@ background: rgba(255, 255, 255, 0.08);
   cursor: pointer;
   font: inherit;
   min-width: 0;
-  max-width: calc(100% - 110px);
-  flex: 1 1 auto;
+  max-width: none;
+  flex: 0 1 auto;
 }
 
 .feed-post-user-block {
@@ -2850,23 +2850,9 @@ background: rgba(255, 255, 255, 0.08);
   width: 100%;
 }
 
-.feed-post-user-row[data-follow-state="hidden"] .feed-post-user-name {
-  margin-left: 0;
-  max-width: 100%;
-  overflow: visible;
-  text-overflow: clip;
-}
-
-.feed-post-user-row[data-follow-state="visible"] .feed-post-user-name {
-  margin-left: 0;
-  max-width: calc(100% - 2px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .feed-post-user-name {
   color: #050505;
-  font-size: 17px;
+  font-size: 15px;
   margin-left: 0;
   font-weight: 760;
    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -2876,9 +2862,9 @@ background: rgba(255, 255, 255, 0.08);
   padding: 5px 10px;
   display: inline-block;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .feed-post-date {
@@ -3602,7 +3588,7 @@ background: rgba(255, 255, 255, 0.08);
   border-radius: 50%;
   background-color: none;
   color: rgb(1, 59, 248);
-
+margin-left: -4px;
   
  
   flex-shrink: 0;
@@ -3977,27 +3963,27 @@ background: rgba(255, 255, 255, 0.08);
 .content-follow-btn {
   flex: 0 0 auto;
   width: auto;
-  padding: 10px 12px;
+  padding: 0 2px;
   color: rgb(249, 245, 3);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgb(255, 255, 255);
-  border-radius: 999px;
-  font-family:'Times New Roman', Times, serif;
+  background: transparent;
+  border: none;
+  font-family: "Comic Neue", "Comic Sans MS", "Marker Felt", "Segoe UI", sans-serif;
   text-shadow: black 1px 1px;
-  box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1;
-  gap: 4px;
+  gap: 3px;
   cursor: pointer;
-  margin-left: 7px;
-  height: 20px;
+  margin-left: -10px;
+  height: auto;
+  min-height: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .content-follow-btn i {
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .content-follow-btn[hidden] {
