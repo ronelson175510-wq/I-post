@@ -2823,10 +2823,13 @@ background: rgba(255, 255, 255, 0.08);
   gap: 8px;
   background: transparent;
   border: none;
-  margin-left: 11px;
+  margin-left: -8px;
   padding: 0;
   cursor: pointer;
   font: inherit;
+  min-width: 0;
+  max-width: calc(100% - 110px);
+  flex: 1 1 auto;
 }
 
 .feed-post-user-block {
@@ -2834,46 +2837,37 @@ background: rgba(255, 255, 255, 0.08);
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .feed-post-user-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
+  width: 100%;
 }
 
-.content-follow-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  background: #111111;
-  color: #ffffff;
-  border: none;
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-  box-shadow: 0 2px 8px rgba(17, 17, 17, 0.15);
+.feed-post-user-row[data-follow-state="hidden"] .feed-post-user-name {
+  margin-left: 0;
+  max-width: 100%;
+  overflow: visible;
+  text-overflow: clip;
 }
 
-.content-follow-btn[hidden] {
-  display: none !important;
-}
-
-.content-follow-btn:active {
-  transform: scale(0.98);
+.feed-post-user-row[data-follow-state="visible"] .feed-post-user-name {
+  margin-left: 0;
+  max-width: calc(100% - 2px);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .feed-post-user-name {
   color: #050505;
   font-size: 17px;
-  margin-left: -22px;
+  margin-left: 0;
   font-weight: 760;
    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
    z-index: 9999;            
@@ -2881,6 +2875,10 @@ background: rgba(255, 255, 255, 0.08);
   line-height: 1.2;
   padding: 5px 10px;
   display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .feed-post-date {
@@ -3977,19 +3975,38 @@ background: rgba(255, 255, 255, 0.08);
 }
 
 .content-follow-btn {
-  flex: 1;
-  padding: 12px;
+  flex: 0 0 auto;
   width: auto;
-  padding: 11px 11px;
-  color: yellow;
+  padding: 10px 12px;
+  color: rgb(249, 245, 3);
   background: rgba(255, 255, 255, 0.08);
-  border: 1.5px solid rgb(255, 255, 255);
-  border-radius: 18px;
+  border: 1px solid rgb(255, 255, 255);
+  border-radius: 999px;
+  font-family:'Times New Roman', Times, serif;
+  text-shadow: black 1px 1px;
   box-shadow: inset 0 1px 0 rgba(10, 10, 10, 0.12), 0 2px 8px rgba(10,10,10,0.12);
-  font-size: 16px;
+  font-size: 13px;
+  line-height: 1;
+  gap: 4px;
   cursor: pointer;
+  margin-left: 7px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
+.content-follow-btn i {
+  font-size: 9px;
+}
+
+.content-follow-btn[hidden] {
+  display: none !important;
+}
+
+.content-follow-btn:active {
+  transform: scale(0.98);
+}
 
         .footer{
             position: fixed;

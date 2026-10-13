@@ -7844,7 +7844,7 @@ function renderFeedPost(post) {
   const contentFollowButtonMarkup = shouldShowContentFollowButton ? `
     <button class="content-follow-btn" type="button" data-user-id="${ownerUserId}" data-post-id="${post?.id || ""}" aria-label="Follow ${displayName}" style="display: none;" data-follow-state="pending">
       <span>Follow</span>
-      <i class="fa-solid fa-bell fa-sm" style="color: rgb(198, 200, 202);"></i>
+      <i class="fa-solid fa-bell fa-lg" style="color: rgb(198, 200, 202);"></i>
     </button>
   ` : "";
   const shouldShowTranslationButton = shouldShowTranslateButtonForCaption(originalCaptionText, getDeviceLanguage());
@@ -7995,7 +7995,21 @@ function bindReadMoreButtons() {
   });
 }
 
+function dedupeContentFollowButtons() {
+  const seen = new Set();
+  document.querySelectorAll(".content-follow-btn").forEach((button) => {
+    const key = `${button.dataset.userId || ""}|${button.dataset.postId || ""}`;
+    if (seen.has(key)) {
+      button.remove();
+      return;
+    }
+    seen.add(key);
+  });
+}
+
 async function syncContentFollowButtonState() {
+  dedupeContentFollowButtons();
+
   const currentUserId = getCurrentUserId();
   const buttons = [...document.querySelectorAll(".content-follow-btn")];
 
@@ -8004,6 +8018,10 @@ async function syncContentFollowButtonState() {
   }
 
   buttons.forEach((button) => {
+    const row = button.closest(".feed-post-user-row");
+    if (row) {
+      row.dataset.followState = "hidden";
+    }
     button.style.display = "none";
     button.disabled = true;
     button.dataset.followState = "pending";
@@ -8038,14 +8056,21 @@ async function syncContentFollowButtonState() {
   const followingUserIds = new Set(statuses.filter((entry) => entry.isFollowing).map((entry) => entry.targetUserId));
 
   buttons.forEach((button) => {
+    const row = button.closest(".feed-post-user-row");
     const targetUserId = String(button.dataset.userId || "").trim();
     if (!targetUserId) return;
 
     if (followingUserIds.has(targetUserId)) {
+      if (row) {
+        row.dataset.followState = "hidden";
+      }
       button.remove();
       return;
     }
 
+    if (row) {
+      row.dataset.followState = "visible";
+    }
     button.style.display = "inline-flex";
     button.disabled = false;
     button.dataset.followState = "visible";
@@ -8053,6 +8078,7 @@ async function syncContentFollowButtonState() {
 }
 
 function bindContentFollowButtons() {
+  dedupeContentFollowButtons();
   syncContentFollowButtonState();
 
   document.querySelectorAll(".content-follow-btn").forEach((button) => {
@@ -8086,6 +8112,10 @@ function bindContentFollowButtons() {
         const isFollowing = Boolean(data?.isFollowing);
         if (isFollowing) {
           document.querySelectorAll(`.content-follow-btn[data-user-id="${CSS.escape(targetUserId)}"]`).forEach((entry) => {
+            const row = entry.closest(".feed-post-user-row");
+            if (row) {
+              row.dataset.followState = "hidden";
+            }
             entry.remove();
           });
           return;
