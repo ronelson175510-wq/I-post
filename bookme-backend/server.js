@@ -756,6 +756,13 @@ function initializeDatabaseSchema() {
   const createSchema = async () => {
     try {
       await new Promise((resolve, reject) => {
+        ensureColumn("users", "sex", "VARCHAR(20) NULL", (err) => err ? reject(err) : resolve());
+      });
+      await new Promise((resolve, reject) => {
+        ensureColumn("users", "country", "VARCHAR(100) NULL", (err) => err ? reject(err) : resolve());
+      });
+
+      await new Promise((resolve, reject) => {
         runSchemaQuery(`
           CREATE TABLE IF NOT EXISTS posts (
             id INT PRIMARY KEY AUTO_INCREMENT,
@@ -986,7 +993,7 @@ function initializeDatabaseSchema() {
   createSchema();
 }
 
-function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic, verified }, callback) {
+function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic, verified, sex, country }, callback) {
   const safeUserId = String(userId || "").trim();
   if (!safeUserId) {
     return callback ? callback(null) : Promise.resolve();
@@ -1002,17 +1009,21 @@ function upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic
   const safeEmail = email && String(email).trim() ? String(email).trim() : null;
   const safeProfilePic = profilePic && String(profilePic).trim() ? String(profilePic).trim() : null;
   const safeVerified = verified !== undefined && verified !== null ? Number(Boolean(verified)) : null;
+  const safeSex = sex && String(sex).trim() ? String(sex).trim() : null;
+  const safeCountry = country && String(country).trim() ? String(country).trim() : null;
   const fullName = [safeFirstName, safeLastName].filter(Boolean).join(" ") || null;
 
-  const columns = ["id", "name", "email", "profile_pic", "first_name", "last_name", "dob"];
-  const values = [safeUserId, fullName, safeEmail, safeProfilePic, safeFirstName, safeLastName, safeDob];
+  const columns = ["id", "name", "email", "profile_pic", "first_name", "last_name", "dob", "sex", "country"];
+  const values = [safeUserId, fullName, safeEmail, safeProfilePic, safeFirstName, safeLastName, safeDob, safeSex, safeCountry];
   const updates = [
     "name = COALESCE(VALUES(name), name)",
     "email = COALESCE(VALUES(email), email)",
     "profile_pic = COALESCE(VALUES(profile_pic), profile_pic)",
     "first_name = COALESCE(VALUES(first_name), first_name)",
     "last_name = COALESCE(VALUES(last_name), last_name)",
-    "dob = COALESCE(VALUES(dob), dob)"
+    "dob = COALESCE(VALUES(dob), dob)",
+    "sex = COALESCE(VALUES(sex), sex)",
+    "country = COALESCE(VALUES(country), country)"
   ];
 
   if (safeVerified !== null) {
@@ -1758,12 +1769,16 @@ app.get("/api/profile/:userId", (req, res) => {
       firstName: "",
       lastName: "",
       dob: "",
-      email: ""
+      email: "",
+      sex: "",
+      country: "",
+      profile_pic: null,
+      verified: false
     });
   }
 
   db.query(
-    "SELECT id, name, email, first_name, last_name, dob, profile_pic, verified FROM users WHERE id = ? AND is_hidden = 0 AND account_status = 'active' LIMIT 1",
+    "SELECT id, name, email, first_name, last_name, dob, sex, country, profile_pic, verified FROM users WHERE id = ? AND is_hidden = 0 AND account_status = 'active' LIMIT 1",
     [userId],
     (err, rows) => {
       if (err) {
@@ -1779,6 +1794,8 @@ app.get("/api/profile/:userId", (req, res) => {
           lastName: "",
           dob: "",
           email: "",
+          sex: "",
+          country: "",
           profile_pic: null
         });
       }
@@ -1789,6 +1806,8 @@ app.get("/api/profile/:userId", (req, res) => {
         lastName: row.last_name || "",
         dob: row.dob || "",
         email: row.email || "",
+        sex: row.sex || "",
+        country: row.country || "",
         profile_pic: row.profile_pic || null,
         verified: Number(row.verified || 0) === 1
       });
@@ -2547,6 +2566,8 @@ app.post("/api/profile", (req, res) => {
   const lastName = String(req.body?.lastName || "").trim();
   const dob = String(req.body?.dob || "").trim();
   const email = String(req.body?.email || "").trim();
+  const sex = String(req.body?.sex || "").trim();
+  const country = String(req.body?.country || "").trim();
   const profilePic = String(req.body?.profile_pic || "").trim();
   const verifiedProvided = Object.prototype.hasOwnProperty.call(req.body || {}, "verified");
   const verified = verifiedProvided ? req.body?.verified : undefined;
@@ -2568,13 +2589,16 @@ app.post("/api/profile", (req, res) => {
       lastName,
       dob,
       email,
-      profile_pic: profilePic || null
+      sex: sex || null,
+      country: country || null,
+      profile_pic: profilePic || null,
+      verified: verified !== undefined && verified !== null ? Number(Boolean(verified)) : undefined
     };
 
     return res.json({ success: true, profile });
   }
 
-  upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic, verified }, (err) => {
+  upsertUserProfile({ userId, firstName, lastName, dob, email, profilePic, verified, sex, country }, (err) => {
     if (err) {
       console.error("PROFILE SAVE ERROR:", err);
       return res.status(500).json({ error: err.message });
@@ -2588,10 +2612,45 @@ app.post("/api/profile", (req, res) => {
         lastName,
         dob,
         email,
+        sex: sex || null,
+        country: country || null,
         profile_pic: profilePic || null,
         verified: verified !== undefined && verified !== null ? Number(Boolean(verified)) : undefined
       }
     });
+  });
+});
+
+app.get("/api/geo-chart-data", (req, res) => {
+  if (!isDbEnabled()) {
+    return res.json({ data: [] });
+  }
+
+  const query = `
+    SELECT
+      country,
+      SUM(CASE WHEN LOWER(COALESCE(sex, '')) = 'male' THEN 1 ELSE 0 END) AS male_count,
+      SUM(CASE WHEN LOWER(COALESCE(sex, '')) = 'female' THEN 1 ELSE 0 END) AS female_count
+    FROM users
+    WHERE country IS NOT NULL AND TRIM(country) != ''
+    GROUP BY country
+    HAVING male_count + female_count > 0
+    ORDER BY male_count + female_count DESC
+  `;
+
+  db.query(query, (err, rows) => {
+    if (err) {
+      console.error("GEO CHART DATA ERROR:", err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    const data = (rows || []).map((row) => ({
+      country: row.country,
+      male_count: Number(row.male_count || 0),
+      female_count: Number(row.female_count || 0)
+    }));
+
+    return res.json({ data });
   });
 });
 

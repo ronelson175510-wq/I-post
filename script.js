@@ -944,7 +944,7 @@ const friendsSuggestionsList = document.getElementById("friendsSuggestionsList")
 const friendsSuggestionSearchInput = document.getElementById("friendsSuggestionSearchInput");
 const friendsSheetSlider = document.getElementById("friendsSheetSlider");
 const friendsSheetModeButtons = document.querySelectorAll(".friends-sheet-mode-btn");
-let selectedUserDataChartType = "column";
+let selectedUserDataChartType = "geo";
 let currentFriendsSuggestionData = [];
 let currentUserActivityData = [];
 let currentUserDataTotals = { post_count: 0, total_likes: 0, follower_count: 0, following_count: 0 };
@@ -984,6 +984,112 @@ function renderYourDataChart(type = selectedUserDataChartType, data = currentUse
 
   const activity = Array.isArray(data) && data.length ? data : getLast12MonthsFallback();
   const chartTotals = totals || { post_count: 0, total_likes: 0, following_count: 0 };
+
+  if (type === "geo") {
+    chartContainer.innerHTML = '<div id="yourDataGeoChart" style="width:100%; height: 290px;"></div>';
+
+    const renderGeoChart = (geoRows = []) => {
+      if (!window.google || !window.google.charts || !window.google.visualization) {
+        chartContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:240px;color:#111;font-size:0.8rem;font-weight:700;">Geo chart unavailable.</div>';
+        return;
+      }
+
+      const chartRows = Array.isArray(geoRows) && geoRows.length ? geoRows : [
+        { country: "United States", male_count: 1, female_count: 1 },
+        { country: "United Kingdom", male_count: 1, female_count: 0 },
+        { country: "Canada", male_count: 0, female_count: 1 }
+      ];
+
+      const geoData = google.visualization.arrayToDataTable([
+        ["Country", "Followers"],
+        ...chartRows.map((row) => {
+          const maleCount = Number(row.male_count || 0);
+          const femaleCount = Number(row.female_count || 0);
+          const score = maleCount + femaleCount;
+          return [String(row.country || "Unknown"), score];
+        })
+      ]);
+
+      const values = chartRows.map((row) => Number(row.male_count || 0) + Number(row.female_count || 0));
+      const minValue = Math.min(...values, 0);
+      const maxValue = Math.max(...values, 0);
+
+      const geoOptions = {
+        backgroundColor: "transparent",
+        colorAxis: {
+          minValue,
+          maxValue,
+          colors: ["#ef4444", "#f9a8d4", "#f472b6"]
+        },
+        datalessRegionColor: "rgba(17, 17, 17, 0.08)",
+        defaultColor: "#3b82f6",
+        legend: "none",
+        tooltip: {
+          textStyle: { color: "#111111", fontSize: 12 },
+          isHtml: false
+        },
+        width: "100%",
+        height: 290,
+        keepAspectRatio: true,
+        resolution: "countries",
+        region: "world"
+      };
+
+      const geoChart = new google.visualization.GeoChart(document.getElementById("yourDataGeoChart"));
+      geoChart.draw(geoData, geoOptions);
+
+      const existingLegend = chartContainer.querySelector("#yourDataGeoChartLegend");
+      if (existingLegend) {
+        existingLegend.remove();
+      }
+
+      const legend = document.createElement("div");
+      legend.id = "yourDataGeoChartLegend";
+      legend.style.display = "flex";
+      legend.style.alignItems = "center";
+      legend.style.justifyContent = "center";
+      legend.style.gap = "18px";
+      legend.style.marginTop = "10px";
+      legend.style.fontSize = "12px";
+      legend.style.fontWeight = "700";
+      legend.style.color = "#111";
+      legend.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:14px;height:14px;background:#ef4444;"></span> Male</div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:14px;height:14px;background:#f472b6;"></span> Female</div>
+      `;
+      chartContainer.appendChild(legend);
+    };
+
+    if (window.google && window.google.charts && window.google.visualization) {
+      fetch("/api/geo-chart-data")
+        .then((response) => response.ok ? response.json() : { data: [] })
+        .then((payload) => renderGeoChart(payload?.data || []))
+        .catch(() => renderGeoChart([]));
+      return;
+    }
+
+    if (typeof google === "undefined") {
+      chartContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:240px;color:#111;font-size:0.8rem;font-weight:700;">Geo chart unavailable.</div>';
+      return;
+    }
+
+    if (!window.__bookmeGeoChartLoader) {
+      window.__bookmeGeoChartLoader = new Promise((resolve) => {
+        google.charts.load("current", { packages: ["geochart"] });
+        google.charts.setOnLoadCallback(resolve);
+      });
+    }
+
+    window.__bookmeGeoChartLoader
+      .then(() => fetch("/api/geo-chart-data")
+        .then((response) => response.ok ? response.json() : { data: [] })
+        .then((payload) => renderGeoChart(payload?.data || []))
+        .catch(() => renderGeoChart([])))
+      .catch(() => {
+        chartContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:240px;color:#111;font-size:0.8rem;font-weight:700;">Geo chart unavailable.</div>';
+      });
+    return;
+  }
 
   if (type === "pie") {
     const pieSeries = [
@@ -1725,14 +1831,20 @@ function validateDisplayNamePolicy(name, fieldLabel = "Name") {
   return "";
 }
 
-function saveCurrentUserProfileData(data, userId = getCurrentUserId()) {
+async function saveCurrentUserProfileData(data, userId = getCurrentUserId()) {
   const firstName = String(data?.firstName || "").trim();
   const lastName = String(data?.lastName || "").trim();
   const fullName = [firstName, lastName].filter(Boolean).join(" ");
   const nameError = validateDisplayNamePolicy(fullName || firstName || lastName || "", "Name");
+  const countryValue = String(data?.country || "").trim();
 
   if (nameError) {
     alert(nameError);
+    return false;
+  }
+
+  if (!countryValue) {
+    alert("Please select your country before saving your profile.");
     return false;
   }
 
@@ -1746,19 +1858,35 @@ function saveCurrentUserProfileData(data, userId = getCurrentUserId()) {
     lastName: merged.lastName && merged.lastName.trim() ? merged.lastName.trim() : null,
     dob: merged.dob && merged.dob.trim() ? merged.dob.trim() : null,
     email: merged.email && merged.email.trim() ? merged.email.trim() : null,
+    sex: merged.sex && merged.sex.trim() ? merged.sex.trim() : null,
+    country: merged.country && merged.country.trim() ? merged.country.trim() : null,
     profile_pic: getProfilePicForUser(userId) || auth?.currentUser?.photoURL || null,
     ...(merged.verified !== undefined ? { verified: Boolean(merged.verified) } : {})
   };
 
-  apiFetch("/api/profile", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(profilePayload)
-  }).catch((error) => {
-    console.warn("Backend profile save failed, using local storage only:", error);
-  });
+  try {
+    const response = await apiFetch("/api/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(profilePayload)
+    });
 
-  return merged;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.warn("Backend profile save failed:", errorData?.error || response.statusText);
+      alert(errorData?.error || "Profile could not be saved. Please check the database connection.");
+      return false;
+    }
+
+    const result = await response.json().catch(() => null);
+    const savedProfile = result?.profile || merged;
+    localStorage.setItem(getUserProfileKey(userId), JSON.stringify(savedProfile));
+    return savedProfile;
+  } catch (error) {
+    console.warn("Backend profile save failed, using local storage only:", error);
+    alert("Profile saved locally, but the backend did not accept the save. Check the database connection.");
+    return merged;
+  }
 }
 
 function splitDisplayName(displayName = "") {
@@ -1791,6 +1919,8 @@ async function ensureUserProfileRecordOnServer(user = auth?.currentUser) {
     lastName: localProfile.lastName || fallbackName.lastName || "",
     dob: localProfile.dob || "",
     email: localProfile.email || user.email || "",
+    sex: localProfile.sex || "",
+    country: localProfile.country || "",
     profile_pic: getProfilePicForUser(user.uid) || user.photoURL || null,
     ...(localProfile.verified !== undefined ? { verified: Boolean(localProfile.verified) } : {})
   };
@@ -1835,6 +1965,8 @@ async function loadUserProfileDataFromServer(userId = getCurrentUserId()) {
       lastName: data?.lastName || "",
       dob: data?.dob || "",
       email: data?.email || "",
+      sex: data?.sex || "",
+      country: data?.country || "",
       verified: Boolean(data?.verified)
     };
 
@@ -1885,6 +2017,8 @@ async function hydrateUserProfileFromServer(userId = getCurrentUserId()) {
         lastName: data?.lastName || existingProfile.lastName || "",
         dob: data?.dob || existingProfile.dob || "",
         email: data?.email || existingProfile.email || "",
+        sex: data?.sex || existingProfile.sex || "",
+        country: data?.country || existingProfile.country || "",
         verified: Boolean(data?.verified ?? existingProfile.verified ?? false)
       };
 
@@ -2088,8 +2222,10 @@ function populateProfileSettingsForm(userId = getCurrentUserId()) {
   const lastNameInput = document.getElementById("lastNameInput");
   const dobInput = document.getElementById("dobInput");
   const emailInput = document.getElementById("emailInput");
+  const sexInput = document.getElementById("sexInput");
+  const countryInput = document.getElementById("countryInput");
 
-  if (!firstNameInput && !lastNameInput && !dobInput && !emailInput) return;
+  if (!firstNameInput && !lastNameInput && !dobInput && !emailInput && !sexInput && !countryInput) return;
 
   const data = getCurrentUserProfileData(userId);
 
@@ -2097,6 +2233,8 @@ function populateProfileSettingsForm(userId = getCurrentUserId()) {
   if (lastNameInput) lastNameInput.value = data.lastName || "";
   if (dobInput) dobInput.value = data.dob || "";
   if (emailInput) emailInput.value = data.email || "";
+  if (sexInput) sexInput.value = (data.sex || "").toLowerCase() === "female" ? "female" : (data.sex || "").toLowerCase() === "male" ? "male" : "";
+  if (countryInput) countryInput.value = data.country || "";
 }
 
 async function signUserOut() {
@@ -4898,7 +5036,7 @@ if (openPrivacySheetBtn) {
 }
 
 if (profileSettingsForm) {
-  profileSettingsForm.addEventListener("submit", (event) => {
+  profileSettingsForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     const firstName = document.getElementById("firstNameInput")?.value || "";
@@ -4915,10 +5053,22 @@ if (profileSettingsForm) {
       firstName,
       lastName,
       dob: document.getElementById("dobInput")?.value || "",
-      email: document.getElementById("emailInput")?.value || ""
+      email: document.getElementById("emailInput")?.value || "",
+      sex: document.getElementById("sexInput")?.value || "",
+      country: document.getElementById("countryInput")?.value || ""
     };
 
-    if (!saveCurrentUserProfileData(payload)) {
+    if (!payload.country) {
+      alert("Please choose your country before saving your profile.");
+      const countryField = document.getElementById("countryInput");
+      if (countryField) {
+        countryField.focus();
+      }
+      return;
+    }
+
+    const savedProfile = await saveCurrentUserProfileData(payload);
+    if (!savedProfile) {
       return;
     }
 

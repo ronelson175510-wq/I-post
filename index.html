@@ -13,6 +13,7 @@
     <script src="https://unpkg.com"></script>
     <link rel="stylesheet" href="./brand-font.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script>
       const isLocalDevHost = ["localhost", "127.0.0.1"].includes(window.location.hostname) || window.location.hostname.endsWith(".local");
       window.BOOKME_API_BASE_URL = window.BOOKME_API_BASE_URL || (isLocalDevHost ? window.location.origin : "https://chat-mini.com");
@@ -3454,6 +3455,13 @@ background: rgba(255, 255, 255, 0.08);
   border-bottom: none;
 }
 
+#settingsSheet .sheet-content {
+  max-height: calc(100% - 48px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 32px;
+}
+
 .sheet-drag {
   width: 52px;
   height: 5px;
@@ -3969,8 +3977,9 @@ margin-left: -4px;
   border: none;
   font-family: "Comic Neue", "Comic Sans MS", "Marker Felt", "Segoe UI", sans-serif;
   text-shadow: black 1px 1px;
-  font-size: 15px;
-  line-height: 1;
+  font-size: 17px;
+  font-weight: 500px;
+  line-height: 1.4px;
   gap: 3px;
   cursor: pointer;
   margin-left: -10px;
@@ -3983,7 +3992,7 @@ margin-left: -4px;
 }
 
 .content-follow-btn i {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .content-follow-btn[hidden] {
@@ -4351,7 +4360,8 @@ margin-left: -4px;
     <div class="your-data-chart" aria-label="User activity chart">
       <div class="your-data-chart-header">Choose your chart type</div>
       <div class="your-data-chart-controls" aria-label="Choose chart type">
-        <button type="button" class="chart-type-btn active" data-chart-type="column">Column</button>
+        <button type="button" class="chart-type-btn active" data-chart-type="geo">Geo</button>
+        <button type="button" class="chart-type-btn" data-chart-type="column">Column</button>
         <button type="button" class="chart-type-btn" data-chart-type="pie">Pie</button>
         <button type="button" class="chart-type-btn" data-chart-type="plot">Plot</button>
       </div>
@@ -4578,6 +4588,88 @@ margin-left: -4px;
       <div class="settings-field-group">
         <label for="emailInput" data-i18n="email">Email</label>
         <input id="emailInput" name="email" type="email" data-i18n-placeholder="emailPlaceholder" placeholder="Email" />
+      </div>
+
+      <div class="settings-field-group">
+        <label for="sexInput">Sex</label>
+        <select id="sexInput" name="sex" style="border-radius: 12px; width: 100%; height: 36px;">
+          <option value="">Select sex</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
+
+      <div class="settings-field-group">
+        <label for="countryInput">Country</label>
+        <select id="countryInput" name="country" required style="border-radius: 12px; width: 100%; height: 36px;">
+          <option value="">Select country</option>
+          <option value="Afghanistan">Afghanistan</option>
+          <option value="Albania">Albania</option>
+          <option value="Algeria">Algeria</option>
+          <option value="Argentina">Argentina</option>
+          <option value="Australia">Australia</option>
+          <option value="Austria">Austria</option>
+          <option value="Bangladesh">Bangladesh</option>
+          <option value="Belgium">Belgium</option>
+          <option value="Brazil">Brazil</option>
+          <option value="Bulgaria">Bulgaria</option>
+          <option value="Cameroon">Cameroon</option>
+          <option value="Canada">Canada</option>
+          <option value="Chile">Chile</option>
+          <option value="China">China</option>
+          <option value="Colombia">Colombia</option>
+          <option value="Croatia">Croatia</option>
+          <option value="Czech Republic">Czech Republic</option>
+          <option value="Denmark">Denmark</option>
+          <option value="Egypt">Egypt</option>
+          <option value="Ethiopia">Ethiopia</option>
+          <option value="Finland">Finland</option>
+          <option value="France">France</option>
+          <option value="Germany">Germany</option>
+          <option value="Ghana">Ghana</option>
+          <option value="Greece">Greece</option>
+          <option value="Hungary">Hungary</option>
+          <option value="India">India</option>
+          <option value="Indonesia">Indonesia</option>
+          <option value="Ireland">Ireland</option>
+          <option value="Israel">Israel</option>
+          <option value="Italy">Italy</option>
+          <option value="Japan">Japan</option>
+          <option value="Kenya">Kenya</option>
+          <option value="Malaysia">Malaysia</option>
+          <option value="Mexico">Mexico</option>
+          <option value="Morocco">Morocco</option>
+          <option value="Netherlands">Netherlands</option>
+          <option value="New Zealand">New Zealand</option>
+          <option value="Nigeria">Nigeria</option>
+          <option value="Norway">Norway</option>
+          <option value="Pakistan">Pakistan</option>
+          <option value="Peru">Peru</option>
+          <option value="Philippines">Philippines</option>
+          <option value="Poland">Poland</option>
+          <option value="Portugal">Portugal</option>
+          <option value="Romania">Romania</option>
+          <option value="Russia">Russia</option>
+          <option value="Saudi Arabia">Saudi Arabia</option>
+          <option value="Senegal">Senegal</option>
+          <option value="Singapore">Singapore</option>
+          <option value="South Africa">South Africa</option>
+          <option value="South Korea">South Korea</option>
+          <option value="Spain">Spain</option>
+          <option value="Sweden">Sweden</option>
+          <option value="Switzerland">Switzerland</option>
+          <option value="Tanzania">Tanzania</option>
+          <option value="Thailand">Thailand</option>
+          <option value="Tunisia">Tunisia</option>
+          <option value="Turkey">Turkey</option>
+          <option value="Uganda">Uganda</option>
+          <option value="Ukraine">Ukraine</option>
+          <option value="United Arab Emirates">United Arab Emirates</option>
+          <option value="United Kingdom">United Kingdom</option>
+          <option value="United States">United States</option>
+          <option value="Vietnam">Vietnam</option>
+          <option value="Zimbabwe">Zimbabwe</option>
+        </select>
       </div>
 
       <div class="settings-field-group">

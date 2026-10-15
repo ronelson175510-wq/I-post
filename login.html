@@ -585,7 +585,76 @@
                 <option value="female" data-i18n-login="female">Female</option>
                 <option value="other" data-i18n-login="other">Other</option>
             </select>
-            <input id="dobInput" type="date">
+            <select id="countryInput" style="margin-top: 12px;" required>
+                <option value="">Select Country</option>
+                <option value="Afghanistan">Afghanistan</option>
+                <option value="Albania">Albania</option>
+                <option value="Algeria">Algeria</option>
+                <option value="Argentina">Argentina</option>
+                <option value="Australia">Australia</option>
+                <option value="Austria">Austria</option>
+                <option value="Bangladesh">Bangladesh</option>
+                <option value="Belgium">Belgium</option>
+                <option value="Brazil">Brazil</option>
+                <option value="Bulgaria">Bulgaria</option>
+                <option value="Cameroon">Cameroon</option>
+                <option value="Canada">Canada</option>
+                <option value="Chile">Chile</option>
+                <option value="China">China</option>
+                <option value="Colombia">Colombia</option>
+                <option value="Croatia">Croatia</option>
+                <option value="Czech Republic">Czech Republic</option>
+                <option value="Denmark">Denmark</option>
+                <option value="Egypt">Egypt</option>
+                <option value="Ethiopia">Ethiopia</option>
+                <option value="Finland">Finland</option>
+                <option value="France">France</option>
+                <option value="Germany">Germany</option>
+                <option value="Ghana">Ghana</option>
+                <option value="Greece">Greece</option>
+                <option value="Hungary">Hungary</option>
+                <option value="India">India</option>
+                <option value="Indonesia">Indonesia</option>
+                <option value="Ireland">Ireland</option>
+                <option value="Israel">Israel</option>
+                <option value="Italy">Italy</option>
+                <option value="Japan">Japan</option>
+                <option value="Kenya">Kenya</option>
+                <option value="Malaysia">Malaysia</option>
+                <option value="Mexico">Mexico</option>
+                <option value="Morocco">Morocco</option>
+                <option value="Netherlands">Netherlands</option>
+                <option value="New Zealand">New Zealand</option>
+                <option value="Nigeria">Nigeria</option>
+                <option value="Norway">Norway</option>
+                <option value="Pakistan">Pakistan</option>
+                <option value="Peru">Peru</option>
+                <option value="Philippines">Philippines</option>
+                <option value="Poland">Poland</option>
+                <option value="Portugal">Portugal</option>
+                <option value="Romania">Romania</option>
+                <option value="Russia">Russia</option>
+                <option value="Saudi Arabia">Saudi Arabia</option>
+                <option value="Senegal">Senegal</option>
+                <option value="Singapore">Singapore</option>
+                <option value="South Africa">South Africa</option>
+                <option value="South Korea">South Korea</option>
+                <option value="Spain">Spain</option>
+                <option value="Sweden">Sweden</option>
+                <option value="Switzerland">Switzerland</option>
+                <option value="Tanzania">Tanzania</option>
+                <option value="Thailand">Thailand</option>
+                <option value="Tunisia">Tunisia</option>
+                <option value="Turkey">Turkey</option>
+                <option value="Uganda">Uganda</option>
+                <option value="Ukraine">Ukraine</option>
+                <option value="United Arab Emirates">United Arab Emirates</option>
+                <option value="United Kingdom">United Kingdom</option>
+                <option value="United States">United States</option>
+                <option value="Vietnam">Vietnam</option>
+                <option value="Zimbabwe">Zimbabwe</option>
+            </select>
+            <input id="dobInput" type="date" style="margin-top: 12px;">
             <div class="button-group">
                 <button onclick="nextSlide(2)" data-i18n-login="back">← Back</button>
                 <button onclick="nextSlide(4)" data-i18n-login="skip">Skip →</button>
@@ -1456,9 +1525,21 @@
             const email = document.getElementById("emailInput").value;
             const password = document.getElementById("passwordInput").value;
             const name = document.getElementById("nameInput").value.trim();
+            const sex = document.getElementById("sexInput")?.value || "";
+            const country = document.getElementById("countryInput")?.value || "";
+            const dob = document.getElementById("dobInput")?.value || "";
 
             if (!email || !password || !name) {
                 alert("Please fill in all required fields!");
+                return;
+            }
+
+            if (!country) {
+                alert("Please select your country before finishing signup.");
+                const countryField = document.getElementById("countryInput");
+                if (countryField) {
+                    countryField.focus();
+                }
                 return;
             }
 
@@ -1486,8 +1567,10 @@
                                 user_id: createdUser.uid,
                                 firstName,
                                 lastName,
-                                dob: "",
+                                dob,
                                 email: createdUser.email || email,
+                                sex,
+                                country,
                                 profile_pic: createdUser.photoURL || null
                             })
                         });

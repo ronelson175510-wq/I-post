@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(100) UNIQUE,
   password VARCHAR(255),
   sex VARCHAR(20),
+  country VARCHAR(100),
   dob DATE,
   profile_pic VARCHAR(255),
   verified TINYINT(1) DEFAULT 0,
